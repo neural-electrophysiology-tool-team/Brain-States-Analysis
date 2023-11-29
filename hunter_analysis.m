@@ -17,11 +17,11 @@
 %% getting the data for this sepecific experimeent:
 % notice - now everything should be changes manualy.
 
-exp_path = ['/media/sil1/Data/Pogona Vitticeps/PV149/PV149_Trial109_' ...
+exp_path = ['/media/sil1/Data/Pogona Vitticeps/PV149/Hunter/PV149_Trial109_' ...
     'Hunter61_2023-08-22_13-02-34']; 
 rec = OERecording(strcat(exp_path,'/Record Node 101'));
 msg = mkdir(exp_path,'/plots');
-
+plotsDir = strcat(exp_path,'/plots');
 % getting the events data (block.log):
 block_log_path = strcat(exp_path,'/block2/block.log');
 block_log = readtable(block_log_path, "Delimiter",' - '); 
@@ -88,6 +88,15 @@ hitsIdx = strcmpi(screenTouch.is_hit,'true');
 strikesTimes = screenTouch.Timestamps(hitsIdx);
 strikesFrames = getVideoFrames(videos_trigs,strikesTimes); % theres a 15 frames difference.
 strikesTrig = trimOETrigs(strikesFrames); 
+%% correction of frames for the behavioral data:
+% for this recording - PV149, Hunter61, the frames are shifted 4 triggers
+% (the videos is from trigger number 4 until the end of num of frames).
+% the CSVs are 15 frames from the times of the triggers (11 after
+% correction)
+
+oeStartTrial = trimOETrigs(sTrialFrame-11);
+oeEndTrial = trimOETrigs(eTrialFrame-11);
+oeStrikes = trimOETrigs(strikesFrames-15); 
 
 %% Saving of shifts after frame-by-frame hand annotations
 % after checking it frame-by-frame, I found that there are different shift
@@ -102,43 +111,58 @@ filename = 'shifts.mat';
 
 save(filename,'-struct',"shifts")
 
+%% get and plot long trace of the serrounding of the event:
+
+% start trial
+
+fullTraceWin = 8000; % in ms
+fs = rec.samplingFrequency(1); %samples per sec
+fullTraceTimes = linspace(1,fullTraceWin,(fullTraceWin/1000)*fs); % time vector
+defCh = 9;
+
+startFullTrace = rec.getData(defCh,oeStartTrial-(fullTraceWin/2),fullTraceWin);
+
+figure;
+plotShifted(fullTraceTimes, squeeze(startFullTrace).','verticalShift',0.05);
+xline(fullTraceWin/2,'r'); ylabel('uV');xlabel ('Time[ms]');
+title('Bug apperance, for one block')
+saveas(gcf,strcat(plotsDir, '/bugApperanceFull.jpg'));
+
+
 %% get the data for each of the segmentations.
 % instacnese:
 % window- 3 seconds (for each part)
 % channels - for now, I'm taking one that DO have spikes.
 %   to have channels with spikes: we can chose 24,25,8,11,9. but many have. 
 
-win = 10000; % in ms
+win = 4000; % in ms
 fs = rec.samplingFrequency(1); %samples per sec
 times = linspace(1,win,(win/1000)*fs); % time vector
 defCh = 9;
 % Bug apperance: before and after
 
-postStart = rec.getData(defCh,sTrialsTrig,win);
-preStart = rec.getData(defCh,sTrialsTrig-win, win);
+postStart = rec.getData(defCh,oeStartTrial,win);
+preStart = rec.getData(defCh,oeStartTrial-win, win);
 
 %% Check for strikes in the post bug appearance, and zero-pad
 
 % It's doing zero padding but not in the right times. 
 % i'm missing some data, in a few hundred ms but i dont konw why. 
 
-
-
-for i = 1:length(sTrialsTrig)
-   for j = 1:length(strikesTrig)
+for i = 1:length(oeStartTrial)
+   for j = 1:length(oeStrikes)
        % check for each strike is it's time is inside the win: meaning its
        % larger then the begining but smaller than the end
-        if sTrialsTrig(i)<strikesTrig(j) && (sTrialsTrig(i)+win)>strikesTrig(j)
+        if oeStartTrial(i)<oeStrikes(j) && (oeStartTrial(i)+win)>oeStrikes(j)
             fprintf('during the win of Trial num %d there was a strike, running zero padding.\n',i)
             %find the time of strike, cut before and padd with zeros
-            startToStrike = (strikesTrig(j)-sTrialsTrig(i))*fs/1000; %match the times diff
+            startToStrike = (oeStrikes(j)-oeStartTrial(i))*fs/1000; %match the times diff
             % change to zero:
             postStart(1,i,round(startToStrike:end)) = 0;
         end
    end
       
 end
-
 
 %% plot traces
 % plot the traces:
@@ -151,28 +175,28 @@ meanPreStart = mean(preStart,1);
 %ploting
 figure
 subplot(2,1,1);
-plotShifted(times, squeeze(meanPreStart).');
+plotShifted(times, squeeze(meanPreStart).','verticalShift',0.05);
 title('Before Bug Apperance')
 subplot(2,1,2);
-plotShifted(times, squeeze(meanPostStart).');
+plotShifted(times, squeeze(meanPostStart(1,1:24,:)).','verticalShift',0.05);
 title('After Bug Apperance')
 xlabel ('Time(ms)')
 sgtitle (sprintf("Traces of 25 trial, before/after bug apperance. Ch %d",defCh))
 %% extract only relevant parts to see the effect:
-preStartSlim = preStart(:,[1:2,6:10, 12:15],1:(end-5000)); %exclude: 3, 4, 17, ~11
-postStartSlim = postStart(:,[2,5:14],1:(end-5000));
-
-%figure;plotShifted(squeeze(meanPreStart)');title('pre');
-%figure;plotShifted(squeeze(meanPostStart)','verticalShift',0.02);title('post')
-
-figure
-subplot(2,1,1);
-plotShifted(times(1:end-5000), squeeze(preStartSlim).','verticalShift',0.05);
-title('Before Bug Apperance')
-subplot(2,1,2);
-plotShifted(times(1:end-5000), squeeze(postStartSlim).','verticalShift',0.05);
-title('After Bug Apperance')
-xlabel('Time(ms)')
+% preStartSlim = preStart(:,[1:2,6:10, 12:15],1:(end-5000)); %exclude: 3, 4, 17, ~11
+% postStartSlim = postStart(:,[5:14],1:(end-5000));
+% 
+% %figure;plotShifted(squeeze(meanPreStart)');title('pre');
+% %figure;plotShifted(squeeze(meanPostStart)','verticalShift',0.02);title('post')
+% 
+% figure
+% subplot(2,1,1);
+% plotShifted(times(1:end-5000), squeeze(preStartSlim).','verticalShift',0.05);
+% title('Before Bug Apperance')
+% subplot(2,1,2);
+% plotShifted(times(1:end-5000), squeeze(postStartSlim).','verticalShift',0.05);
+% title('After Bug Apperance')
+% xlabel('Time(ms)')
 %% get and plot the max amplitude for each trial ch mean - before and after. 
 
 maxPreStart = max(meanPreStart,[],3);
@@ -195,25 +219,19 @@ hold off
 
 % maybe add the mean and std..
 
-%% top 20% of voltage
-
-%I'm not sure what it means..
-
-
-
 %% FFT
 
 welchWin = 1*fs; 
 
 %calculate the ppx:
-[ppxPre,f1] = pwelch(squeeze(meanPreStart).',welchWin,welchWin/2,[],fs);
-[ppxPost,f2] = pwelch(squeeze(meanPostStart).',welchWin,welchWin/2,[],fs);
+[ppxPre,f1] = pwelch(squeeze(preStart(1,1:24,:)).',welchWin,welchWin/2,[],fs);
+[ppxPost,f2] = pwelch(squeeze(postStart(1,1:24,:)).',welchWin,welchWin/2,[],fs);
 meanPPXpre = median(ppxPre,2);
 meanPPXpost = median(ppxPost,2);
 
-%%
+%% mark's analysis - not sure about it/
 fMax=40;
-p=find(f<fMax);
+p=find(f1<fMax);
 ppPre=find(sum(ppxPre(p,:))<0.4e6); %reject signals with very high amplitudes (probably noise)
 ppPost=find(sum(ppxPost(p,:))<0.4e6); %reject signals with very high amplitudes (probably noise)
 
@@ -225,8 +243,8 @@ freqHz=f1(p);
 normsPxx=bsxfun(@rdivide,sPxx,mean(sPxx,2));
 corrMat=corrcoef(normsPxx);
 
-maxDendroClusters=2;
-[DC,order,clusters]=DendrogramMamediantrix(corrMat,'linkMetric','euclidean','linkMethod','ward','maxClusters',maxDendroClusters);
+%maxDendroClusters=2;
+%[DC,order,clusters]=DendrogramMamediantrix(corrMat,'linkMetric','euclidean','linkMethod','ward','maxClusters',maxDendroClusters);
 
 figure;
 plot(freqHz,median(normsPxx(:,1:25),2),'r');hold on;
@@ -261,6 +279,37 @@ titlestr = sprintf(['Welch transform, time win of data = %d sec,' ...
 %han.Title.Visible = 'on';
 %title(han, titlestr,);
 sgtitle(titlestr);
+
+% plot only averegaes on on figure:
+figure;
+plot(f1(1:60),meanPPXpre(1:60,:),'Color','black',LineWidth=2);
+hold on
+plot(f2(1:60),meanPPXpost(1:60,:),'Color','r',LineWidth=2)
+legend('Before bug apperance','After bug apperance')
+xlabel ('Freq[Hz]'); ylabel('PSD');
+title('un-normelized');
+saveas(gcf,strcat(plotsDir, '/FreqBandsBugAppeare.jpg'));
+%% normelized: 
+maenPPX = (meanPPXpre + meanPPXpost)/2;
+normPPXPre = meanPPXpre - maenPPX;
+normPPXPost = meanPPXpost - maenPPX;
+figure;
+plot(f1(1:100),normPPXPre(1:100,:),'Color','black',LineWidth=2);
+hold on
+plot(f2(1:100),normPPXPost(1:100,:),'Color','r',LineWidth=2)
+xlabel ('Freq[Hz]'); ylabel('nPSD');
+legend('Before bug apperance','After bug apperance')
+
+titlestr = sprintf(['Normalized,data length: %d sec,' ...
+    ' welch window: %d sec'],win/1000,welchWin/fs);
+title(titlestr);
+saveas(gcf,strcat(plotsDir, '/nFreqBandsBugAppeare.jpg'));
+%% D2B ratio
+beta = [13, 30]; %hz
+delta = [0.1,3.5];
+
+
+
 
 %% find the effect: FFT for only the 11 trials. 
 
@@ -299,13 +348,6 @@ titlestr = sprintf(['Welch transform, time win of data = %d sec,' ...
 %han.Title.Visible = 'on';
 %title(han, titlestr,);
 sgtitle(titlestr);
-%% plot only means:
-
-figure; plot(f1(1:150),meanPPXpre(1:150,:),'Color','r',LineWidth=2);
-hold on
-plot(f1(1:150 ...
-    ),meanPPXpost(1:150,:),'Color','black',LineWidth=2);
-legend('Pre','post')
 
 %%
 % SA = sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
