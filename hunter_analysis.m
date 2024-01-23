@@ -16,48 +16,65 @@
 
 %% getting the data for this sepecific experimeent:
 % notice - now everything should be changes manualy.
+SA = sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+SA.setCurrentRecording('Animal=PV161,recNames=Hunter61');
 
-exp_path = ['/media/sil1/Data/Pogona Vitticeps/PV149/Hunter/PV149_Trial109_' ...
-    'Hunter61_2023-08-22_13-02-34']; 
-rec = OERecording(strcat(exp_path,'/Record Node 101'));
-msg = mkdir(exp_path,'/plots');
-plotsDir = strcat(exp_path,'/plots');
-% getting the events data (block.log):
-block_log_path = strcat(exp_path,'/block2/block.log');
-block_log = readtable(block_log_path, "Delimiter",' - '); 
+ArenaTimes = getArenaTimes(SA,SA.currentDataObj);
 
-% getting the videos data (csv of the triggers):
-videos_csv_path = strcat(exp_path,['/block2/videos/frames_timestamps/' ...
-    'back_20230822T130253.csv']); % need to be changed according to the filename.
-videos_trigs = readmatrix(videos_csv_path,"NumHeaderLines",1); % timestamps - seconds from 1.1.1970
+function ArenaTimes = getArenaTimes(SA,SA.currentDataObj)
+    % this function gets the argunenmts from the SA excel, and returns a
+    % structure that has 3 arrays of the frames closes frames numbers for
+    % each event. 
+    % maaning, this only takes the CSVs in hunter and converts the times
+    % there to frame numbers. 
 
-% get the bug location into a table and add timestamps (S):
-%notice - if yu need the timestamps in ms the code needs to change. 
-bugs_path = strcat(exp_path,'/block2/bug_trajectory.csv');
-bugs = readtable(bugs_path);
-bugs.DateTime = datetime(bugs.time, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSSXXX', 'TimeZone', '+03:00');
-bugs.Timestamps = posixtime(bugs.DateTime);
+    % getting the videos data (csv of the triggers):
+    videoPath = SA.recTable.VideoFiles(SA.currentPRec);
+    [videosFolderPath,vidName,~] = fileparts(videoPath{1});
+    videoCSVpath = strcat(videosFolderPath,filesep,'frames_timestamps/',vidName,'.csv');
+    videoFrames = readmatrix(videoCSVpath,"NumHeaderLines",1); % timestamps - seconds from 1.1.1970
+
+    %get block data:
+    if all(cellfun(@isempty,SA.recTable.blockPath(SA.currentPRec)))
+        [blockPath,~] = fileparts(videosFolderPath);
+    else
+        bloPath = SA.recTable.blockPath(SA.currentPRec);
+        blockPath = bloPath{1};
+    end
+    block_log = readtable(strcat(blockPath,'/block.log'), "Delimiter",' - ');
 
 
-% get the strikes loginto a table and add timestamps:
-screenTouch_path = strcat(exp_path,'/block2/screen_touches.csv');
-screenTouch = readtable(screenTouch_path);
-screenTouch.DateTime = datetime(screenTouch.time, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSSXXX', 'TimeZone', '+03:00');
-screenTouch.Timestamps = posixtime(screenTouch.DateTime);
+    % get the bug location into a table and add timestamps (S):
+    %notice - if yu need the timestamps in ms the code needs to change.
+    bugs_path = strcat(blockPath,'/bug_trajectory.csv');
+    bugs = readtable(bugs_path);
+    bugs.DateTime = datetime(bugs.time, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSSXXX', 'TimeZone', '+03:00');
+    bugs.Timestamps = posixtime(bugs.DateTime);
+
+
+    % get the strikes loginto a table and add timestamps:
+    screenTouch = readtable(strcat(blockPath,'/screen_touches.csv'));
+    screenTouch.DateTime = datetime(screenTouch.time, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSSXXX', 'TimeZone', '+03:00');
+    screenTouch.Timestamps = posixtime(screenTouch.DateTime);
+
+
+end
+
 
 
 %% getting the triggers from the OERecording
-cam_trig_ch = 7; % can b change according to the setup.
+cam_trig_ch = SA.recTable.camTriggerCh(SA.currentPRec);
+% can b change according to the setup.
 % if camera triggs work:
 %trim_oe_trigs = rec.getCamerasTrigger(cam_trig_ch);
 %if not:
-oe_trigs = rec.getTrigger{1,cam_trig_ch};
+oe_trigs = SA.currentDataObj.getTrigger{1,cam_trig_ch};
 stops = find(diff(oe_trigs)>1000);
 trimOETrigs = oe_trigs(1,stops(1)+1:stops(2)); % taking the right triggers/
 trimOETrigs = trimOETrigs.'; %traspose. 
 
 % in any ways, check:
-num_missing_frames = length(trimOETrigs) - length(videos_trigs);
+%num_missing_frames = length(trimOETrigs) - length(videos_trigs);
 
 % problem with the triggers: there are 3 more triggers in the beggining and
 % all the rest of the added triggers are in the end of the recording. you
@@ -78,8 +95,8 @@ endTrials = bugs.Timestamps([(bugStops.')-1,end]);
 sTrialFrame = getVideoFrames(videos_trigs,startTrials);
 eTrialFrame = getVideoFrames(videos_trigs,endTrials);
 % change to frame time stamp in OE:
-sTrialsTrig = trimOETrigs(sTrialFrame); % this is the trigs for the start of trials.
-eTrialsTrig = trimOETrigs(eTrialFrame);
+%sTrialsTrig = trimOETrigs(sTrialFrame); % this is the trigs for the start of trials.
+%eTrialsTrig = trimOETrigs(eTrialFrame);
 
 % strike times
 % taking the strike time from the strike plots
@@ -88,45 +105,48 @@ hitsIdx = strcmpi(screenTouch.is_hit,'true');
 strikesTimes = screenTouch.Timestamps(hitsIdx);
 strikesFrames = getVideoFrames(videos_trigs,strikesTimes); % theres a 15 frames difference.
 strikesTrig = trimOETrigs(strikesFrames); 
-%% correction of frames for the behavioral data:
+% correction of frames for the behavioral data:
 % for this recording - PV149, Hunter61, the frames are shifted 4 triggers
 % (the videos is from trigger number 4 until the end of num of frames).
 % the CSVs are 15 frames from the times of the triggers (11 after
 % correction)
+shifts = SA.recTable.blockShift(SA.currentPRec);
+shiftsnum = str2num(shifts{1});
 
-oeStartTrial = trimOETrigs(sTrialFrame-11);
-oeEndTrial = trimOETrigs(eTrialFrame-11);
-oeStrikes = trimOETrigs(strikesFrames-15); 
+% timestamps for the events:
+oeStartTrial = trimOETrigs(sTrialFrame-shiftsnum(1));
+oeEndTrial = trimOETrigs(eTrialFrame-shiftsnum(1));
+oeStrikes = trimOETrigs(strikesFrames-shiftsnum(2)); 
 
 %% Saving of shifts after frame-by-frame hand annotations
 % after checking it frame-by-frame, I found that there are different shift
 % in the timing of the frames vs what we are getting from the files. I wish
 % to save the shifts data in a mat file in the folder (due to the fact that
 % I went over them by hand:
-shifts.startTrialShift = sTrialShift;
-shifts.endTrialShift = eTrialShift;
-shifts.strikeShift = strikesShift;
-
-filename = 'shifts.mat';
-
-save(filename,'-struct',"shifts")
+% shifts.startTrialShift = sTrialShift;
+% shifts.endTrialShift = eTrialShift;
+% shifts.strikeShift = strikesShift;
+% 
+% filename = 'shifts.mat';
+% 
+% save(filename,'-struct',"shifts")
 
 %% get and plot long trace of the serrounding of the event:
 
 % start trial
 
 fullTraceWin = 8000; % in ms
-fs = rec.samplingFrequency(1); %samples per sec
+fs = SA.currentDataObj.samplingFrequency(1); %samples per sec
 fullTraceTimes = linspace(1,fullTraceWin,(fullTraceWin/1000)*fs); % time vector
 defCh = 9;
 
-startFullTrace = rec.getData(defCh,oeStartTrial-(fullTraceWin/2),fullTraceWin);
+startFullTrace = SA.currentDataObj.getData(defCh,oeStartTrial-(fullTraceWin/2),fullTraceWin);
 
 figure;
 plotShifted(fullTraceTimes, squeeze(startFullTrace).','verticalShift',0.05);
 xline(fullTraceWin/2,'r'); ylabel('uV');xlabel ('Time[ms]');
 title('Bug apperance, for one block')
-saveas(gcf,strcat(plotsDir, '/bugApperanceFull.jpg'));
+saveas(gcf,strcat(SA.currentPlotFolder, '/bugApperanceFull.jpg'));
 
 
 %% get the data for each of the segmentations.
@@ -135,14 +155,14 @@ saveas(gcf,strcat(plotsDir, '/bugApperanceFull.jpg'));
 % channels - for now, I'm taking one that DO have spikes.
 %   to have channels with spikes: we can chose 24,25,8,11,9. but many have. 
 
-win = 4000; % in ms
-fs = rec.samplingFrequency(1); %samples per sec
+win = 10000; % in ms
+fs = SA.currentDataObj.samplingFrequency(1); %samples per sec
 times = linspace(1,win,(win/1000)*fs); % time vector
 defCh = 9;
 % Bug apperance: before and after
 
-postStart = rec.getData(defCh,oeStartTrial,win);
-preStart = rec.getData(defCh,oeStartTrial-win, win);
+postStart = SA.currentDataObj.getData(defCh,oeStartTrial,win);
+preStart = SA.currentDataObj.getData(defCh,oeStartTrial-win, win);
 
 %% Check for strikes in the post bug appearance, and zero-pad
 
@@ -229,6 +249,40 @@ welchWin = 1*fs;
 meanPPXpre = median(ppxPre,2);
 meanPPXpost = median(ppxPost,2);
 
+%% normalizing each trial then average:
+ntPPXpre = ppxPre./sum(ppxPre,1);
+ntPPXpost = ppxPost./sum(ppxPost,1);
+meanNTpre = mean(ntPPXpre,2);
+meanNTpost = mean(ntPPXpost,2);
+
+%plot it:
+figure;
+plot(f1(1:100),meanNTpre(1:100,:),'Color','black',LineWidth=2);
+hold on
+plot(f2(1:100),meanNTpost(1:100,:),'Color','r',LineWidth=2)
+xlabel ('Freq[Hz]'); ylabel('nPSD');
+legend('Before bug apperance','After bug apperance')
+
+titlestr = sprintf(['Normalized trials,data length: %d sec,' ...
+    ' welch window: %d sec'],win/1000,welchWin/fs);
+title(titlestr);
+saveas(gcf,strcat(SA.currentPlotFolder, '/ntFreqBandsBugAppeare.jpg'));
+
+%
+ntmaenPPX = (meanNTpre + meanNTpost)/2;
+normPPXPre = meanNTpre - ntmaenPPX;
+normPPXPost = meanNTpost - ntmaenPPX;
+figure;
+plot(f1(1:100),normPPXPre(1:100,:),'Color','black',LineWidth=2);
+hold on
+plot(f2(1:100),normPPXPost(1:100,:),'Color','r',LineWidth=2)
+xlabel ('Freq[Hz]'); ylabel('nPSD');
+legend('Before bug apperance','After bug apperance')
+
+titlestr = sprintf(['Normalized trials to mean,data length: %d sec,' ...
+    ' welch window: %d sec'],win/1000,welchWin/fs);
+title(titlestr);
+saveas(gcf,strcat(SA.currentPlotFolder, '/tnFreqBandsBugAppeare.jpg'));
 %% mark's analysis - not sure about it/
 fMax=40;
 p=find(f1<fMax);
@@ -288,7 +342,7 @@ plot(f2(1:60),meanPPXpost(1:60,:),'Color','r',LineWidth=2)
 legend('Before bug apperance','After bug apperance')
 xlabel ('Freq[Hz]'); ylabel('PSD');
 title('un-normelized');
-saveas(gcf,strcat(plotsDir, '/FreqBandsBugAppeare.jpg'));
+saveas(gcf,strcat(SA.currentPlotFolder, '/FreqBandsBugAppeare.jpg'));
 %% normelized: 
 maenPPX = (meanPPXpre + meanPPXpost)/2;
 normPPXPre = meanPPXpre - maenPPX;
@@ -303,14 +357,28 @@ legend('Before bug apperance','After bug apperance')
 titlestr = sprintf(['Normalized,data length: %d sec,' ...
     ' welch window: %d sec'],win/1000,welchWin/fs);
 title(titlestr);
-saveas(gcf,strcat(plotsDir, '/nFreqBandsBugAppeare.jpg'));
-%% D2B ratio
-beta = [13, 30]; %hz
-delta = [0.1,3.5];
+saveas(gcf,strcat(SA.currentPlotFolder, '/nFreqBandsBugAppeare.jpg'));
+%% D2B ratio - swarm
+%beta = [13, 30]; %hz
+%delta = [0.1,3.5]; %hz
+deltaBandCutoff = 5; 
+betaBandLowcutoff = 10;
+betaBandHighcutoff = 30;
+betaFs = find(f1>=betaBandLowcutoff & f1<=betaBandHighcutoff);
+deltaFs = find(f1<=deltaBandCutoff);
 
+dbPre = [sum(ntPPXpre(deltaFs,:),1)] ./ [sum(ntPPXpre(betaFs,:),1)];
+dbPost = [sum(ntPPXpost(deltaFs,:),1)] ./ [sum(ntPPXpost(betaFs,:),1)];
 
-
-
+figure;
+swarmchart(ones(1,length(dbPre)),dbPre, "filled");
+hold on
+swarmchart(2*ones(1,length(dbPost)),dbPost, "filled");
+legend({'before','After'})
+title('db ratio for each trial')
+ylabel('ratio')
+hold off
+saveas(gcf,strcat(SA.currentPlotFolder, '/dbswarm.jpg'))
 %% find the effect: FFT for only the 11 trials. 
 
 welchWin = 3*fs; 
