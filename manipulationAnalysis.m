@@ -9,7 +9,7 @@
 
 %rec = OERecording('/media/sil3/Data/Pogona_Vitticeps/PV159/PV159_Trial23_singles1_2023-11-19_14-28-59/Record Node 101');
 SA = sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-SA.setCurrentRecording('Animal=PV149,recNames=Singles1');
+SA.setCurrentRecording('Animal=PV161,recNames=Night9');
 
 %% plot
 getSinglesStim(SA.currentDataObj,15,'b');
