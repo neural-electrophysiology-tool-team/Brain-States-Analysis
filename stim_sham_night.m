@@ -1,9 +1,11 @@
 
 SA=sleepAnalysis('/media/sil1/Pogona Vitticeps/brainStatesWake.xlsx');
-SA.setCurrentRecording('Animal=PV149,recNames=typical2');
-DB = SA.getDelta2BetaRatio;
-AC = SA.getDelta2BetaAC;
-T=  SA.getDigitalTriggers;
+SA.setCurrentRecording('Animal=PV162,recNames=Wake42');
+
+%%
+DB=SA.getDelta2BetaRatio;
+AC=SA.getDelta2BetaAC;
+T=SA.getDigitalTriggers;
 firstTrig=T.tTrig{15}(1:8:end);
 endStim=T.tTrig{15}(8:8:end)+400;
 stimDuation=(endStim(1)-firstTrig(1));
@@ -31,10 +33,10 @@ end
 %colorLim=[0 0.7];
 colorLim=[0 600];
 f=figure;
-subplot(4,2,[1:2:6]);imagesc(StimDBSham,colorLim);ylabel('Trial #');title('Sham');hold on;set(gca,'XTick',[]);
+%subplot(4,2,[1:2:6]);imagesc(StimDBSham,colorLim);ylabel('Trial #');title('Sham');hold on;set(gca,'XTick',[]);
 %cb=colorbar('Position',[0.47 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
 line([pre/1000 pre/1000],ylim,'color','r');
-subplot(4,2,7);plot(times-pre/1000,nanmean(StimDBSham));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);
+%subplot(4,2,7);plot(times-pre/1000,nanmean(StimDBSham));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);
 line([0 0],ylim,'color','r');
 line([stimDuation/1000 stimDuation/1000],ylim,'color','r');
 subplot(4,2,[2:2:6]);imagesc(StimDB,colorLim);ylabel('Trial #');title('Stim');set(gca,'XTick',[]);
