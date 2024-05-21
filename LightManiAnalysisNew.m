@@ -14,10 +14,16 @@ analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
 % save them in a new variable (cell array?) .
 % get also the anima number. once I have this structure I can start
 % painting a pic
+%%
+getStimSham(SA,15,1)
+plotStimSham(SA)
 
-%% get all the stim sham avg from al recs anf put in a new var
+
+%% get all the stim sham avg from all recs and put in a new table
+% this part goes over all the records in SA.
+%  for every recoerd that is tagged (1/2/3..) 
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-
+% SA.setCurrentRecording('Animal=PV162,recNames=Night27');
 maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
 stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','StimTrighCh'});  % creating new table
 stimTable.StimAvg = cell(height(stimTable),1);
@@ -25,10 +31,23 @@ stimTable.StimAvgSham = cell(height(stimTable),1);
 stimTable.times = cell(height(stimTable),1);
 stimTable.stimDuration = zeros(height(stimTable),1);
 
+stimTable.ACbefore = cell(height(stimTable),1);
+stimTable.ACduring = cell(height(stimTable),1);
+stimTable.ACafter = cell(height(stimTable),1);
 
-%%
+%% AC - under construction
+i = 1;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
 
-s = getStimSham(SA,stimTable.StimTrighCh(i),1);
+% get the stimulation times:
+T = SA.getDigitalTriggers();
+trigs = T.tTrig{stimTable.StimTrighCh(i)};
+firstStim = trigs(1);
+lastStim = trigs(end);
+ACbefore = SA.getDelta2BetaAC('tStart',10*1000*60,'win',3*60*60*1000,'overwrite',1);
+
+
 %%
 
 for i = 1:height(stimTable)
@@ -47,6 +66,8 @@ for i = 1:height(stimTable)
     stimTable.times(i) = {s.times};
     stimTable.stimDuration(i) = s.stimDur;
     disp('stimsham in table')
+    
+
     
 end
 clear recName
@@ -308,7 +329,7 @@ end
         StimDB(i,:)=DB.bufferedDelta2BetaRatio(pTmp);
     end
 
-    times=(DB.t_ms(pTmp)-DB.t_ms(pTmp(1)))/1000;
+    ts=(DB.t_ms(pTmp)-DB.t_ms(pTmp(1)))/1000;
     meadStimInterval=mean(diff(firstTrig));
     firstTrigSham=(AC.tStartSleep:meadStimInterval:(firstTrig(1)-post))+10000;
     endStimSham=firstTrigSham+max(endStim-firstTrig);
@@ -319,17 +340,44 @@ end
         %StimDBSham(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
         StimDBSham(i,:)=DB.bufferedDelta2BetaRatio(pTmp);
     end
-% save the data
-save(SA.files.stimSham,'StimDBSham','times','StimDB','stimDuration')
+
+   % save the data
+save(SA.files.stimSham,'StimDBSham','ts','StimDB','stimDuration','pre','post')
 data.StimDBSham = StimDBSham;
-data.times = times;
+data.ts = ts;
 data.StimDB = StimDB;
 data.stimDur = stimDuration;
+data.pre = pre;
+data.post = post;
 
 end
 
-function plotStimSham (rec)
+function plotStimSham(SA)
+    % SA is an instance of sleep analysis class,with a record currently
+    % selected
+    stimShamFile=[SA.currentAnalysisFolder filesep  'stimSham.mat'];
+    SA.checkFileRecording(stimShamFile,'stim Sham file missing, please first run getStimSham');
+    load(stimShamFile); %load data
     
+    
+    colorLim=[0 600];
+    f=figure;
+    subplot(4,2,[1:2:6]);imagesc(StimDBSham,colorLim);ylabel('Trial #');title('Sham');hold on;set(gca,'XTick',[]);
+    cb=colorbar('Position',[0.47 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
+    line([pre/1000 pre/1000],ylim,'color','r');
+    subplot(4,2,7);plot(ts-pre/1000,nanmean(StimDBSham));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);
+    line([0 0],ylim,'color','r');
+    line([stimDuration/1000 stimDuration/1000],ylim,'color','r');
+    subplot(4,2,[2:2:6]);imagesc(StimDB,colorLim);ylabel('Trial #');title('Stim');set(gca,'XTick',[]);
+    cb=colorbar('Position',[ 0.91 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
+    line([pre/1000 pre/1000],ylim,'color','r');
+    subplot(4,2,8);plot(ts-pre/1000,nanmean(StimDB));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);
+    line([0 0],ylim,'color','r');
+    line([stimDuration/1000 stimDuration/1000],ylim,'color','r');
+
+%   save?
+    fileName=[SA.currentPlotFolder filesep 'stim_sham_activation.jpg'];
+    saveas (f, fileName);
 
     
 end

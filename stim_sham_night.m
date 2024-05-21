@@ -1,6 +1,6 @@
 
-SA=sleepAnalysis('/media/sil1/Pogona Vitticeps/brainStatesWake.xlsx');
-SA.setCurrentRecording('Animal=PV162,recNames=Wake42');
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+SA.setCurrentRecording('Animal=PV162,recNames=Night27');
 
 %%
 DB=SA.getDelta2BetaRatio;
