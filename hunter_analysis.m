@@ -17,13 +17,12 @@
 %% getting the data for this sepecific experimeent:
 % notice - now everything should be changes manualy.
 SA = sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-SA.setCurrentRecording('Animal=PV157,recNames=Hunter40');
+SA.setCurrentRecording('Animal=PV159,recNames=Hunter15');
 % get the arena timings, and translte to oe triger times:
-ArenaCSVs = getArenaCSVs(SA,1);
+ArenaCSVs = getArenaCSVs(SA);
 
 
 %% getting the triggers from the OERecording
-
 % correction of frames for the behavioral data:
 % for this recording - PV149, Hunter61, the frames are shifted 4 triggers
 % (the videos is from trigger number 4 until the end of num of frames).
@@ -47,16 +46,6 @@ ArenaCSVs = getArenaCSVs(SA,1);
 %     oeStrikes = OEcamTrig(strikesFrames-shiftsnum(2));
 % end
 
-%% Strikes analysis:
-%getting the data from 4 seconds around the event:
-strikeData = squeeze(SA.currentDataObj.getData(17,oeStrikesTrig-2000,4000));
-% plot
-figure; plot(strikeData');
-% imagesc:
-figure; imagesc(strikeData, [-400, 500]);colorbar;
-figure;imagesc(strikeData(:,[1:(1.75*20000), 2.1*20000:end]),[-400,500]); colorbar;
-xline(1.75*20000, 'LineWidth',1.5,'Color', 'r')
-
 %% check synchronization:
 videoFile=SA.recTable.VideoFiles{SA.currentPRec};
 %check if its a top video and change to back video:
@@ -68,15 +57,13 @@ if contains(vidName,'top')
     videoFileparts{end} = vidName; %replace them
     videoFile = strjoin(videoFileparts,'/');
 end
-%% frame rate
-diffTrig= diff(OEcamTrig);
-figure;plot(diffTrig)
-%%
+
+
 VR=VideoReader(videoFile); %creates class for the video file
 b=1;
-    for u=1:length(eTrialFrame) %trigger_frame = frame of e.g. bug appearance - a few frames to check video before bug should appear
-        for i=0:10 % or
-            frame1=read(VR, eTrialFrame(u)+i-30);
+    for u=1:length(ArenaCSVs.strikesFrame) %trigger_frame = frame of e.g. bug appearance - a few frames to check video before bug should appear
+        for i=0:30% or
+            frame1=read(VR, ArenaCSVs.strikesFrame(u)+i-30);
             frame1 = insertText(frame1,[1010,0],string(i), 'FontSize',70, 'TextColor','white', 'BoxColor', 'black', 'BoxOpacity', 1); %add text to image with framenumber
             imshow(frame1)
             pause() %any button will continue to next frame
@@ -92,10 +79,16 @@ b=1;
             break
         end
     end
-% 3 frames in the apperance.
-% 2 frames in the disapperance.
-% 5 frames in the strike. 
 
+%% Strikes analysis:
+%getting the data from 4 seconds around the event:
+strikeData = squeeze(SA.currentDataObj.getData(17,oeStrikesTrig-2000,4000));
+% plot
+figure; plot(strikeData');
+% imagesc:
+figure; imagesc(strikeData, [-400, 500]);colorbar;
+figure;imagesc(strikeData(:,[1:(1.75*20000), 2.1*20000:end]),[-400,500]); colorbar;
+xline(1.75*20000, 'LineWidth',1.5,'Color', 'r')
 %% Saving of shifts after frame-by-frame hand annotations
 % after checking it frame-by-frame, I found that there are different shift
 % in the timing of the frames vs what we are getting from the files. I wish
@@ -528,22 +521,16 @@ function arenaCSVs = getArenaCSVs(SA,overwrite)
     bugs.DateTime = datetime(bugs.time, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSSXXX', 'TimeZone', '+03:00');
     bugs.Timestamps = posixtime(bugs.DateTime);
 
-
-    % get the strikes loginto a table and add timestamps:
-    screenTouch = readtable(strcat(blockPath,'/screen_touches.csv'));
-    screenTouch.DateTime = datetime(screenTouch.time, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSSXXX', 'TimeZone', '+03:00');
-    screenTouch.Timestamps = posixtime(screenTouch.DateTime);
-
     % getting the data of the recording: triggers times in oe
     camTrigCh = SA.recTable.camTriggerCh(SA.currentPRec);% ch can be change according to the setup.
-    OEcamTrig = SA.currentDataObj.getCamerasTrigger(camTrigCh);
+    OEcamTrig = SA.currentDataObj.getCamerasTrigger(camTrigCh)';
     
     % check trigger synchrony:
     if length(OEcamTrig) == length(videoFrames)
-        disp('Triggers num match video frames')
+        disp('Triggers num match video frames.\n')
     else
         framediff = length(videoFrames)-length(OEcamTrig);
-        fprintf('Triggers num dont match video frames. Diff is %d',framediff)
+        fprintf('Triggers num dont match video frames. Diff is %d. \n',framediff)
     end
     
     videoFPS = 1/mean(diff(videoFrames(:,2)));
@@ -560,13 +547,27 @@ function arenaCSVs = getArenaCSVs(SA,overwrite)
     oeStartTrig = OEcamTrig(sTrialFrame); % this is the trigs for the start of trials.
     oeEndTrig = OEcamTrig(eTrialFrame);
 
-    % strike times
-    % taking the strike time from the strike plots
+    % strikes:
+    % get the strikes loginto a table and add timestamps:
+    screenTouchFile = strcat(blockPath,'/screen_touches.csv');
+    if exist("screenTouchFile","file") %make sure there were screen touches:
+        screenTouch = readtable(screenTouchFile);
+        screenTouch.DateTime = datetime(screenTouch.time, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSSXXX', 'TimeZone', '+03:00');
+        screenTouch.Timestamps = posixtime(screenTouch.DateTime);
+        % taking the strike time from the strike plots
 
-    hitsIdx = strcmpi(screenTouch.is_hit,'true');
-    strikesTimes = screenTouch.Timestamps(hitsIdx);
-    strikesFrames = getVideoFrames(videoFrames,strikesTimes); % theres a 15 frames difference.
-    oeStrikesTrig = OEcamTrig(strikesFrames);
+        hitsIdx = strcmpi(screenTouch.is_hit,'true');
+        strikesTimes = screenTouch.Timestamps(hitsIdx);
+        strikesFrames = getVideoFrames(videoFrames,strikesTimes); % theres a 15 frames difference.
+        oeStrikesTrig = OEcamTrig(strikesFrames);
+    else
+        disp('No screen touchs preformed for this session')
+        screenTouch = [];
+        strikesFrames = [];
+        oeStrikesTrig = [];
+    end
+    
+
 
     % save the data
     arenaCSVs.videoFrames = videoFrames;
