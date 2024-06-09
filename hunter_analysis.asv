@@ -17,7 +17,7 @@
 %% getting the data for this sepecific experimeent:
 % notice - now everything should be changes manualy.
 SA = sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-SA.setCurrentRecording('Animal=PV157,recNames=Hunter40');
+SA.setCurrentRecording('Animal=PV157,recNames=Hunter20');
 % get the arena timings, and translte to oe triger times:
 ArenaCSVs = getArenaCSVs(SA,1);
 
@@ -540,13 +540,13 @@ function arenaCSVs = getArenaCSVs(SA,overwrite)
     
     % check trigger synchrony:
     if length(OEcamTrig) == length(videoFrames)
-        disp('Triggers num match video frames')
+        disp('Triggers num match video frames\n')
     else
         framediff = length(videoFrames)-length(OEcamTrig);
-        fprintf('Triggers num dont match video frames. Diff is %d',framediff)
+        fprintf('Triggers num dont match video frames. Diff is %d\n',framediff)
     end
     
-    videoFPS = 1/mean(diff(videoFrames(:,2)));
+    videoFPS = 
 
     % getting the trials start and end times in OE times:
     bugStops = find(diff(bugs.Timestamps)>15)+1;
@@ -579,11 +579,14 @@ function arenaCSVs = getArenaCSVs(SA,overwrite)
     arenaCSVs.oeStartTrig = oeStartTrig;
     arenaCSVs.oeEndTrig = oeEndTrig;
     arenaCSVs.oeStrike = oeStrikesTrig;
-    arenaCSVs.videoFPS = videoFPS;
     save(SA.files.arenaCSV,"arenaCSVs");
-
 
 end
 
+
+function oeArenaTimes = getOEtimes(SA);
+
+
+end
 
 % PLOTING Functions 
