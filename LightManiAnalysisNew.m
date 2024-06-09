@@ -14,9 +14,6 @@ analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
 % save them in a new variable (cell array?) .
 % get also the anima number. once I have this structure I can start
 % painting a pic
-%%
-getStimSham(SA,15,1)
-plotStimSham(SA)
 
 
 %% get all the stim sham avg from all recs and put in a new table
@@ -77,6 +74,43 @@ clear s
 save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
 %% PLOTINGS
+%% plot the AC for nights manipulation. 
+SA.setCurrentRecording('Animal=PV157,recNames=Night20')
+SA.plotDelta2BetaSlidingAC
+
+
+%% plot all stim sham, SlidingAc and D2B for stim recs:
+
+load([analysisFolder filesep 'stimTable.mat'])
+for i = 1:height(stimTable)
+    % set te current rec:
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    SA.plotDelta2BetaRatio;
+    SA.plotDelta2BetaSlidingAC;
+    getStimSham(SA,stimTable.StimTrighCh(i),1);
+    plotStimSham(SA);
+%     keyboard;
+end
+
+%% get and plot D2B+SlidingAC for all nights for the five animals
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx'); 
+animals = unique(stimTable.Animal);                        
+recList = {};
+for i = 1:height(SA.recTable)
+    animal = SA.recTable.Animal{i};
+    recName = SA.recTable.recNames{i};
+    if any(strcmp(animal,animals)) && contains(recName,'Night') && isnan(SA.recTable.Exclude(i))
+        curRec=['Animal=' animal ',recNames=' recName];
+        recList{end+1} = curRec;
+    end
+end
+% disp(recList);
+%% run batch analysis on all nights
+SA.batchProcessData('getDelta2BetaRatio',recList)
+
+
+
 %% PLOT stim activation according to stim type
 % assuming the table is in the workspace
 % load([analysisFolder filesep 'stimTable.mat'])
