@@ -353,11 +353,11 @@ end
 % ylim([0.5, length(order) + 0.5]);
 set(gca, 'XTick', [], 'YTick', []);
 hold off;
-set(fig1,'PaperPosition',[.25 3 8 6])
-saveas(gcf,strcat(SA.currentPlotFolder, '/corelogram.pdf'));
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/TrialNoiseHL.pdf'));
 
 %plot the freqs:
-figure;
+fig2 = figure;
 set(gcf, 'Position', [300, 300, 700, 500]); % [x, y, width, height]
 plot(freqHz,S1,'Color',[0.7, 0.7, 1], 'LineWidth',2);
 hold on
@@ -366,8 +366,7 @@ legend('Quiet','Attention')
 %plot(freqHz,normsPxx(:,clusters==1), 'Color', [0.7, 0.7, 1, 0.5])
 %plot(freqHz,normsPxx(:,clusters==2), 'Color', [1, 0.85, 0.7, 0.5])
 
-set(gcf,'PaperPosition',[.25 3 8 6])
-saveas(gcf,strcat(SA.currentPlotFolder, '/freqBands.pdf'));
+
 
 %plot the freqs - not norelized::
 figure;

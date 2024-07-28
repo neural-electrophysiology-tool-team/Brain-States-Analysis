@@ -3,8 +3,13 @@
 
 % SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 % SA.batchProcessData('getDelta2BetaRatio',{})
+
 %% analysis folder
 analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
+
+%% get the stim sham for single rec
+data = getStimSham();
+
 %% geting the stim sham data from all records 
 
 % new column in recTable - mani/ if 1 - manipulation night. if 2,
