@@ -27,6 +27,7 @@ analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles/hunterAn
 % startFrameSh = ArenaCSVs.startFrame - ArenaCSVs.IRFrames(1);
 % EndFramSh = ArenaCSVs.endFrame - ArenaCSVs.IRFrames(1)+2;
 % strikeFrameSh = ArenaCSVs.strikesFrame - ArenaCSVs.IRFrames(1)+1;
+
 % 
 % % for PV161, Hunter9: and PV162,Hunter27:
 % startFrameSh = ArenaCSVs.startFrame - ArenaCSVs.IRFrames(1);
@@ -379,6 +380,537 @@ set(gca, 'YScale', 'log');
 title(sprintf('Ch%i',defCh))
 legend('Quiet','Attention')
 
+
+
+%% get frequnecy bands - betta to gamma ratio
+
+GB = SA.getMultiBandSpectralAnalysis('band1Low', 60,'band1High',80,'band2Low', 10,'band2High',30, ...
+    'maxVoltage',1000, 'tStart',0,'win',0, ...
+    'movLongWin',1000*60*30,'movWin',5000,'movOLWin',4000,'segmentWelch',1000,'overwrite',0);
+%% some other options for the Welch parameters:
+movWin = 2000;
+movOLWin = 1000;
+segWel = 1000;
+BG = SA.getMultiBandSpectralAnalysis('band1Low', 60,'band1High',80,'band2Low', ...
+    10,'band2High',30, ...
+    'maxVoltage',1000, 'tStart',0,'win',0, ...
+    'movLongWin',1000*60*30,'movWin',movWin,'movOLWin',movOLWin,'segmentWelch' ...
+    ,segWel,'overwrite',1);
+% BG = SA.getMultiBandSpectralAnalysis('overwrite',0);
+%% plot:
+
+fullwin = 20000; 
+bug_t = 6000;
+zeroTimes = ArenaCSVs.startTrigSh-bug_t; %6 seconds before trial started
+endTrialT = ArenaCSVs.endTrigSh - zeroTimes;
+strikeTrialNum =ArenaCSVs.strikesTrialNum; 
+strikeT = ArenaCSVs.strikeTrigSh -zeroTimes(strikeTrialNum);
+str_ind = 1;
+
+
+matLen = length(find((GBparam.t_ms>zeroTimes(1))&(GBparam.t_ms<(zeroTimes(1)+fullwin))));
+BG_mat = zeros([length(zeroTimes),matLen]);
+% BG_mat = [];
+for i=1:length(zeroTimes)
+    BG_ind = find((GBparam.t_ms>zeroTimes(i))&(GBparam.t_ms<(zeroTimes(i)+fullwin)));
+    BG_mc = GBparam.band2to1Ratio(BG_ind);
+   
+%     BG_mat= [BG_mat;BG_mc'];
+    BG_mat(i,1:length(BG_mc)) = BG_mc';
+end
+figure;
+
+%add subplot for the B/G ratio
+ax1 = subplot('Position', [0.1, 0.3, 0.7, 0.6]);
+tdiff = (movWin-movOLWin);
+timeAxis = ((0:matLen-1) * tdiff)/1000; %in s
+% timeAxis = (0:500:(length(BG_mat)-1)*500)/1000; % 0 ms to 19500 ms
+imagesc(timeAxis,1:length(zeroTimes),BG_mat)
+xlabel("Time (s)")
+hold on
+% Plot start time horizontal line:
+xline(bug_t/1000,'r' ,'LineWidth', 1.5, 'Label', 'Bug Apperance', 'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'Left');
+ylabel('Trial #')
+% Plot end times and strike times
+for i = 1:size(BG_mat, 1)
+    h1 = plot(endTrialT(i)/1000, i, '.', 'Color', 'k','MarkerSize',20); % 'ko' for black circles
+    if ismember (i,strikeTrialNum)
+       h2 = plot(strikeT(str_ind)/1000, i, 'pentagram', 'Color', 'g','MarkerFaceColor','g','MarkerSize',8); % 'ko' for black circles 
+       str_ind = str_ind+1;
+    end
+end
+%add legend and title:
+legend([h2(1), h1(1)], {'Strike','End Trial'},'Position',[0.85 0.15 0.04 0.08],'Box','off');%[x, y, width, height]
+titlestr = sprintf('movWin: %d, movOLwin: %d, segWelch: %d',movWin,movOLWin,segWel);
+title(titlestr)
+
+%add colorbar
+c = colorbar;
+c.Position = [0.82 0.3 0.02 0.6];
+% Set vertical label for colorbar
+c.Label.String = 'G/B ratio'; % Set label text
+c.Label.Position = [4, 80, 0]; % Adjust label position (relative to colorbar)
+c.Label.Rotation = 90; % Set label rotation to 0 degrees for vertical alignment
+
+% Plot Average 
+ax2 = subplot('Position', [0.1, 0.1, 0.7, 0.15]);
+plot(timeAxis, mean(BG_mat,1),'LineWidth', 1.5)
+xlabel('Time [s]'); ylabel('avg. B2G')
+% ylim([10 85])
+xline(bug_t/1000,'r' ,'LineWidth', 1.5)
+linkaxes([ax1,ax2],'x');
+
+% Save plot:
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, ['/' titlestr '.pdf']));
+
+
+%% plot GB with different parameters:
+figure;
+subplot(4,1,1)
+plot(GB4.t_ms/1000,GB4.band2to1Ratio,'black'); ylabel('B2G power')
+title('moving window 1 s, OL 0.5 s');
+subplot(4,1,2)
+plot(GB.t_ms/1000,GB.band2to1Ratio,'black'); ylabel('B2G power')
+title('moving window 3 s, OL 2 s');
+subplot(4,1,3)
+plot(GB3.t_ms/1000,GB3.band2to1Ratio,'black'); ylabel('B2G power')
+title('moving window 5 s, OL 4 s');
+subplot(4,1,4)
+plot(GB2.t_ms/1000,GB2.band2to1Ratio,'black'); ylabel('B2G power')
+title('moving window 10 s, OL 9 s');
+xlabel('Time [s]')
+
+set(gcf,'PaperPosition',[.25 3 8 6])
+
+saveas(gcf,strcat(SA.currentPlotFolder, '/GB_winCali.pdf'));
+
+%% plot behavioral + LFP + B2G
+%taking longer to see differences:
+
+zeroTime = 80998.75;
+fullwin = 20000;
+inds = find(ArenaCSVs.oeCamTrigs<zeroTime); 
+zeroFrame = inds(end)+1;
+
+% get the recdata 
+
+[recData_M,recData_T] = SA.currentDataObj.getData(defCh,zeroTime,fullwin);
+recData_M = squeeze(recData_M);
+
+% get the behavioral data:
+frameWin = round(fullwin/(1000/ArenaCSVs.videoFPS));
+nose_y = locTable.x__nose___y__(zeroFrame:zeroFrame+frameWin-1); 
+nose_x = locTable.x__nose___y__(zeroFrame:zeroFrame+frameWin-1);
+nose_t = linspace(0,fullwin/1000,frameWin);
+% get the GB:
+BG_ind = find((GB.t_ms>zeroTime)&(GB.t_ms<(zeroTime+fullwin)));
+BG_t = BG.t_ms(BG_ind)-zeroTime;
+BG_m = BG.band2to1Ratio(BG_ind);
+
+% plot
+
+figure;
+set(gcf,'Position',[100 20 800 600])
+ax1 = subplot(3,1,1);
+%plot the nose location
+plot(nose_t,nose_y);
+ylabel('Nose from screen [cm]');
+ylim([-20 90])
+% plot the LFPs
+ax2 = subplot(3,1,2);
+plot(recData_T/1000,recData_M, 'Color','black');
+ylabel('uV');
+xlabel('Time[s]');
+%plot the ratio
+ax3 = subplot(3,1,3);
+imagesc(BG_m')
+ylabel('B2G Power')
+
+% linkaxes([ax1,ax2,ax3],'x');
+
+%  add the timings of the strik and end and start trial. 
+startTime = (ArenaCSVs.startFrameSh(1)-zeroFrame)/(1000/30);
+strikeFrame = (ArenaCSVs.strikeFrameSh(1)+2);
+strikeTime = (ArenaCSVs.oeCamTrigs(strikeFrame)-zeroTime)/1000;
+endtime = (ArenaCSVs.endTrigSh(1)-zeroTime)/1000;
+xline(ax1,startTime,'b--' ,'LineWidth', 2, 'Label', 'Bug Apperance', 'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'right');
+xline(ax2,startTime,'b--','LineWidth', 2);
+% xline(ax3,startTime,'b--','LineWidth', 2);
+xline(ax1,strikeTime,'r--' ,'LineWidth', 2, 'Label', 'Strike', 'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'right');
+xline(ax2,strikeTime,'r--','LineWidth', 2);
+% xline(ax3,strikeTime,'r--','LineWidth', 2);
+xline(ax1,endtime,'g--' ,'LineWidth', 2, 'Label', 'Bug Disapearance', 'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'right');
+xline(ax2,endtime,'g--','LineWidth', 2);
+% xline(ax3,endtime,'g--','LineWidth', 2);
+
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/exampleTrial_noseLFPBG.pdf'));
+
+
+
+%%  plot all trials in the session with aligned to bug appearance
+bug_t = 6000;
+zeroTimes = ArenaCSVs.startTrigSh-bug_t; %6 seconds before trial started
+endTrialT = ArenaCSVs.endTrigSh - zeroTimes;
+strikeTrialNum =ArenaCSVs.strikesTrialNum; 
+strikeT = ArenaCSVs.strikeTrigSh -zeroTimes(strikeTrialNum);
+str_ind = 1;
+
+BG_mat = [];
+for i=1:length(zeroTimes)
+    BG_ind = find((GB.t_ms>zeroTimes(i))&(GB.t_ms<(zeroTimes(i)+fullwin)));
+    BG_mc = GB.band2to1Ratio(BG_ind);
+    BG_mat = [BG_mat;BG_mc'];
+end
+figure;
+
+%add subplot for the B/G ratio
+ax1 = subplot('Position', [0.1, 0.3, 0.7, 0.6]);
+imagesc(BG_mat)
+hold on
+% Plot atart time horizontal line:
+xline(bug_t/1000,'r' ,'LineWidth', 1.5, 'Label', 'Bug Apperance', 'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'Left');
+ylabel('Trial #')
+% Plot end times and strike times
+for i = 1:size(BG_mat, 1)
+    h1 = plot(endTrialT(i)/1000, i, '.', 'Color', 'k','MarkerSize',20); % 'ko' for black circles
+    if ismember (i,strikeTrialNum)
+       h2 = plot(strikeT(str_ind)/1000, i, 'pentagram', 'Color', 'g','MarkerFaceColor','g','MarkerSize',8); % 'ko' for black circles 
+       str_ind = str_ind+1;
+    end
+end
+%add legend and title:
+legend([h2(1), h1(1)], {'Strike','End Trial'},'Position',[0.85 0.15 0.04 0.08],'Box','off');%[x, y, width, height]
+title ('All trials in session PV157,Hunter5')
+
+%add colorbar
+c = colorbar;
+c.Position = [0.82 0.3 0.02 0.6];
+% Set vertical label for colorbar
+c.Label.String = 'G/B ratio'; % Set label text
+c.Label.Position = [4, 80, 0]; % Adjust label position (relative to colorbar)
+c.Label.Rotation = 90; % Set label rotation to 0 degrees for vertical alignment
+
+% Plot Average 
+ax2 = subplot('Position', [0.1, 0.1, 0.7, 0.15]);
+plot(mean(BG_mat,1),'LineWidth', 1.5)
+xlabel('Time [s]'); ylabel('avg. B2G')
+ylim([10 85])
+xline(bug_t/1000,'r' ,'LineWidth', 1.5)
+linkaxes([ax1,ax2],'x');
+
+% Save plot:
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/avgB2GacrossTrials.pdf'));
+
+
+%% animal Trajectory plot:
+% get the behavioral data:
+% frameWin = round(fullwin/(1000/ArenaCSVs.videoFPS));
+nose_y = locTable.x__nose___y__; 
+nose_x = locTable.x__nose___x__;
+t = 1:length(nose_x); % Time or index values
+
+% Create a colormap based on the number of points
+cmap = jet(length(t));
+figure;
+scatter(nose_y,nose_x, 50, t, 'filled');
+
+%add colorbar
+c = colorbar;
+% c.Position = [0.82 0.3 0.02 0.6];
+% Set vertical label for colorbar
+c.Label.String = 'Time'; % Set label text
+% c.Label.Position = [4, 80, 0]; % Adjust label position (relative to colorbar)
+c.Label.Rotation = 90; % Set label rotation to 0 degrees for vertical alignment
+
+clim([1 length(t)]);
+ylim([0 65])
+title('Location of animal in arena - all session');
+ylabel('screen part');
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/animalTrajectory.pdf'));
+
+
+%% Velocity-trajectory:
+startTrigSh = ArenaCSVs.startTrigSh;
+endTrigSh = ArenaCSVs.endTrigSh;
+chowTrig = [115900, 196227.3, 214627, 454564, 461064,612632];
+
+
+nose_y = locTable.x__nose___y__; 
+nose_x = locTable.x__nose___x__;
+dt = 1000/ArenaCSVs.videoFPS; %in ms
+% Calculate Euclidean distances between consecutive points
+dX = diff(nose_x);
+dY = diff(nose_y);
+distances = sqrt(dX.^2 + dY.^2);
+velocity = (distances / dt ) * (dt/1000) ; %cm/s
+
+% Calculate direction vectors
+directionsX = dX ./ distances;
+directionsY = dY ./ distances;
+directions = [directionsX; directionsY]';
+
+angles = atan2d(dY, dX);
+% Ensure angles are in the range 0 to 360 degrees
+angles(angles < 0) = angles(angles < 0) + 360;
+
+% Create a figure
+figure;
+
+% Scatter plot of the velocity with color representing angles
+scatter(nose_y(2:end), nose_x(2:end), 100, velocity, 'filled'); % 100 is the marker size
+ylim([0 65])
+colormap(jet); % Use the jet colormap
+colorbar; % Show the color bar indicating velocity
+clim([min(velocity) 0.1]); % Set the color axis for velocity
+
+% Overlay direction using a quiver plot
+hold on;
+quiver(nose_y(2:end),nose_x(2:end), dY, dX,  0, 'k', 'LineWidth', 1.5); % Optional: show direction vectors
+
+% Labels and title
+xlabel('Y Coordinate');
+ylabel('X Coordinate');
+title('Velocity with Direction ');
+
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/animalTrajectoryWVelocity.pdf'));
+
+%% downsampling velocity:
+
+% decimating:
+fs_old = ArenaCSVs.videoFPS; % FPS
+BG_dt = BG.par.movWin - BG.par.movOLWin; % ms
+fs_new = 1000/BG_dt;   % new sampling frequency in Hz
+downsample_factor =round(fs_old / fs_new); % factor to downsample by
+% Apply decimate
+velo_deci = decimate(velocity, round(downsample_factor));
+
+% Design a low-pass filter
+filter_order = 20; % Example order of the filter
+cutoff_freq = 1 / 2; % Nyquist frequency of the new sampling rate
+filt = designfilt('lowpassiir', 'FilterOrder', filter_order, ...
+                  'HalfPowerFrequency', cutoff_freq, ...
+                  'DesignMethod', 'butter');
+
+% Apply the filter
+velo_filtered = filtfilt(filt, velocity);
+% Downsample the filtered data
+velo_downsampled = downsample(velo_filtered, downsample_factor);
+
+%resample
+velo_resam = resample(velocity,fs_new,fs_old);
+
+% plot
+b =901;
+c=3400;
+r = fs_old/fs_new;
+figure;
+subplot(2,1,1);
+plot(velocity(b:c),'black')
+subplot(2,1,2);
+plot(velo_deci(b/r:c/r))
+hold on
+plot(velo_resam(b/r:c/r))
+plot(velo_downsampled(b/r:c/r))
+% plot(vq)
+legend("decimle","resample","downsample")
+% linkaxes([ax1,ax2],'x')
+ % - DOWNSAMPLING IS THE BEST ONE/
+ % -- AT THE END, USING THE INTRP1 THAT GIVE THE SPECIFIC VALUES FOR A
+ % SERIES OF NEW TIMES - NOT IN HERE, NEXT BLOCK.
+
+% save for refL
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/downsamplingVelocity.pdf'));
+
+%% scatter plot - BG and Velo-downsamples
+% resample the velocity according to the BG timings
+x = ArenaCSVs.oeCamTrigs(1:length(velocity));
+t_vid = [ArenaCSVs.oeCamTrigs(1),ArenaCSVs.oeCamTrigs(end)];
+BGvidInd = find((BG.t_ms>t_vid(1)) & (BG.t_ms<t_vid(2)));
+xq = BG.t_ms(BGvidInd);
+
+vq = interp1(x,velocity,xq); %x-times, v-values, xq - the times during which you want to estimate the values
+
+figure;
+% figTimes = BG.t_ms(BGvidInd);
+BG_vid = BG.band2to1Ratio(BGvidInd);
+% Plot on the left Y-axis
+yyaxis left;
+plot(xq/1000, BG_vid, '-b', 'DisplayName', 'B/G');
+ylabel('B/G ratio');  % Label for the left Y-axis
+legend('show');
+
+% Plot on the right Y-axis
+yyaxis right;
+plot(xq/1000, vq, '-','color',[1,0.3,0], 'DisplayName', 'Velocity');
+ylabel('Head velocity (cm/s)');  % Label for the right Y-axis
+legend('show');
+xlabel('Time(s)');
+
+% save for refL
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/BG_Velocityplot.pdf'));
+
+figure;
+scatter(BG_vid,vq,'.')
+xlabel('B/G ratio')
+ylabel('Head Velocity (cm/s)')
+
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/BG_VelocityScatter.pdf'));
+%% locations with B/G
+% down sample the locations:
+% resample the velocity according to the BG timings
+x = ArenaCSVs.oeCamTrigs(1:length(nose_x));
+t_vid = [ArenaCSVs.oeCamTrigs(1),ArenaCSVs.oeCamTrigs(end)];
+BGvidInd = find((BG.t_ms>t_vid(1)) & (BG.t_ms<t_vid(2)));
+xq = BG.t_ms(BGvidInd);
+
+nose_xq = interp1(x,nose_x,xq); %x-times, v-values, xq - the times during which you want to estimate the values
+nose_yq = interp1(x,nose_y,xq);
+
+
+figure;
+scatter(nose_yq,nose_xq, 50, BG_vid, 'filled');
+colormap(jet)
+%add colorbar
+c = colorbar;
+c.Label.String = 'B/G'; % Set label text
+c.Label.Rotation = 90; % Set label rotation to 0 degrees for vertical alignment
+
+clim([1 max(BG_vid)]);
+
+title({'Nose location during a session,','colorcoded to B/G ratio - Top view'});
+ylabel('cm');
+xlabel('distance from screen (cm)')
+axis equal;
+ylim([0 70])
+xlim([-15 85])
+box on;
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/animalTrajectoryBG.pdf'));
+%% plot B2G with head movements and start and end times of the trial:
+
+x = ArenaCSVs.oeCamTrigs(1:length(velocity));
+t_vid = [ArenaCSVs.oeCamTrigs(1),ArenaCSVs.oeCamTrigs(end)];
+BGvidInd = find((BG.t_ms>t_vid(1)) & (BG.t_ms<t_vid(2)));
+xq = BG.t_ms(BGvidInd);
+BG_vel = BG.band2to1Ratio(BGvidInd);
+
+startTrigSh = ArenaCSVs.startTrigSh;
+endTrigSh = ArenaCSVs.endTrigSh;
+chowTrig = [115900, 196227.3, 214627, 454564, 461064,612632];
+
+
+% Create the figure
+figure;
+set(gcf, 'Position', [100, 500, 1600, 300]); %[x, y, width, height]
+
+% Plotting the data and storing the handle
+yyaxis left
+h1 = plot(xq/1000, BG_vel, 'Color', 'black','LineWidth',1.2); 
+ylabel('B/G power');
+title('B/G across session with Start, End and Chewing timing');
+xlabel('Time [s]');
+ax = gca;
+ax.YColor = 'black';
+hold on;
+
+
+% Adding the head velocity, dowsampled:
+yyaxis right
+h5 = plot(xq/1000, vq, 'Color', 'blue','LineWidth',1);
+ax.YColor = 'blue';
+% Adding xlines and storing the handles
+h2 = xline(startTrigSh/1000, 'Color', 'r','LineWidth',0.8);
+h3 = xline(endTrigSh/1000, 'Color', [1 0.4 0],'LineWidth',0.8);
+h4 = xline(chowTrig/1000, 'Color', [0.05, 0.8, 0],'LineWidth',0.8);
+
+hold off;
+
+% Create legend with specific handles
+legend([h1, h5,h2(1), h3(1), h4(1)], {'B/G Ratio','Head Velocity','Start Trial','End Trial', 'Chewing'});
+
+set(gcf, 'PaperPosition', [0 1 11 3]); % Landscape orientation
+set(gcf, 'PaperSize', [11 8.5]);
+saveas(gcf,strcat(SA.currentPlotFolder, '/GB_velo_fullsessionWtrialsTimes.pdf'));
+
+%% plot half session:
+figure;
+fin_t = 300*1000;
+set(gcf, 'Position', [100, 500, 1600, 300]); %[x, y, width, height]
+
+% Plotting the data and storing the handle
+yyaxis left
+fxind = find(xq<fin_t);
+h1 = plot(xq(fxind)/1000, BG_vel(fxind), 'Color', 'black','LineWidth',1.2); 
+ylabel('B/G power');
+title('B/G across session with Start, End and Chewing timing');
+xlabel('Time [s]');
+ax = gca;
+ax.YColor = 'black';
+hold on;
+
+% Adding the head velocity, dowsampled:
+yyaxis right
+h5 = plot(xq(fxind)/1000, vq(fxind), 'Color', 'blue','LineWidth',1);
+ax.YColor = 'blue';
+% Adding xlines and storing the handles
+sind = find((startTrigSh)<fin_t);
+eind = find(endTrigSh<fin_t);
+chind = find(chowTrig<fin_t);
+h2 = xline(startTrigSh(sind)/1000, 'Color', 'r','LineWidth',0.8);
+h3 = xline(endTrigSh(eind)/1000, 'Color', [1 0.4 0],'LineWidth',0.8);
+h4 = xline(chowTrig(chind)/1000, 'Color', [0.05, 0.8, 0],'LineWidth',0.8);
+
+hold off;
+set(gcf, 'PaperPosition', [0 1 11 3]); % Landscape orientation
+set(gcf, 'PaperSize', [11 8.5]);
+saveas(gcf,strcat(SA.currentPlotFolder, '/GB_velo_partsessionWtrialsTimes.pdf'));
+
+
+%% plot with BG:
+win = 600*1000;
+t_startvid = ArenaCSVs.oeCamTrigs(1);
+BG_ind = find((BG.t_ms>t_startvid)&(BG.t_ms<t_startvid+win));
+BG_m = BG.band2to1Ratio(BG_ind)';
+BG_t = BG.t_ms(BG_ind);
+
+frameWin = round(win/(1000/ArenaCSVs.videoFPS));
+velocity_t = (0:dt:frameWin*dt)/1000;
+figure;
+
+ax1 = subplot(2,1,1);
+plot(velocity_t(1:end-1),velocity(1:frameWin))
+ylabel('Head Velocity')
+ax2 =subplot(2,1,2);
+imagesc(BG_m)
+ylabel('B2G')
+xlabel('Time[s]')
+
+linkaxes([ax1,ax2],'x')
+
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/velocityBGSHORT.pdf'));
+
+
+figure;
+plot(velocity_t(1:end-1),velocity(1:frameWin),'black')
+ylabel('Head velocity')
+ylim([0 0.1])
+hold on
+yyaxis right
+plot(BG_m)
+ylabel('B2G power')
+
+set(gcf, 'PaperPosition', [0 1 11 3]); % Landscape orientation
+set(gcf, 'PaperSize', [11 8.5]);
+saveas(gcf,strcat(SA.currentPlotFolder, '/velocityBG_traces.pdf'));
 %% WAKE SESSIONS
 SA = sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 SA.setCurrentRecording(['Animal=PV157,recNames=Wake2']);
