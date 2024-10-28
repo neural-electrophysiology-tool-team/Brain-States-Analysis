@@ -1,24 +1,22 @@
 %% light manipulation analysis 08/05/2024
 % This is the new version. 
 
-% SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
+load([analysisFolder filesep 'stimTable.mat'])
+%% analysis folder
+% analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
 % SA.batchProcessData('getDelta2BetaRatio',{})
 
-%% analysis folder
-analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
-
 %% get the stim sham for single rec
-data = getStimSham();
-
-%% geting the stim sham data from all records 
-
-% new column in recTable - mani/ if 1 - manipulation night. if 2,
-% manipulation night after third eye removal.
-% 1. think of how to insert the different colors. 
-% the ides is to: 1. go over all records with 1 or 2, get the stim sham.
-% save them in a new variable (cell array?) .
-% get also the anima number. once I have this structure I can start
-% painting a pic
+SA.setCurrentRecording('Animal=PV162,recNames=Night23');
+getStimSham(SA,11);
+SA.getDelta2BetaRatio('tStart', 0 ,'win',1000*60*60*11);
+SA.getDelta2BetaAC;
+SA.plotDelta2BetaRatio
+SA.plotDelta2BetaAC;
+SA.plotDelta2BetaSlidingAC;
+plotStimSham(SA)
 
 
 %% get all the stim sham avg from all recs and put in a new table
@@ -27,32 +25,19 @@ data = getStimSham();
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 % SA.setCurrentRecording('Animal=PV162,recNames=Night27');
 maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
-stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','StimTrighCh'});  % creating new table
+stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh'});  % creating new table
 stimTable.StimAvg = cell(height(stimTable),1);
 stimTable.StimAvgSham = cell(height(stimTable),1);
 stimTable.times = cell(height(stimTable),1);
 stimTable.stimDuration = zeros(height(stimTable),1);
+stimTable.ACpre = cell(height(stimTable),1);
+stimTable.ACstim = cell(height(stimTable),1);
+stimTable.ACpost = cell(height(stimTable),1);
 
-stimTable.ACbefore = cell(height(stimTable),1);
-stimTable.ACduring = cell(height(stimTable),1);
-stimTable.ACafter = cell(height(stimTable),1);
-
-%% AC - under construction
-i = 1;
-recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-SA.setCurrentRecording(recName);
-
-% get the stimulation times:
-T = SA.getDigitalTriggers();
-trigs = T.tTrig{stimTable.StimTrighCh(i)};
-firstStim = trigs(1);
-lastStim = trigs(end);
-ACbefore = SA.getDelta2BetaAC('tStart',10*1000*60,'win',3*60*60*1000,'overwrite',1);
-
-
-%%
+%% geting the AND AC stim sham data from all records 
 
 for i = 1:height(stimTable)
+
     % set te current rec:
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
     SA.setCurrentRecording(recName);
@@ -65,26 +50,92 @@ for i = 1:height(stimTable)
     disp('got Stim for this rec')
     stimTable.StimAvg(i) = {mean(s.StimDB,1)};
     stimTable.StimAvgSham(i) = {mean(s.StimDBSham,1)};
-    stimTable.times(i) = {s.times};
+    stimTable.times(i) = {s.ts};
     stimTable.stimDuration(i) = s.stimDur;
     disp('stimsham in table')
-    
 
+    % stimulations timings:
+    t_ch = stimTable.StimTrighCh(i);
+    T=SA.getDigitalTriggers;
+    stimStartT = T.tTrig{t_ch}(1);
+    stimEndT = T.tTrig{t_ch}(end);
+    firstTrig=T.tTrig{t_ch}(1:8:end-2);
+    endStim=T.tTrig{t_ch}(8:8:end)+400;
+%     stimDuration=(endStim(1)-firstTrig(1));
+
+     % calculate the AC and the P2V for each part of the stimulation
+    p = 30*60*1000; %some time diff for the cycle to change.
+    ACwin = 2*60*60*1000; % 2 hrs in ms
+
+    SA.getDelta2BetaAC('tStart',stimStartT-ACwin, 'win',ACwin,'overwrite',1);
+    stimTable.ACpre(i) = {SA.getDelta2BetaAC('tStart',stimStartT-ACwin, 'win',ACwin)};
+    SA.getDelta2BetaAC('tStart',stimStartT+p, 'win',ACwin,'overwrite',1);
+    stimTable.ACstim(i) = {SA.getDelta2BetaAC('tStart',stimStartT+p, 'win',ACwin)};
+    SA.getDelta2BetaAC('tStart',stimEndT+p,'win',ACwin,'overwrite',1);
+    stimTable.ACpost(i) = {SA.getDelta2BetaAC('tStart',stimEndT+p,'win',ACwin)};
+    disp('AC in table')
     
+      
 end
 clear recName
 clear s
+%% GETTING THE LIZ MOV FOR ALL RECS + add to table
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+stimTable.LM_DBt = cell(height(stimTable),1);
+for i = 1:height(stimTable)
+    % set te current rec:
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    % run all required analysis:
+    if stimTable.LizMov(i) ==1
+        SA.getLizardMovements
+        LM = SA.getLizardMovements;
+
+        DB = SA.getDelta2BetaRatio;
+
+        % calculate the number of movements to each DB bin
+        LM_DBt = zeros(size(DB.t_ms));
+        % Loop through each bin in DB and count the events in LM that fall within each bin
+        for j = 1:length(DB.t_ms)-1
+            % Count events from LM that fall within the current bin (DB(i) to DB(i+1))
+            LM_DBt(j) = sum(LM.t_mov_ms >= DB.t_ms(j)& LM.t_mov_ms < DB.t_ms(j+1));
+        end
+        % Count any events at the last bin edge
+        LM_DBt(end) = sum(LM.t_mov_ms >= DB.t_ms(end));
+
+        %put in stimTable:
+        stimTable.LM_DBt(i) = {LM_DBt};
+        disp('LM in stimTabl')
+    end
+end
+
 
 %% save stimTable
 save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
-%% PLOTINGS
-%% plot the AC for nights manipulation. 
-SA.setCurrentRecording('Animal=PV157,recNames=Night20')
-SA.plotDelta2BetaSlidingAC
+%% Check for spikes in recording:
+stimTable.spikes = zeros(height(stimTable),1);
 
+for i = 1:height(stimTable)
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    timeSeriesViewer(SA.currentDataObj)
+    spikes = 0;
+    % Some computations or operations
+    disp(['Rec: ', recName])
 
-%% plot all stim sham, SlidingAc and D2B for stim recs:
+    % Pause for manual input
+    new_value = input('Does this rec have spikes? (or press Enter for no): ', 's');
+    
+    % If the user provides input, update the parameter
+    if ~isempty(new_value)
+        spikes = str2double(new_value);  % Convert to number
+    end
+    stimTable.spikes(i) = spikes;
+    
+end
+
+%% plot all stim sham, SlidingAc and D2B for all records (indevidually)
 
 load([analysisFolder filesep 'stimTable.mat'])
 for i = 1:height(stimTable)
@@ -98,22 +149,247 @@ for i = 1:height(stimTable)
 %     keyboard;
 end
 
-%% get and plot D2B+SlidingAC for all nights for the five animals
+
+
+%% create rec list for batch analysis:
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx'); 
-animals = unique(stimTable.Animal);                        
+% animals = unique(stimTable.Animal);                        
 recList = {};
-for i = 1:height(SA.recTable)
-    animal = SA.recTable.Animal{i};
-    recName = SA.recTable.recNames{i};
-    if any(strcmp(animal,animals)) && contains(recName,'Night') && isnan(SA.recTable.Exclude(i))
-        curRec=['Animal=' animal ',recNames=' recName];
-        recList{end+1} = curRec;
-    end
+for i = 1:height(stimTable)
+    animal = stimTable.Animal{i};
+    recName = stimTable.recNames{i};
+    curRec=['Animal=' animal ',recNames=' recName];
+    recList{end+1} = curRec;
+    
 end
 % disp(recList);
 %% run batch analysis on all nights
-SA.batchProcessData('getDelta2BetaRatio',recList)
+SA.batchProcessData('getLizardMovements',recList)
+%% PLOTINGS
 
+%% plot D2B general decrease for each part of the stimulation
+% get and orgenize the data: 
+
+% calculate the D2B average for each 30 sec for each part of the stimulation
+p = 30*60*1000; %some time diff for the cycle to change.
+DBwin = 2*60*60*1000; % 2 hrs in ms
+
+DBpeaksPre = zeros(height(stimTable),1);
+DBpeaksStim = zeros(height(stimTable),1);
+DBpeaksPost = zeros(height(stimTable),1);
+
+for i = 1:height(stimTable)
+% i =22 ;
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    DB = SA.getDelta2BetaRatio;
+
+    % stimulations timings:
+    t_ch = stimTable.StimTrighCh(i);
+    T=SA.getDigitalTriggers;
+    stimStartT = T.tTrig{t_ch}(1);
+    stimEndT = T.tTrig{t_ch}(end);
+    firstTrig=T.tTrig{t_ch}(1:8:end-2);
+    endStim=T.tTrig{t_ch}(8:8:end)+400;
+
+   % get the DB 
+    preind = find(DB.t_ms < stimStartT & DB.t_ms > (stimStartT-DBwin)) ;
+    DBpre = DB.bufferedDelta2BetaRatio(preind);
+    stimind = find(DB.t_ms > stimStartT+p & DB.t_ms < (stimStartT+ p+DBwin)) ;
+    DBstim = DB.bufferedDelta2BetaRatio(stimind);
+    postind = find(DB.t_ms > stimEndT+p & DB.t_ms < (stimEndT +p + DBwin)) ;
+    DBpost = DB.bufferedDelta2BetaRatio(postind);
+
+    % peak analysis:
+    [peakPre, peakLocPre] = findpeaks(DBpre, 'MinPeakHeight', 100);
+    [peakstim, peakLocStim] = findpeaks(DBstim, 'MinPeakHeight', 100);
+    [peakPost, peakLocPost] = findpeaks(DBpost, 'MinPeakHeight', 100);
+    
+    DBpeaksPre(i) = mean(peakPre);
+    DBpeaksStim(i) = mean(peakstim);
+    DBpeaksPost(i) = mean(peakPost);
+end
+
+%% plot: One night 
+figure;
+% Prepare the x-values corresponding to each group
+x1 = ones(size(peakPre)) * 1;  % X = 1 for group 1
+x2 = ones(size(peakstim)) * 2;  % X = 2 for group 2
+x3 = ones(size(peakPost)) * 3;  % X = 3 for group 3
+
+% Use a single scatter command to plot all groups
+scatter(x1,peakPre); hold on;
+scatter(x2,peakstim); hold on;
+scatter(x3,peakPost); hold on;
+
+means = [mean(peakPre),mean(peakstim),mean(peakPost)];
+scatter([1:3],means,'black', 'filled')
+% Add labels and title
+
+xlim([0.5, 3.5])
+xticks([1 2 3]);  % Set x-axis ticks to 1, 2, 3
+xticklabels({'Pre', 'stimulations', 'Post'});  % Group labels
+ylabel('Peak D/B');
+title('Scatter Plot of Peak D/B Values');
+grid on;  % Optional: Add grid lines
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'DBpeaksrec22.pdf']);
+
+
+%% plot all nights:
+figure;
+
+%plot using plot - to show which of the dots are the same night. 
+peaksAllrecs = [DBpeaksPre,DBpeaksStim, DBpeaksPost];
+means = [mean(DBpeaksPre,'omitnan'),mean(DBpeaksStim,'omitnan'),mean(DBpeaksPost,'omitnan')];
+plot(peaksAllrecs','-o','Color',[0.5 0.5 0.5]);
+hold on
+plot(means,'-o', 'Color','black', 'LineWidth',3)
+
+hold off;
+% Add labels and title
+
+xlim([0.5, 3.5])
+xticks([1 2 3]);  % Set x-axis ticks to 1, 2, 3
+xticklabels({'Pre', 'stimulations', 'Post'});  % Group labels
+ylabel('Peak D/B');
+title('Scatter Plot of Peak D/B Values - All nights');
+grid on;  % Optional: Add grid lines
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'DBpeaksAllRecs.pdf']);
+clearvars -except stimTable SA analysisFolder
+
+
+%% AC - get the Data 
+
+ACprePer = zeros(height(stimTable),1);
+ACpreP2V = zeros(height(stimTable),1);
+ACstimPer = zeros(height(stimTable),1);
+ACstimP2V = zeros(height(stimTable),1);
+ACpostPer = zeros(height(stimTable),1);
+ACpostP2V = zeros(height(stimTable),1);
+
+for i = 1:height(stimTable)
+   curACpre = stimTable.ACpre{i};
+   curACstim = stimTable.ACstim{i};
+   curACpost = stimTable.ACpost{i};
+   ACprePer(i) = curACpre.period;
+   ACpreP2V(i) = curACpre.peak2VallyDiff;
+   ACstimPer(i) = curACstim.period;
+   ACstimP2V(i) = curACstim.peak2VallyDiff;
+   ACpostPer(i) = curACpost.period;
+   ACpostP2V(i) = curACpost.peak2VallyDiff;
+   
+end
+
+%% plot AC - Basic
+ACcomPer = [ACprePer ACstimPer ACpostPer];
+ACcomP2V = [ACpreP2V ACstimP2V ACpostP2V];
+stimTable.ACcomPer = ACcomPer;
+stimTable.ACcomP2V = ACcomP2V;
+
+figure;
+plot(ACcomPer'/1000, '-o')
+xlim([0.5 3.5])
+figure; plot(ACcomP2V','-o')
+%% plot AC - According to color and animal
+
+animals = unique(stimTable.Animal);
+stimType = ["Blue","Green","Red","LED"];
+stimWaveL = ["47","532","635","LED"];
+plotColors = {"blue","green","red", [0.5 0.5 0.5]};
+numAnimal = length(animals);
+numType = length(stimType);
+markers = {'o', 's', 'd', '^', 'v','x'};
+x=1:3;
+%plot Period Times:
+f=figure;
+set(f, 'Position', [100, 100, 1200, 800]);
+hold on
+for type = 1:numType
+    %plot the data
+    subplot(1,4,type)
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType);
+    n = sum(curTrials);
+    curCol = plotColors{type};
+    curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1,'omitnan');
+    
+    if n>0
+
+        plot(x,curMean,'color',curCol,'LineWidth',4)
+        hold on
+        for animal = 1:numAnimal
+            curAni = animals{animal};
+            curcurT = contains(stimTable.Remarks,curType) & contains(stimTable.Animal,curAni);
+            if any(curcurT)
+            plot(x, stimTable.ACcomPer(curcurT,:)/1000,'Marker',markers{animal},'Color',curCol ...
+                ,'MarkerFaceColor',curCol)
+            end
+        end
+        hold off
+
+        annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
+            sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            'right', 'VerticalAlignment', 'middle');
+    end
+    ylabel('Time[s]')
+    ylim([40 250])
+    xticklabels({'Pre','During','Post'})
+    xticks(1:3); xlim([0.5 3.5])
+end
+
+sgtitle ('Perios Times According to stim wavelangth and animal')
+
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'ACperiodstimColor.pdf']);
+
+%plot P2V Times:
+f=figure;
+set(f, 'Position', [100, 100, 1200, 800]);
+hold on
+for type = 1:numType
+    %plot the data
+    subplot(1,4,type)
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType);
+    n = sum(curTrials);
+    curCol = plotColors{type};
+    curMean = mean(stimTable.ACcomP2V(curTrials,:)/1000,1,'omitnan');
+    
+    if n>0
+
+        plot(x,curMean,'color',curCol,'LineWidth',4)
+        hold on
+        for animal = 1:numAnimal
+            curAni = animals{animal};
+            curcurT = contains(stimTable.Remarks,curType) & contains(stimTable.Animal,curAni);
+            if any(curcurT)
+            plot(x, stimTable.ACcomP2V(curcurT,:)/1000,'Marker',markers{animal},'Color',curCol ...
+                ,'MarkerFaceColor',curCol)
+            end
+        end
+        hold off
+
+        annotation('textbox', [.07 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
+            sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            'right', 'VerticalAlignment', 'middle');
+    end
+    ylabel('P2V')
+    ylim([0 0.01])
+    xticklabels({'Pre','During','Post'})
+    xticks(1:3); xlim([0.5 3.5])
+end
+
+sgtitle ('P2V According to stim wavelangth and animal')
+
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'ACP2VstimColor.pdf']);
+clearvars -except stimTable SA analysisFolder
 
 
 %% PLOT stim activation according to stim type
@@ -240,9 +516,7 @@ clearvars -except stimTable SA analysisFolder
 
 %% plot stim according to animal and color
 % assuming the table is in the workspace
-load([analysisFolder filesep 'stimTable.mat'])
-
-
+% load([analysisFolder filesep 'stimTable.mat'])
 
 animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
@@ -289,7 +563,7 @@ for animal = 1:numAnimal
             xline((pre+mStimDur)/1000,'LineWidth',1,'Color','black')
             hold off
             
-            annotation('textbox', [.07 + 0.21*type, 1.02 - 0.17*animal, 0.03, 0.1], 'String', ...
+            annotation('textbox', [.095 + 0.195*type, 0.98 - 0.142*animal, 0.03, 0.1], 'String', ...
                 sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
                 'right', 'VerticalAlignment', 'middle');
 
@@ -313,7 +587,7 @@ for animal = 1:numAnimal
         if type == 1
             ypos = (ylims(1) + ylims(2)) / 2; % Center vertically
 
-            annotation('textbox', [0.1, 0.98 - 0.17*animal, 0.03, 0.1], 'String', animals{animal}, ...
+            annotation('textbox', [0.1, 0.98 - 0.142*animal, 0.03, 0.1], 'String', animals{animal}, ...
                 'EdgeColor', 'none', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'middle', ...
                 'FontWeight', 'bold');
         
@@ -323,12 +597,402 @@ end
 
 
 % savefigure
-saveas (gcf, [analysisFolder filesep 'animal_type.jpg']);
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'animal_type.pdf']);
 clearvars -except stimTable SA analysisFolder
 
+%% plot the statistics:
+% i want a bar plot (with points) of the max values of the D/B during
+% stim/Sham
+% also, plot the max slop, i think that will show better results.
+
+% assuming the table is in the workspace
+% load([analysisFolder filesep 'stimTable.mat'])
+
+% calculate max value and max slop
+% max:
+stimTable.maxStim = cellfun(@max,stimTable.StimAvg);
+stimTable.maxSham = cellfun(@max,stimTable.StimAvgSham);
+
+% stimtime minus pre stim - change in D/B:
+% take the last 30 sec of stim and substract the 30 sec before the start of
+% stim, ans avrage that. 
+stimTable.dbDiffStim = cell(height(stimTable),1);
+stimTable.dbDiffSham = cell(height(stimTable),1);
+firstStimInd = 50000/1000;
+win = 30;
+for i=1:height(stimTable)
+    CurStimDur = round(stimTable.stimDuration(i)/1000);
+    % calc substracted stimulation from baseline
+    befStim = stimTable.StimAvg{i}(firstStimInd-win:firstStimInd-1);
+    durStim = stimTable.StimAvg{i}(firstStimInd+CurStimDur-win:firstStimInd+CurStimDur-1);
+    stimTable.dbDiffStim(i) = {durStim-befStim};
+    % calc substracted stimulation from baseline
+    befSham = stimTable.StimAvgSham{i}(firstStimInd-win:firstStimInd-1);
+    durSham = stimTable.StimAvgSham{i}(firstStimInd+CurStimDur-win:firstStimInd+CurStimDur-1);
+    stimTable.dbDiffSham(i) = {durSham-befSham};
+end
+stimTable.dbDiffStimM = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffStim);
+stimTable.dbDiffShamM = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffSham);
+
+save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
 
+%% plot the bar plot - D/B change - stim sham
+animals = unique(stimTable.Animal);
+stimType = ["Blue","Green","Red","LED"];
+stimWaveL = ["47","532","635","LED"];
+plotColors = {"blue","green","red", [0.5 0.5 0.5]};
+numAnimal = length(animals);
+numType = length(stimType);
 
+
+f=figure;
+set(f, 'Position', [100, 100, 1200, 400]);
+sgtitle('Max average D/B')
+for type = 1:numType
+    h = subplot(1,numType,type);
+    %plot the data
+    %curAni = animals{animal};
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType); %& contains(stimTable.Animal,curAni);
+    n = sum(curTrials);
+    N = length(unique(stimTable.Animal(curTrials)));
+    curCol = plotColors{type};
+    curMeanStim = mean(stimTable.maxStim(curTrials),1,'omitnan');
+    curMeanSham = mean(stimTable.maxSham(curTrials),1,'omitnan');
+    if n>0
+        x=[1,2];
+        plot(x,[curMeanSham,curMeanStim],'-o','color',curCol,'LineWidth',3)
+        hold on
+        plot(x,[stimTable.maxSham(curTrials), stimTable.maxStim(curTrials)] ...
+            ,'-o','Color',curCol)
+          hold off
+    end
+    xticks([1, 2]); % Position of the x-ticks
+    xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
+    xlim([0.5, 2.5]);
+    annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
+        sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+        'right', 'VerticalAlignment', 'middle');
+   
+    if n==0
+        plot(0,0)
+    end
+
+    % add titles. labels...
+    ylabel('D2B power')
+    title(stimType(type))
+    ylim([0 450])
+end
+
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'maxStimShamAll1.pdf']);
+
+f=figure;
+set(f, 'Position', [100, 100, 1200, 400]);
+sgtitle('mean normelized D/B')
+for type = 1:numType
+    h = subplot(1,numType,type);
+    %plot the data
+    %curAni = animals{animal};
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType); %& contains(stimTable.Animal,curAni);
+    n = sum(curTrials);
+    N = length(unique(stimTable.Animal(curTrials)));
+    curCol = plotColors{type};
+    curMeanNdbStim = mean(stimTable.dbDiffStimM(curTrials),1,'omitnan');
+    curMeanNdbSham = mean(stimTable.dbDiffShamM(curTrials),1,'omitnan');
+    if n>0
+        x=[1,2];
+        plot(x,[curMeanNdbSham,curMeanNdbStim],'-o','color',curCol,'LineWidth',3)
+        hold on
+        plot(x,[stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)] ...
+            ,'-o','Color',curCol)
+          hold off
+    end
+    xticks([1, 2]); % Position of the x-ticks
+    xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
+    xlim([0.5, 2.5]);
+    annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
+        sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+        'right', 'VerticalAlignment', 'middle');
+   ylim([-40 160])
+    if n==0
+        plot(0,0)
+    end
+
+    % add titles. labels...
+    ylabel('D2B power')
+    title(stimType(type))
+ 
+end
+
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'meanNormBDStimSham.pdf']);
+
+% clearvars -except stimTable SA analysisFolder
+%% figure according to time:
+
+f=figure;
+set(f, 'Position', [100, 100, 1200, 400]);
+sgtitle('mean normelized D/B')
+% stimTable.nightn    
+colors=jet(max(stimTable.nightnum));
+
+for type = 1:numType
+    h = subplot(1,numType,type);
+    %plot the data
+    %curAni = animals{animal};
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType); %& contains(stimTable.Animal,curAni);
+    n = sum(curTrials);
+    N = length(unique(stimTable.Animal(curTrials)));
+    curCol = plotColors{type};
+    curMeanNdbStim = mean(stimTable.dbDiffStimM(curTrials),1,'omitnan');
+    curMeanNdbSham = mean(stimTable.dbDiffShamM(curTrials),1,'omitnan');
+    if n>0
+        x=[1,2];
+        plot(x,[curMeanNdbSham,curMeanNdbStim],'-o','color','black','LineWidth',3)
+        hold on
+        for j=1:height(stimTable)
+            if curTrials(j)==1
+                plot(x,[stimTable.dbDiffShamM(j), stimTable.dbDiffStimM(j)] ...
+                ,'-o','Color',colors(stimTable.nightnum(j),:))
+            end
+        end
+        hold off
+    end
+    
+
+    xticks([1, 2]); % Position of the x-ticks
+    xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
+    xlim([0.5, 2.5]);
+    annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
+        sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+        'right', 'VerticalAlignment', 'middle');
+   ylim([-40 160])
+    if n==0
+        plot(0,0)
+    end
+
+    % add titles. labels...
+    ylabel('D2B power')
+    title(stimType(type))
+ 
+end
+c=colorbar;    
+clim([min(stimTable.nightnum), max(stimTable.nightnum)]);
+
+% Define custom tick positions for the colorbar
+c.Ticks = linspace(min(stimTable.nightnum), max(stimTable.nightnum), 6);
+
+c.Label.String = 'Night Number';  % Add a descriptive label
+c.TickLabels = arrayfun(@num2str, round(linspace(5, 40, 6)), ...
+    'UniformOutput', false);  % Ticks between 5 and 40
+
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'meanNormBDStimShamTimeColor.pdf']);
+
+clearvars -except stimTable SA analysisFolder LM
+
+
+%% Accelerometer Data analysis:
+
+% for one night:
+i = 22;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+
+% stimulations timings:
+t_ch = stimTable.StimTrighCh(i);
+T=SA.getDigitalTriggers;
+stimStartT = T.tTrig{t_ch}(1);
+stimEndT = T.tTrig{t_ch}(end);
+firstTrig=T.tTrig{t_ch}(1:8:end-2);
+endStim=T.tTrig{t_ch}(8:8:end)+400;
+stimDuration=(endStim(1)-firstTrig(1));
+%% plot the movement binned to the whole night. 
+LM_DBt = stimTable.LM_DBt(i);
+figure; plot(DB.t_ms/1000, LM_DBt); xlabel('Time[s]'), ylabel('MovCount');
+% save fig
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'wholeNightmove.pdf']);
+
+%% calculate the mean of events in the hour before stim, during the stims,
+% and an hour after. 
+befind = find(DB.t_ms>stimStartT-1000-(60*60*1000)&DB.t_ms<stimStartT-1000);
+befMov = mean(LM_DBt(befind));
+wakeMov = mean(LM_DBt(1:3600));
+aftind = find(DB.t_ms>stimEndT+(60*60*1000)&DB.t_ms<stimEndT+(2*60*60*1000));
+aftMov = mean(LM_DBt(aftind));
+stimlength = 150;
+stimLM = zeros(numel(firstTrig),stimlength);
+post =150*1000;
+binSize = 10;
+stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
+% Add the last bin edge 
+for i=1:numel(firstTrig)
+    pTmp=find(DB.t_ms>(firstTrig(i)) & DB.t_ms<=(firstTrig(i)+post));
+        %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+        if length(pTmp) ~=stimlength
+            pTmp = pTmp(1:stimlength);
+        end
+        curstimLM = LM_DBt(pTmp);
+        stimLM(i,:) = curstimLM;
+        
+        % Reshape the array to 15x10
+        curReshLM = reshape(curstimLM, binSize,stimlength/binSize);
+
+        % Sum along the rows (dim=1) to get a 1x15 array
+        curStimLMBin = sum(curReshLM, 1);
+        stimLMbin(i,:) = curStimLMBin;
+              
+end
+stimLMmean = mean(stimLM,1);
+stimLMbinmean = mean(stimLMbin,1);
+
+%% plot the data from the stimulation time:
+figure; subplot (2,1,1)
+plot(stimLM')
+hold on; plot(stimLMmean,'black','LineWidth',3); 
+ylabel('Event count'), xlabel('Time [s]'); xline(0,'color','r');xline(38,'color','r');
+hold off
+
+subplot (2,1,2);plot(stimLMbin')
+hold on;
+plot(stimLMbinmean,'black','LineWidth',3); 
+ylabel('Event count'), xlabel('Time [10s]'); xline(0,'color','r');xline(3.8,'color','r');
+hold off
+% save fig
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'movDurStimsinglenight.pdf']);
+
+%% plot the full movement data for a night
+figure;
+hold on;
+xWak = 1;
+xBef = 2;
+xdur = 3:3+14;
+xaft = 18;
+
+plot(xWak,wakeMov,'.','Color','black', 'MarkerSize',20);
+plot(xBef,befMov,'.','Color','black','MarkerSize',20);
+plot(xdur,stimLMbinmean,'-o','Color','black','MarkerFaceColor','black');
+plot(xaft,aftMov,'.','Color','black','MarkerSize',20);
+xlim([0,19])
+xticklabels({'Wake','sleep Before','during stimulation','sleep After'})
+xticks([1,2,10,18])
+title('Mean movement during stimulation, PV161,Night18')
+% save fig
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'lizMovWholeNightPV161N18.pdf']);
+
+%% Movement during stimulation - All Nights:
+% get data:
+LMwake = zeros(height(stimTable),1);
+LMpre = zeros(height(stimTable),1);
+LMstim = cell(height(stimTable),1);
+LMstimbin = cell(height(stimTable),1);
+LMpost = zeros(height(stimTable),1);
+stimlength = 150;
+post =150*1000;
+binSize = 10;
+
+for i = 1:height(stimTable)
+    %set the recording:
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    LM_DBt = stimTable.LM_DBt{i};
+
+    %check if LM analysis was already done for this Rec
+    if isempty(LM_DBt)
+        disp('run Lizard movement on this recording. Moving to next rec.');
+        continue; % Skip to the next iteration;
+    end
+
+    % stimulations timings:
+    t_ch = stimTable.StimTrighCh(i);
+    T=SA.getDigitalTriggers;
+    stimStartT = T.tTrig{t_ch}(1);
+    stimEndT = T.tTrig{t_ch}(end);
+    firstTrig=T.tTrig{t_ch}(1:8:end-2);
+    endStim=T.tTrig{t_ch}(8:8:end)+400;
+    stimDuration=(endStim(1)-firstTrig(1));
+
+    % get and save mov for each part
+    befind = find(DB.t_ms>stimStartT-1000-(60*60*1000)&DB.t_ms<stimStartT-1000);
+    LMpre(i) = mean(LM_DBt(befind));
+    LMwake(i) = mean(LM_DBt(1:3600));
+    aftind = find(DB.t_ms>stimEndT+(60*60*1000)&DB.t_ms<stimEndT+(2*60*60*1000));
+    LMpost(i) = mean(LM_DBt(aftind));
+    
+    stimLM = zeros(numel(firstTrig),stimlength);
+    stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
+    % Add the last bin edge
+    for j=1:numel(firstTrig)
+        pTmp=find(DB.t_ms>(firstTrig(j)) & DB.t_ms<=(firstTrig(j)+post));
+        %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+        if length(pTmp) ~=stimlength
+            pTmp = pTmp(1:stimlength);
+        end
+        curstimLM = LM_DBt(pTmp);
+        stimLM(i,:) = curstimLM;
+
+        % Reshape the array to 15x10
+        curReshLM = reshape(curstimLM, binSize,stimlength/binSize);
+
+        % Sum along the rows (dim=1) to get a 1x15 array
+        curStimLMBin = sum(curReshLM, 1);
+        stimLMbin(j,:) = curStimLMBin;
+
+    end
+    LMstim(i) = {mean(stimLM,1)};
+    LMstimbin(i) = {mean(stimLMbin,1)};
+
+end
+
+%% PLOT - Movement during stimulation - All Nights 
+figure;
+hold on;
+xWak = 1;
+xBef = 2;
+xdur = 3:3+14;
+xaft = 18;
+
+% change LMbin to mat:
+LMstimbinM = cell2mat(LMstimbin);
+LMstimbinMean = mean(LMstimbinM,1);
+n = height(LMstimbinM);
+
+plot(xWak,LMwake,'.','Color','black', 'MarkerSize',20);
+plot(xBef,LMpre,'.','Color','black','MarkerSize',20);
+plot(xdur,LMstimbinM','-','Color',[0.75, 0.75, 0.75]);
+plot(xdur,LMstimbinMean,'-','Color','black','LineWidth',2);
+plot(xaft,LMpost,'.','Color','black','MarkerSize',20);
+
+xlim([0,19])
+% ylim([0 100])
+
+xticklabels({'Wake','sleep Before','during stimulation','sleep After'})
+xticks([1,2,10,18])
+title('Mean movement during stimulation, All Nights')
+annotation('textbox', [0.5, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+xline(3,'Color','r','LineWidth',2);
+xline(3+4,'Color','r','LineWidth',2)
+    
+
+% save fig
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'lizMovAllNights.pdf']);
+
+clearvars -except stimTable SA analysisFolder
 
 %% getStimSham
 % this functio is getting the data rellevant for the stimulation and the
@@ -355,7 +1019,7 @@ end
     DB=SA.getDelta2BetaRatio;
     AC=SA.getDelta2BetaAC;
     T=SA.getDigitalTriggers;
-    firstTrig=T.tTrig{t_ch}(1:8:end);
+    firstTrig=T.tTrig{t_ch}(1:8:end-2);
     endStim=T.tTrig{t_ch}(8:8:end)+400;
     stimDuration=(endStim(1)-firstTrig(1));
     pre=50000;
@@ -365,6 +1029,9 @@ end
     for i=1:numel(firstTrig)
         pTmp=find(DB.t_ms>(firstTrig(i)-pre) & DB.t_ms<=(firstTrig(i)+post));
         %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+        if length(pTmp) ~=150
+            pTmp = ones([1,150]);
+        end
         StimDB(i,:)=DB.bufferedDelta2BetaRatio(pTmp);
     end
 
