@@ -29,3 +29,16 @@ system(['phy template-gui "' fullfile(SA.currentDataObj.recordingDir,['kiloSortR
 %Convert to t-ic - this should run after performeing the phy manual curation analysis
 SA.currentDataObj.convertPhySorting2tIc; % 
                       
+
+
+
+
+%% Light Manipulation - spike sorting
+   % this section is for the same thing but using the stimTable as ref
+i = 29;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+SA.currentDataObj.generateChannelMapFile('40_16x2_FlexLin'); % 120_32x1_H4_CamNeuro for PV24. all layouts in TSV/electrode layouts 
+binaryileName = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'ch1_32.bin'];
+SA.currentDataObj.convert2Binary(binaryileName,'electrodeCh', 1:32);
+
