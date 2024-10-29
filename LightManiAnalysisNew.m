@@ -165,6 +165,12 @@ end
 % disp(recList);
 %% run batch analysis on all nights
 SA.batchProcessData('getLizardMovements',recList)
+
+%% Transform to binary:
+i = 29;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+
 %% PLOTINGS
 
 %% plot D2B general decrease for each part of the stimulation
@@ -178,8 +184,8 @@ DBpeaksPre = zeros(height(stimTable),1);
 DBpeaksStim = zeros(height(stimTable),1);
 DBpeaksPost = zeros(height(stimTable),1);
 
-for i = 1:height(stimTable)
-% i =22 ;
+% for i = 1:height(stimTable)
+i =22 ;
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
     SA.setCurrentRecording(recName);
     DB = SA.getDelta2BetaRatio;
@@ -201,37 +207,48 @@ for i = 1:height(stimTable)
     DBpost = DB.bufferedDelta2BetaRatio(postind);
 
     % peak analysis:
-    [peakPre, peakLocPre] = findpeaks(DBpre, 'MinPeakHeight', 100);
-    [peakstim, peakLocStim] = findpeaks(DBstim, 'MinPeakHeight', 100);
-    [peakPost, peakLocPost] = findpeaks(DBpost, 'MinPeakHeight', 100);
+    [peakPre, peakLocPre] = findpeaks(DBpre, 'MinPeakHeight', 50);
+    [peakstim, peakLocStim] = findpeaks(DBstim, 'MinPeakHeight', 50);
+    [peakPost, peakLocPost] = findpeaks(DBpost, 'MinPeakHeight', 50);
+
+    % % peak analysis, no min peaks: 
+    % [peakPre, peakLocPre] = findpeaks(DBpre);
+    % [peakstim, peakLocStim] = findpeaks(DBstim);
+    % [peakPost, peakLocPost] = findpeaks(DBpost);
+
+
+
+%     DBpeaksPre(i) = mean(peakPre);
+%     DBpeaksStim(i) = mean(peakstim);
+%     DBpeaksPost(i) = mean(peakPost);
+% end
+
+
+%% Create a figure for the plot - violin
+figure; hold on;
+vioData = {peakPre, peakstim, peakPost };
+% Define colors for each group
+colors = [0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+
+violin(vioData,'xlable',groupNames, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[])
+
+% Overlay individual data points
+jitterAmount = 0.5;  % Amount to jitter the points along the x-axis
+for i = 1:numel(vioData)
+    % Generate x-coordinates with jitter for each group
+    x = i + (rand(size(vioData{i})) - 0.5) * jitterAmount;
     
-    DBpeaksPre(i) = mean(peakPre);
-    DBpeaksStim(i) = mean(peakstim);
-    DBpeaksPost(i) = mean(peakPost);
+    % Plot data points for this group
+    scatter(x, vioData{i}, 20, colors(i,:), 'filled', 'MarkerFaceAlpha', 0.5); % Adjust size and transparency
 end
 
-%% plot: One night 
-figure;
-% Prepare the x-values corresponding to each group
-x1 = ones(size(peakPre)) * 1;  % X = 1 for group 1
-x2 = ones(size(peakstim)) * 2;  % X = 2 for group 2
-x3 = ones(size(peakPost)) * 3;  % X = 3 for group 3
+% Customize the plot
+xlim([0.5, numel(vioData) + 0.5]);  % Adjust x-axis limits
+set(gca, 'XTick', 1:numel(vioData), 'XTickLabel', groupNames);
+ylabel('D/B peak');
+title('D/B peaks changes during stimulations');
 
-% Use a single scatter command to plot all groups
-scatter(x1,peakPre); hold on;
-scatter(x2,peakstim); hold on;
-scatter(x3,peakPost); hold on;
-
-means = [mean(peakPre),mean(peakstim),mean(peakPost)];
-scatter([1:3],means,'black', 'filled')
-% Add labels and title
-
-xlim([0.5, 3.5])
-xticks([1 2 3]);  % Set x-axis ticks to 1, 2, 3
-xticklabels({'Pre', 'stimulations', 'Post'});  % Group labels
-ylabel('Peak D/B');
-title('Scatter Plot of Peak D/B Values');
-grid on;  % Optional: Add grid lines
+hold off;
 % savefigure
 set(gcf,'PaperPosition',[.25 3 8 6])
 saveas (gcf, [analysisFolder filesep 'DBpeaksrec22.pdf']);
