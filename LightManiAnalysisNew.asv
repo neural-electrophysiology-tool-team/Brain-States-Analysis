@@ -937,8 +937,7 @@ for i = 1:height(stimTable)
     SA.setCurrentRecording(recName);
     DB = SA.getDelta2BetaRatio;
     LM_DBt = stimTable.LM_DBt{i};
-    % AC = SA.getDelta2BetaAC;
-    
+    AC = SA.getDelta2BetaAC;
     %check if LM analysis was already done for this Rec
     if isempty(LM_DBt)
         disp('run Lizard movement on this recording. Moving to next rec.');
