@@ -16,11 +16,15 @@ SA.currentDataObj.convert2Binary(binaryileName);
 
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 
-for i = 1:height(stimTable)
-    
+for i = 25:height(stimTable)
+    if stimTable.spikes(i) >0 
+        recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+        SA.setCurrentRecording(recName);
+        SA.currentDataObj.generateChannelMapFile('40_16x2_FlexLin');
+        binaryileName = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'ch1_32.bin'];
+        SA.currentDataObj.convert2Binary(binaryileName);
+    end
 end
-
-
 
 %% upload the data to the kilosort
 addpath(genpath('/home/nitzan/Documents/MATLAB/Kilosort-main')) % path to kilosort folder
