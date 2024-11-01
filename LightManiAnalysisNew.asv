@@ -115,10 +115,46 @@ end
 save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 %% look at single traces from one night:
 
-i = 29;
+i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+recName2 = 'Animal=PV157,recNames=Night37';
 SA.setCurrentRecording(recName);
+DB = SA.getDelta2BetaRatio;
+% SA.getDelta2BetaRatio
+% SA.plotDelta2BetaRatio
 
+% stimulations timings:
+t_ch = stimTable.StimTrighCh(i);
+T=SA.getDigitalTriggers;
+stims = T.tTrig{t_ch};
+stimStartT = stims(1);
+stimEndT = stims(end);
+firstTrig=stims(1:8:end-2);
+endStim=stims(8:8:end)+400;
+trial = reshape(stims,[8,length(stims)/8])';
+
+pre=20000;
+post=100000;
+ch = 17;
+
+for j=20:numel(firstTrig)
+    pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
+    %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+    dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
+    [lfp,lfp_t] = SA.currentDataObj.getData(ch,firstTrig(j)-pre,pre+post);
+    
+    %plot
+    f = figure;
+    set(f, 'Position', [100, 100, 1200, 400]);
+    plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
+    curstims = trial(j,:) -trial(j,1) +pre ;
+    xline(curstims/1000,'r')
+    plot(dbTmp,'Color','b')
+    title(sprintf('Trial num: %i',j));
+    
+    waitforbuttonpress;
+
+end
 
 
 %% Check for spikes in recording:
@@ -171,13 +207,10 @@ for i = 1:height(stimTable)
     
 end
 % disp(recList);
-%% run batch analysis on all nights
+
+% run batch analysis on all nights
 SA.batchProcessData('getLizardMovements',recList)
 
-%% Transform to binary:
-i = 29;
-recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-SA.setCurrentRecording(recName);
 
 %% PLOTINGS
 
@@ -714,7 +747,7 @@ end
 % savefigure
 set(gcf,'PaperPosition',[.25 3 8 6])
 saveas (gcf, [analysisFolder filesep 'maxStimShamAll1.pdf']);
-
+%% mean normelized change in D/B.
 f=figure;
 set(f, 'Position', [100, 100, 1200, 400]);
 sgtitle('mean normelized D/B')
@@ -937,7 +970,8 @@ for i = 1:height(stimTable)
     SA.setCurrentRecording(recName);
     DB = SA.getDelta2BetaRatio;
     LM_DBt = stimTable.LM_DBt{i};
-    AC = SA.getDelta2BetaAC;
+    % AC = SA.getDelta2BetaAC;
+    
     %check if LM analysis was already done for this Rec
     if isempty(LM_DBt)
         disp('run Lizard movement on this recording. Moving to next rec.');
