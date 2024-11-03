@@ -137,24 +137,78 @@ pre=20000;
 post=100000;
 ch = 17;
 
-for j=20:numel(firstTrig)
+%% for j=20:numel(firstTrig)
+    j = 36;
     pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
     %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
     dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
     [lfp,lfp_t] = SA.currentDataObj.getData(ch,firstTrig(j)-pre,pre+post);
     
-    %plot
-    f = figure;
-    set(f, 'Position', [100, 100, 1200, 400]);
+    % add a raster plot according to stimulation
+    % Load spike times and cluster IDs (adjust file names as needed)
+    curPhyFoler = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort4'];
+    spikes=load([curPhyFoler filesep 'spike_data.mat']);
+
+    % spikeTimes = readNPY([curPhyFoler filesep 'spike_times.npy'] ); % spike times in samples.
+    spikeTimes_ms = spikes.spike_times/ (SA.currentDataObj.samplingFrequency(ch)/1000); %spike times in ms.
+    spikeClusters = spikes.spike_clusters; % cluster ID per spike
+
+    % Parameters for the plot
+    uniqueClusters = unique(spikeClusters); % all neuron/unit IDs
+    nClusters = length(uniqueClusters);
+
+
+%% plot
+    figure;
+    h1 = subplot(2,1,1);
+    % set(f, 'Position', [100, 100, 1200, 400]);
     plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
     curstims = trial(j,:) -trial(j,1) +pre ;
     xline(curstims/1000,'r')
     plot(dbTmp,'Color','b')
-    title(sprintf('Trial num: %i',j));
-    
-    waitforbuttonpress;
+    sgtitle(sprintf('Trial num: %i',j));
+    hold off;
+    % Plot RASTER!! spikes for each cluster, for each trig time!
+    h2 = subplot(2,1,2);
+    hold on;
+    for l = 1:nClusters
+        clusterID = uniqueClusters(l);
+        
+        clusterSpikeTimes = spikeTimes_ms(spikeClusters == clusterID); % times for this unit
+        curClusterSpikeT_ms=clusterSpikeTimes(clusterSpikeTimes>(firstTrig(j)-pre) & clusterSpikeTimes<(firstTrig(j)+post));
+        TClusterSpikeT_ms = (curClusterSpikeT_ms-(firstTrig(j)-pre));
+        % Plot each spike as a tick at y = cluster number
+        for k = 1:length(TClusterSpikeT_ms)
+            line([TClusterSpikeT_ms(k), TClusterSpikeT_ms(k)], [l - 0.4, l + 0.4], 'Color', 'k'); % tick mark
+        end
 
-end
+    end
+    curstims = trial(j,:) -trial(j,1) +pre ;
+    xline(curstims,'r')
+    % Convert x-axis labels from ms to s by setting the x-axis ticks and labels
+    xticks = get(gca, 'XTick');          % Get current x-axis tick values in ms
+    set(gca, 'XTick', xticks);           % Set the same ticks
+    set(gca, 'XTickLabel', xticks / 1000); % Display tick labels in seconds
+    xlabel('Time (s)');
+    % xlabel('Time (ms)');
+    ylabel('Neuron/Unit');
+    ylim([1,nClusters+1])
+    title('Raster Plot');
+    hold off;
+
+
+    % waitforbuttonpress;
+
+% end
+
+
+saveas (gcf, [analysisFolder filesep 'singleTrialRasterPV161N18t36.pdf']);
+
+
+%% spike rates for each trigger: 
+
+%get the mean spike rate:
+[spikeRate,spikeRate_t] = getSpikeRate(spikes,uniqueClusters,firstTrig(j)-pre,pre+post);
 
 
 %% Check for spikes in recording:
@@ -1063,96 +1117,5 @@ saveas (gcf, [analysisFolder filesep 'lizMovAllNights_norm.pdf']);
 
 clearvars -except stimTable SA analysisFolder
 
-%% getStimSham
-% this functio is getting the data rellevant for the stimulation and the
-% "sham" stimulation for the nights with stimulation. It should save the
-% data in the analysis folder. 
 
-function data = getStimSham(SA, t_ch, overwrite)
-% SA is an instance of sleep analysis class,with a record currently
-% selected
-if nargin ==2
-    overwrite = 0;
-end
-  %check if analysis was already done done
-    SA.files.stimSham=[SA.currentAnalysisFolder filesep 'stimSham.mat'];
-    if exist(SA.files.stimSham,'file') & ~overwrite
-        if nargout==1
-            data=load(SA.files.stimSham);
-        else
-            disp('stim sham analysis already exists for this recording');
-        end
-        return;
-    end
 
-    DB=SA.getDelta2BetaRatio;
-    AC=SA.getDelta2BetaAC;
-    T=SA.getDigitalTriggers;
-    firstTrig=T.tTrig{t_ch}(1:8:end-2);
-    endStim=T.tTrig{t_ch}(8:8:end)+400;
-    stimDuration=(endStim(1)-firstTrig(1));
-    pre=50000;
-    post=100000;
-%     clear StimDB; %change to zeros
-%     StimDB = zeros(1,numel(firstTrig));
-    for i=1:numel(firstTrig)
-        pTmp=find(DB.t_ms>(firstTrig(i)-pre) & DB.t_ms<=(firstTrig(i)+post));
-        %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
-        if length(pTmp) ~=150
-            pTmp = ones([1,150]);
-        end
-        StimDB(i,:)=DB.bufferedDelta2BetaRatio(pTmp);
-    end
-
-    ts=(DB.t_ms(pTmp)-DB.t_ms(pTmp(1)))/1000;
-    meadStimInterval=mean(diff(firstTrig));
-    firstTrigSham=(AC.tStartSleep:meadStimInterval:(firstTrig(1)-post))+10000;
-    endStimSham=firstTrigSham+max(endStim-firstTrig);
-    
-%     clear StimDBSham;
-    for i=1:numel(firstTrigSham)
-        pTmp=find(DB.t_ms>(firstTrigSham(i)-pre) & DB.t_ms<=(firstTrigSham(i)+post));
-        %StimDBSham(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
-        StimDBSham(i,:)=DB.bufferedDelta2BetaRatio(pTmp);
-    end
-
-   % save the data
-save(SA.files.stimSham,'StimDBSham','ts','StimDB','stimDuration','pre','post')
-data.StimDBSham = StimDBSham;
-data.ts = ts;
-data.StimDB = StimDB;
-data.stimDur = stimDuration;
-data.pre = pre;
-data.post = post;
-
-end
-
-function plotStimSham(SA)
-    % SA is an instance of sleep analysis class,with a record currently
-    % selected
-    stimShamFile=[SA.currentAnalysisFolder filesep  'stimSham.mat'];
-    SA.checkFileRecording(stimShamFile,'stim Sham file missing, please first run getStimSham');
-    load(stimShamFile); %load data
-    
-    
-    colorLim=[0 600];
-    f=figure;
-    subplot(4,2,[1:2:6]);imagesc(StimDBSham,colorLim);ylabel('Trial #');title('Sham');hold on;set(gca,'XTick',[]);
-    cb=colorbar('Position',[0.47 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
-    line([pre/1000 pre/1000],ylim,'color','r');
-    subplot(4,2,7);plot(ts-pre/1000,nanmean(StimDBSham));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);
-    line([0 0],ylim,'color','r');
-    line([stimDuration/1000 stimDuration/1000],ylim,'color','r');
-    subplot(4,2,[2:2:6]);imagesc(StimDB,colorLim);ylabel('Trial #');title('Stim');set(gca,'XTick',[]);
-    cb=colorbar('Position',[ 0.91 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
-    line([pre/1000 pre/1000],ylim,'color','r');
-    subplot(4,2,8);plot(ts-pre/1000,nanmean(StimDB));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);
-    line([0 0],ylim,'color','r');
-    line([stimDuration/1000 stimDuration/1000],ylim,'color','r');
-
-%   save?
-    fileName=[SA.currentPlotFolder filesep 'stim_sham_activation.jpg'];
-    saveas (f, fileName);
-
-    
-end
