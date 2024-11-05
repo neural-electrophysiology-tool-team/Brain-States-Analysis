@@ -117,7 +117,7 @@ save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-recName2 = 'Animal=PV157,recNames=Night37';
+% recName2 = 'Animal=PV157,recNames=Night37';
 SA.setCurrentRecording(recName);
 DB = SA.getDelta2BetaRatio;
 % SA.getDelta2BetaRatio
@@ -137,7 +137,9 @@ pre=20000;
 post=100000;
 ch = 17;
 
-%% for j=20:numel(firstTrig)
+%% plot:
+
+ % for j=22:numel(firstTrig)
     j = 36;
     pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
     %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
@@ -152,27 +154,31 @@ ch = 17;
     % spikeTimes = readNPY([curPhyFoler filesep 'spike_times.npy'] ); % spike times in samples.
     spikeTimes_ms = spikes.spike_times/ (SA.currentDataObj.samplingFrequency(ch)/1000); %spike times in ms.
     spikeClusters = spikes.spike_clusters; % cluster ID per spike
+    cluster_info = readtable([curPhyFoler filesep 'cluster_info.tsv'], 'FileType', 'text', 'Delimiter', '\t');
 
     % Parameters for the plot
-    uniqueClusters = unique(spikeClusters); % all neuron/unit IDs
-    nClusters = length(uniqueClusters);
-
-
+    goodClusters  = cluster_info.cluster_id(find(contains(cluster_info.group,'good')|contains(cluster_info.group,'mua')));
+    % uniqueClusters = unique(spikeClusters); % all neuron/unit ID
+    nClusters = length(goodClusters);
+   
 %% plot
     figure;
     h1 = subplot(2,1,1);
     % set(f, 'Position', [100, 100, 1200, 400]);
+    % yyaxis left
     plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
     curstims = trial(j,:) -trial(j,1) +pre ;
     xline(curstims/1000,'r')
-    plot(dbTmp,'Color','b')
+    % yyaxis right
+    plot(dbTmp,'Color','b','LineWidth',2)
     sgtitle(sprintf('Trial num: %i',j));
     hold off;
+
     % Plot RASTER!! spikes for each cluster, for each trig time!
     h2 = subplot(2,1,2);
     hold on;
     for l = 1:nClusters
-        clusterID = uniqueClusters(l);
+        clusterID = goodClusters(l);
         
         clusterSpikeTimes = spikeTimes_ms(spikeClusters == clusterID); % times for this unit
         curClusterSpikeT_ms=clusterSpikeTimes(clusterSpikeTimes>(firstTrig(j)-pre) & clusterSpikeTimes<(firstTrig(j)+post));
@@ -185,6 +191,7 @@ ch = 17;
     end
     curstims = trial(j,:) -trial(j,1) +pre ;
     xline(curstims,'r')
+    box on
     % Convert x-axis labels from ms to s by setting the x-axis ticks and labels
     xticks = get(gca, 'XTick');          % Get current x-axis tick values in ms
     set(gca, 'XTick', xticks);           % Set the same ticks
@@ -196,20 +203,61 @@ ch = 17;
     title('Raster Plot');
     hold off;
 
-
+    % saveas(gcf, [SA.currentPlotFolder filesep sprintf('DBRaterLFPT%i.pdf',j)])
     % waitforbuttonpress;
 
 % end
 
 
-saveas (gcf, [analysisFolder filesep 'singleTrialRasterPV161N18t36.pdf']);
+% saveas (gcf, [analysisFolder filesep 'singleTrialRasterPV161N13t36.pdf']);
 
 
 %% spike rates for each trigger: 
 
 %get the mean spike rate:
-[spikeRate,spikeRate_t] = getSpikeRate(spikes,uniqueClusters,firstTrig(j)-pre,pre+post);
+spikeRateT = 0:OL:win-meanWin; %time in ms
+spikeRateM = zeros(numel(firstTrig),length(spikeRateT));
+win = pre+post;
+meanWin = 1000;
+OL =100;
+for j = 1:numel(firstTrig)
+    [curSpikeRate] = getSpikeRate(spikes,goodClusters,firstTrig(j)-pre,win,meanWin,OL);
+    spikeRateM(j,:)= mean(curSpikeRate,1);
+end
+% save([curPhyFoler filesep 'spikeRateTrigers.mat'],"spikeRateM","spikeRateT",'-mat')
+load([curPhyFoler filesep 'spikeRateTrigers.mat'],"spikeRateM")
 
+%% plot
+figure;
+imagesc(spikeRateM);
+colormap(flipud(gray))  % Set colormap to grayscale
+colorbar;        % Optional: show colorbar
+% Set x-tick values and labels for time
+% timeLabels = (0:10:(length(spikeRateT)-1)/10);
+
+%Set x-tick values and labels for every 100 columns (every 10 seconds)
+% xTickPositions = 1:100:length(spikeRateT);  % Positions at every 10 seconds
+% xticks(xTickPositions);  % Set x-ticks
+% xticklabels(arrayfun(@(t) sprintf('%.1f', t), timeLabels, 'UniformOutput', false));  % Set labels
+
+xlabel('Time[100 ms]')
+ylabel('Trial #')
+% Hold the plot to add lines
+hold on;
+
+% Define X positions for the red lines (customize as needed)
+stimDiff = mean(mean(diff(trial,[],2)));
+xPositions = (pre + (0:7)*(stimDiff))/100;  % Example positions for lines
+
+% Add red vertical lines
+for i = 1:length(xPositions)
+    line([xPositions(i), xPositions(i)], [1, size(spikeRateM, 1)], 'Color', 'red', 'LineWidth', 0.5);
+end
+
+hold off;
+title('spikeRate (spike per sec) average per stim trial, PV161N18')
+% 
+saveas (gcf, [analysisFolder filesep 'spikeRateAllTrialsPV161N18.pdf']);
 
 %% Check for spikes in recording:
 stimTable.spikes = zeros(height(stimTable),1);
@@ -372,6 +420,54 @@ grid on;  % Optional: Add grid lines
 set(gcf,'PaperPosition',[.25 3 8 6])
 saveas (gcf, [analysisFolder filesep 'DBpeaksAllRecs.pdf']);
 clearvars -except stimTable SA analysisFolder
+
+%% AC - plot specific before during and after AC - for a specific rec/
+i = 22;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+ACpre = stimTable.ACpre{i};
+ACstim = stimTable.ACstim{i};
+ACpost = stimTable.ACpost{i};
+
+ACstructs = {ACpre,ACstim,ACpost};
+labels = {'preStim', 'Stim', 'postStim'};
+
+for j = 1:3
+    struct2vars(ACstructs{j});
+    fAC = figure;
+    h = axes;
+    %plot:
+    lineHandles = stem(autocorrTimes/1000,real(xcf),'filled','r-o');
+    ylim([-0.4 1])
+    set(lineHandles(1),'MarkerSize',4);
+    grid('on');
+    xlabel('Period [s]');
+    ylabel('Auto corr.');
+    hold('on');
+
+    plot(period/1000,real(xcf(pPeriod)),'o','MarkerSize',5,'color','k');
+    text(period/1000,0.05+real(xcf(pPeriod)),num2str(period/1000));
+
+    a = axis;
+    plot([a(1) a(1); a(2) a(2)],[xcf_bounds([1 1]) xcf_bounds([2 2])],'-b');
+    plot([a(1) a(2)],[0 0],'-k');
+    hold('off');
+    
+    % save fig:
+
+    set(fAC,'PaperPositionMode','auto');
+    fileName=[SA.currentPlotFolder filesep 'dbAC_ch' num2str(parDbAutocorr.ch) '_t' num2str(parDbAutocorr.tStart) '_w' num2str(parDbAutocorr.win) labels{j} '.pdf'];
+    saveas(fAC,fileName)
+    % print(fileName,'-pdf',['-r' num2str(SA.figResJPG)]);
+    % if printLocalCopy
+    %     fileName=[cd filesep obj.recTable.Animal{obj.currentPRec} '_Rec' num2str(obj.currentPRec) '_dbAC_ch' num2str(parDbAutocorr.ch) '_t' num2str(parDbAutocorr.tStart) '_w' num2str(parDbAutocorr.win)];
+    %     print(fileName,'-pdf',['-r' num2str(obj.figResJPG)]);
+    % end
+
+end
+
+
+
 
 
 %% AC - get the Data 
