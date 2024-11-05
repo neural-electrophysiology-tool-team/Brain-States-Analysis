@@ -5,7 +5,7 @@
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 
    
-i = 15;
+i = 3;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 SA.currentDataObj.generateChannelMapFile('40_16x2_FlexLin'); % 120_32x1_H4_CamNeuro for PV24. all layouts in TSV/electrode layouts 
@@ -31,9 +31,11 @@ addpath(genpath('/home/nitzan/Documents/MATLAB/Kilosort-main')) % path to kiloso
 addpath(genpath('/home/nitzan/Documents/MATLAB/npy-matlab-master')) % for converting to Phy
 
 
-SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx'); 
-bRecName = [recName 'b'];
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+% bRecName = [recName 'b'];
+bRecName = 'Animal=PV149,recNames=Night12b';
 SA.setCurrentRecording(bRecName);
+
 SA.currentDataObj.getKiloSort('/home/nitzan/tempKilosort','tStart',30*60*1000); % this is a new format where
 SA.currentDataObj.convertPhySorting2tIc([],2*60*60*1000); % is there manual annotation
 
