@@ -113,6 +113,15 @@ end
 
 %% save stimTable
 save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
+
+%% calculate the AC analysis again on all night for further analysis. 
+
+for i = 1:height(stimTable)
+    % set te current rec:
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    SA.getDelta2BetaAC('tStart', 0, 'overwrite',1)
+end
 %% look at single traces from one night:
 
 i = 22;
@@ -421,6 +430,14 @@ set(gcf,'PaperPosition',[.25 3 8 6])
 saveas (gcf, [analysisFolder filesep 'DBpeaksAllRecs.pdf']);
 clearvars -except stimTable SA analysisFolder
 
+%% plot sliding AC sith stimulations:
+%set the recording:
+i = 22;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+AC = SA.getDelta2BetaAC;
+SA.plotDelta2BetaSlidingAC
+
 %% AC - plot specific before during and after AC - for a specific rec/
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -502,6 +519,77 @@ figure;
 plot(ACcomPer'/1000, '-o')
 xlim([0.5 3.5])
 figure; plot(ACcomP2V','-o')
+%% plot AC - only Red nights:
+type = 'Red';
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength); %& contains(stimTable.Animal,curAni);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+
+% statistical tests:
+% first, we need to check the differences in genral, in Freidman test,
+% which is a a-parametrical ANOVA test. then we can use wilcoxon post-hoc
+% to check where is the differenc (with benforoni corection)
+
+% Assuming data in columns where each row is a subject and each column is a timepoint
+[p, tbl, stats] = friedman(stimTable.ACcomPer(curTrials,:), 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Example data for three groups
+before = stimTable.ACcomPer(curTrials,1);
+during = stimTable.ACcomPer(curTrials,2);
+after = stimTable.ACcomPer(curTrials,3);
+
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 3;
+
+% Pairwise Wilcoxon signed-rank tests
+[p_before_during, ~, stats_before_during] = signrank(before, during);
+[p_during_after, ~, stats_during_after] = signrank(during, after);
+[p_after_before, ~, stats_after_before] = signrank(after, before);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+
+%plot
+figure;
+x = 1:3;
+curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1,'omitnan');
+plot(x, stimTable.ACcomPer(curTrials,:)/1000,'Color',[0.5 0.5 0.5],'Marker','.')
+hold on
+plot(x, curMean,'Color','k','LineWidth',2)
+xticklabels({'Pre','During','Post'})
+xticks(1:3); xlim([0.5 3.5])
+grid on
+ylabel('Period Time[s]')
+title ('Perios Times changes - all red nights')
+annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
+    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.15, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f (Significant if < %.4f)', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f', p_after_before), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+
+% savefigure
+set(gcf,'PaperPositionMode','auto')
+saveas (gcf, [analysisFolder filesep 'ACperiodReds.pdf']);
 %% plot AC - According to color and animal
 
 animals = unique(stimTable.Animal);
@@ -598,6 +686,7 @@ sgtitle ('P2V According to stim wavelangth and animal')
 set(gcf,'PaperPosition',[.25 3 6 2])
 saveas (gcf, [analysisFolder filesep 'ACP2VstimColor.pdf']);
 % clearvars -except stimTable SA analysisFolder
+
 
 
 %% PLOT stim activation according to stim type
@@ -844,9 +933,72 @@ stimTable.dbDiffStimM = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffStim);
 stimTable.dbDiffShamM = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffSham);
 
 save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
+ 
+%% plot D/B diff stimSham bar plot - only Red nights
+% animals = unique(stimTable.Animal);
+% numAnimal = length(animals);
+type = 'Red';
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength); %& contains(stimTable.Animal,curAni);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+
+% statistical tests for that figure - diff StimSham only red nights:
+% trying different methods: 
+groupSham = stimTable.dbDiffShamM(curTrials);
+groupStim = stimTable.dbDiffStimM(curTrials);
+
+% 1. Wilcoxon Signed-Rank Test
+[pWilcoxon, ~, statsWilcoxon] = signrank(groupSham, groupStim);
+fprintf('Wilcoxon Signed-Rank Test p-value: %.4f\n', pWilcoxon);
+disp(statsWilcoxon)
+
+% 2. Paired t-test (check normality first)
+% Normality test (Shapiro-Wilk) - used
+[hNorm1, pNorm1] = adtest(groupSham);
+[hNorm2, pNorm2] = adtest(groupStim);
+
+if pNorm1 > 0.05 && pNorm2 > 0.05
+    [hTtest, pTtest] = ttest(groupSham, groupStim);
+    fprintf('Paired t-test p-value: %.4f\n', pTtest);
+else
+    fprintf('Data is not normally distributed; Paired t-test may not be appropriate.\n');
+end
 
 
-%% plot the bar plot - D/B change - stim sham
+%plot:
+figure;
+title('Change in mean D/B norm across trials - All nights')
+x=[1,2];
+plot(x,[stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)] ...
+    ,'-o','Color',[0.5, 0.5, 0.5])
+hold on
+curMeanStim = mean(stimTable.dbDiffStimM(curTrials),1,'omitnan');
+curMeanSham = mean(stimTable.dbDiffShamM(curTrials),1,'omitnan');
+plot(x,[curMeanSham,curMeanStim],'-o','color','k','LineWidth',2)
+hold off
+
+grid on
+xlim([0.5 2.5]);
+xticks([1, 2]); % Position of the x-ticks
+xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
+annotation('textbox', [0.85, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+annotation('textbox', [0.15, 0.8, 0.3, 0.2], 'String', ...
+    sprintf('Wilcoxon test p =%.3f',pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+annotation('textbox', [0.15, 0.75, 0.3, 0.2], 'String', ...
+    sprintf('T-test p =%.3f',pTtest), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle')
+
+set(gcf,'PaperPositionMode','auto')
+saveas (gcf, [analysisFolder filesep 'DBdiffStimShamRedNights.pdf']);
+
+
+clearvars -except stimTable SA analysisFolder
+
+%% plot the bar plot - D/B change - stim sham -  all colors
 animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
