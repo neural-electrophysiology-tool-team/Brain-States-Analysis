@@ -1312,7 +1312,7 @@ clearvars -except stimTable SA analysisFolder LM
 %% Accelerometer Data analysis:
 
 % for one night:
-i = 29;
+i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 DB = SA.getDelta2BetaRatio;
@@ -1387,19 +1387,24 @@ figure;
 hold on;
 xWak = 1;
 xBef = 2;
-xdur = 3:3+14;
-xaft = 18;
+xdur = linspace(3,5,length(stimLMbinmean));
+xaft = 6;
 
 plot(xWak,wakeMov,'.','Color','black', 'MarkerSize',20);
 plot(xBef,befMov,'.','Color','black','MarkerSize',20);
 plot(xdur,stimLMbinmean,'-o','Color','black','MarkerFaceColor','black');
 plot(xaft,aftMov,'.','Color','black','MarkerSize',20);
-xlim([0,19])
+xlim([0.5,xaft+0.5])
 xticklabels({'Wake','sleep Before','during stimulation','sleep After'})
-xticks([1,2,10,18])
+xticks([xWak,xBef,xdur(round(length(stimLMbinmean)/2)),xaft])
 title('Mean movement during stimulation, PV161,Night18')
+ylabel('Mov/s')
+
+xline(xdur(1),'Color','r','LineWidth',2);
+xline(xdur(4),'Color','r','LineWidth',2)
+
 % save fig
-set(gcf,'PaperPosition',[.25 3 8 6])
+set(gcf,'PaperPosition',[1,5,3.5,4])
 saveas (gcf, [analysisFolder filesep 'lizMovWholeNightPV161N18.pdf']);
 
 %% Movement during stimulation - All Nights:
@@ -1421,11 +1426,14 @@ for i = 1:height(stimTable)
     SA.setCurrentRecording(recName);
     DB = SA.getDelta2BetaRatio;
     LM_DBt = stimTable.LM_DBt{i};
-    % AC = SA.getDelta2BetaAC;
+%     AC = SA.getDelta2BetaAC;
     
     %check if LM analysis was already done for this Rec
     if isempty(LM_DBt)
         disp('run Lizard movement on this recording. Moving to next rec.');
+        LMpre(i) = NaN;
+        LMwake(i) = NaN;
+        LMpost(i) = NaN;
         continue; % Skip to the next iteration;
     end
 
@@ -1472,21 +1480,24 @@ for i = 1:height(stimTable)
     LMstimbin(i) = {mean(stimLMbin,1)};
     
 end
-
+LMpre = LMpre(~any(isnan(LMpre), 2), :);
+LMwake = LMwake(~any(isnan(LMwake), 2), :);
+LMpost = LMpost(~any(isnan(LMpost), 2), :);
 
 
 %% PLOT - Movement during stimulation - All Nights 
-figure;
-hold on;
-xWak = 1;
-xBef = 2;
-xdur = 3:3+14;
-xaft = 18;
 
 % change LMbin to mat:
 LMstimbinM = cell2mat(LMstimbin);
 LMstimbinMean = mean(LMstimbinM,1);
 n = height(LMstimbinM);
+
+figure;
+hold on;
+xWak = 1;
+xBef = 2;
+xdur = linspace(3,5,length(LMstimbinMean));
+xaft = 6;
 
 plot(xWak,LMwake,'.','Color','black', 'MarkerSize',20);
 plot(xBef,LMpre,'.','Color','black','MarkerSize',20);
@@ -1494,25 +1505,89 @@ plot(xdur,LMstimbinM','-','Color',[0.75, 0.75, 0.75]);
 plot(xdur,LMstimbinMean,'-','Color','black','LineWidth',2);
 plot(xaft,LMpost,'.','Color','black','MarkerSize',20);
 
-xlim([0,19])
+xlim([0.5,xaft+0.5])
 % ylim([0 100])
+Groups = {'Wake','Sleep Before','during stimulation','sleep After'};
+xticklabels(Groups)
+xticks([xWak,xBef,xdur(round(length(stimLMbinmean)/2)),xaft])
+ylabel('Mov/s')
 
-xticklabels({'Wake','Sleep Before','during stimulation','sleep After'})
-xticks([1,2,10,18])
 title('Mean movement during stimulation, All Nights, norm')
 annotation('textbox', [0.5, 0.85, 0.03, 0.1], 'String', ...
     sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
 
-xline(3,'Color','r','LineWidth',2);
-xline(3+4,'Color','r','LineWidth',2)
+xline(xdur(1),'Color','r','LineWidth',2);
+xline(xdur(4),'Color','r','LineWidth',2)
     
 
 % save fig
 set(gcf,'PaperPosition',[.25 3 8 6])
 saveas (gcf, [analysisFolder filesep 'lizMovAllNights_norm.pdf']);
 
-clearvars -except stimTable SA analysisFolder
+% clearvars -except stimTable SA analysisFolder
+%% plot with mov with violin :
+
+% change LMbin to mat:
+LMstimbinM = cell2mat(LMstimbin);
+LMstimbintrialM = mean(LMstimbinM,2);
+n = height(LMstimbinM);
+LMData = [LMwake,LMpre,LMstimbintrialM,LMpost];
+
+% check the statistics:
+% Assuming data in columns where each row is a subject and each column is a timepoint
+
+[p, tbl, stats] = friedman(LMData, 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 6;
+LMData = [LMwake,LMpre,LMstimbintrialM,LMpost];
+% Pairwise Wilcoxon signed-rank tests
+[p_wake_pre, ~, stats_wake_pre] = signrank(LMwake, LMpre);
+[p_wake_during, ~, stats_wake_during] = signrank(LMwake, LMstimbintrialM);
+[p_wake_after, ~, stats_wake_after] = signrank(LMwake, LMpost);
+[p_pre_during, ~, stats_pre_during] = signrank(LMstimbintrialM,LMpre);
+[p_during_after, ~, stats_during_after] = signrank(LMstimbintrialM, LMpost);
+[p_pre_after, ~, stats_pre_after] = signrank(LMpre, LMpost);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Wake vs Pre: p-value = %.5f (Significant if < %.4f)\n', p_wake_pre, alpha);
+fprintf('Wake vs During: p-value = %.5f (Significant if < %.4f)\n', p_wake_during, alpha);
+fprintf('Wake vs Post: p-value = %.5f (Significant if < %.4f)\n', p_wake_after, alpha);
+fprintf('During vs Pre: p-value = %.5f (Significant if < %.4f)\n', p_pre_during, alpha);
+fprintf('During vs Post: p-value = %.5f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('Pre vs Post: p-value = %.5f (Significant if < %.4f)\n', p_pre_after, alpha);
+
+fileName = [analysisFolder filesep 'postHocPvalLMviolinAllNights.mat'];
+save(fileName, 'alpha','p_wake_pre','p_wake_during','p_wake_after','p_pre_during', ...
+    'p_during_after','p_pre_after')
+
+
+fLM = figure;
+set(fLM, 'PaperPositionMode','auto')
+Groups = ["Wake","Sleep Before","During Stim","Sleep After"];
+colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+violin(LMData, 'xlabel',Groups, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[]);
+
+% savefigure
+set(fLM,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'LMviolinallnights'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% plot polar histogram 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
