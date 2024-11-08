@@ -325,7 +325,167 @@ SA.batchProcessData('getLizardMovements',recList)
 
 %% PLOTINGS
 
-%% plot D2B general decrease for each part of the stimulation
+%% plot D2B general decrease for each part of the stimulation - SWS parts
+% get the data:
+dbSWMeans = zeros([height(stimTable),3]);
+
+for i = 1:height(stimTable)
+% i =22 ;
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    DB = SA.getDelta2BetaRatio;
+
+    t_ch = stimTable.StimTrighCh(i);
+    T=SA.getDigitalTriggers;
+    stimStartT = T.tTrig{t_ch}(1);
+    stimEndT = T.tTrig{t_ch}(end);
+
+    p = 30*60*1000; %some time diff for the cycle to change.
+    ACwin = 2*60*60*1000; % 4 hrs in ms
+    cycWin = 2*60*60*1000;
+    ACStartTimes = [stimStartT-ACwin,stimStartT+p,stimEndT+p];
+    partsTimings = [stimStartT-cycWin,stimStartT+p,stimEndT+p];
+
+    dbSW.Pre = [];
+    dbSW.Stim = [];
+    dbSW.Post = [];
+    parts = fieldnames(dbSW);  % Get a cell array of field names
+    
+    for j=1:numel(parts)
+        %calculate AC and SC for this part:
+        part = parts{j};
+        SA.getDelta2BetaAC('tStart',ACStartTimes(j),'win',ACwin,'overwrite',1);
+        
+        SA.getSlowCycles('excludeIrregularCycles',0,'overwrite',1)
+        SC = SA.getSlowCycles;
+        
+        curtimings = [partsTimings(j) partsTimings(j)+cycWin];
+        pCyc = find(SC.TcycleOnset>= curtimings(1)& SC.TcycleOnset<=curtimings(2));
+        curCyclesOns = SC.TcycleOnset(pCyc);
+        curCyclesMids = SC.TcycleMid(pCyc);
+
+        for k=1:numel(curCyclesOns)
+        %get the sws timings and the DB for them:
+            pTmp = find(DB.t_ms>curCyclesOns(k) & DB.t_ms<curCyclesMids(k));
+            dbSW.(part)(k) = mean(DB.bufferedDelta2BetaRatio(pTmp));
+        end
+    end
+    
+    dbSWMeans(i,:) = [mean(dbSW.Pre,'omitnan') mean(dbSW.Stim,'omitnan') mean(dbSW.Post,'omitnan')];
+    %save in stimTable
+    stimTable.dbSW(i) = dbSW;
+end
+
+stimTable.dbSWMeans = dbSWMeans;
+
+%% plot one night:
+
+% for i = 1:height(stimTable)
+i =22 ;
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    
+    fdbDec = figure;
+    groupNames = ["Pre", "Stim","Post"];
+    colors = [0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+    dbStimData = {stimTable.dbSW(i).Pre stimTable.dbSW(i).Stim stimTable.dbSW(i).Post};
+    violin(dbStimData, groupNames, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[]);
+    hold on
+    jitterAmount = 0.4;
+    for i = 1:numel(dbStimData)
+        % Generate x-coordinates with jitter for each group
+        x = i + (rand(size(dbStimData{i})) - 0.5) * jitterAmount;
+
+        % Plot data points for this group
+        scatter(x, dbStimData{i}, 20, colors(i,:), 'filled', 'MarkerFaceAlpha', 0.5); % Adjust size and transparency
+    end
+
+
+    ylabel('D/B power during SWS bouts')
+
+    set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
+    title('D/B power during SWS bouts - one night')
+    
+    %savefigure
+    set(fdbDec,'PaperPositionMode','auto');
+    fileName=[SA.currentPlotFolder filesep 'DBSWSpreStimPost'];
+    print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% plot all nights: - only red
+
+type = 'Red';
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength); %& contains(stimTable.Animal,curAni);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+
+
+% statistics:
+
+% Assuming data in columns where each row is a subject and each column is a timepoint
+bdSWDataStat = stimTable.dbSWMeans(curTrials,:);
+cleanDBSW = bdSWDataStat(~any(isnan(bdSWDataStat), 2), :);
+n=height(cleanDBSW);
+[p, tbl, stats] = friedman(cleanDBSW, 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Example data for three groups
+before = stimTable.dbSWMeans(curTrials,1);
+during = stimTable.dbSWMeans(curTrials,2);
+after = stimTable.dbSWMeans(curTrials,3);
+
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 3;
+
+% Pairwise Wilcoxon signed-rank tests
+[p_before_during, ~, stats_before_during] = signrank(before, during);
+[p_during_after, ~, stats_during_after] = signrank(during, after);
+[p_after_before, ~, stats_after_before] = signrank(after, before);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+
+%plot
+figure;
+plot(stimTable.dbSWMeans(curTrials,:)','-o','Color',[0.5 0.5 0.5])
+hold on; 
+plot(mean(stimTable.dbSWMeans(curTrials,:),1,'omitnan'),'-o','Color','k','LineWidth',2)
+xlim([0.5, 3.5])
+
+ylim([0 450])
+xticks(1:3)
+xticklabels(groupNames)
+ylabel('D/B means during SWS')
+
+annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
+    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.15, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f (Significant if < %.4f)', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f', p_after_before), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% savefigure
+set(gcf,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'DBSWS'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% plot D2B general decrease for each part of the stimulation - peaks analysis:
 % get and orgenize the data: 
 
 % calculate the D2B average for each 30 sec for each part of the stimulation
@@ -359,22 +519,11 @@ i =22 ;
     DBpost = DB.bufferedDelta2BetaRatio(postind);
 
     % peak analysis:
-    [peakPre, peakLocPre] = findpeaks(DBpre, 'MinPeakHeight', 50);
-    [peakstim, peakLocStim] = findpeaks(DBstim, 'MinPeakHeight', 50);
-    [peakPost, peakLocPost] = findpeaks(DBpost, 'MinPeakHeight', 50);
+    [peakPre, peakLocPre] = findpeaks(DBpre, 'MinPeakHeight', 100);
+    [peakstim, peakLocStim] = findpeaks(DBstim, 'MinPeakHeight', 100);
+    [peakPost, peakLocPost] = findpeaks(DBpost, 'MinPeakHeight', 100);
 
-    % % peak analysis, no min peaks: 
-    % [peakPre, peakLocPre] = findpeaks(DBpre);
-    % [peakstim, peakLocStim] = findpeaks(DBstim);
-    % [peakPost, peakLocPost] = findpeaks(DBpost);
-
-
-
-%     DBpeaksPre(i) = mean(peakPre);
-%     DBpeaksStim(i) = mean(peakstim);
-%     DBpeaksPost(i) = mean(peakPost);
-% end
-
+ 
 
 %% Create a figure for the plot - violin
 figure; hold on;
