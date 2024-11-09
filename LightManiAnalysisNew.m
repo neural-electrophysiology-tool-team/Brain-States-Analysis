@@ -4,6 +4,8 @@
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
 load([analysisFolder filesep 'stimTable.mat'])
+load([analysisFolder filesep 'LMdata.mat'])
+
 %% analysis folder
 % analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
 % SA.batchProcessData('getDelta2BetaRatio',{})
@@ -1311,202 +1313,119 @@ clearvars -except stimTable SA analysisFolder LM
 
 %% Accelerometer Data analysis:
 
+% 
+% 
+% % stimulations timings:
+% t_ch = stimTable.StimTrighCh(i);
+% T=SA.getDigitalTriggers;
+% stimStartT = T.tTrig{t_ch}(1);
+% stimEndT = T.tTrig{t_ch}(end);
+% firstTrig=T.tTrig{t_ch}(1:8:end-2);
+% endStim=T.tTrig{t_ch}(8:8:end)+400;
+% stimDuration=(endStim(1)-firstTrig(1));
+% %% plot the movement binned to the whole night. 
+% LM_DBt = stimTable.LM_DBt{i};
+% figure; 
+% plot(DB.t_ms/1000, LM_DBt); xlabel('Time[s]'), ylabel('MovCount');
+% % save fig
+% set(gcf,'PaperPosition',[.25 3 8 6])
+% saveas (gcf, [analysisFolder filesep 'wholeNightmove.pdf']);
+% 
+% %% calculate the mean of events in the hour before stim, during the stims,
+% % and an hour after. 
+% befind = find(DB.t_ms>stimStartT-1000-(60*60*1000)&DB.t_ms<stimStartT-1000);
+% befMov = mean(LM_DBt(befind));
+% wakeMov = mean(LM_DBt(1:3600));
+% postind = find(DB.t_ms>stimEndT+(60*60*1000)&DB.t_ms<stimEndT+(2*60*60*1000));
+% aftMov = mean(LM_DBt(postind));
+% stimlength = 150;
+% stimLM = zeros(numel(firstTrig),stimlength);
+% post =150*1000;
+% binSize = 10;
+% stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
+% % Add the last bin edge 
+% for i=1:numel(firstTrig)
+%     pTmp=find(DB.t_ms>(firstTrig(i)) & DB.t_ms<=(firstTrig(i)+post));
+%         %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+%         if length(pTmp) ~=stimlength
+%             pTmp = pTmp(1:stimlength);
+%         end
+%         curstimLM = LM_DBt(pTmp);
+%         stimLM(i,:) = curstimLM;
+% 
+%         % Reshape the array to 15x10
+%         curReshLM = reshape(curstimLM, binSize,stimlength/binSize);
+% 
+%         % Sum along the rows (dim=1) to get a 1x15 array
+%         curStimLMBin = sum(curReshLM, 1);
+%         stimLMbin(i,:) = curStimLMBin/binSize;
+% 
+% end
+% stimLMmean = mean(stimLM,1);
+% stimLMbinmean = mean(stimLMbin,1);
+% 
+% %% plot the data from the stimulation time:
+% figure; subplot (2,1,1)
+% plot(stimLM')
+% hold on; plot(stimLMmean,'black','LineWidth',3); 
+% ylabel('Event count'), xlabel('Time [s]'); xline(0,'color','r');xline(38,'color','r');
+% hold off
+% 
+% subplot (2,1,2);plot(stimLMbin')
+% hold on;
+% plot(stimLMbinmean,'black','LineWidth',3); 
+% ylabel('Event count'), xlabel('Time [10s]'); xline(0,'color','r');xline(3.8,'color','r');
+% hold off
+% % save fig
+% set(gcf,'PaperPosition',[.25 3 8 6])
+% saveas (gcf, [analysisFolder filesep 'movDurStimsinglenight.pdf']);
+%% Get LM DATA
+
+LMdata = getLMData(SA, stimTable,analysisFolder);
+
+
+%% plot the full movement data for a night
+
 % for one night:
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-SA.setCurrentRecording(recName);
-DB = SA.getDelta2BetaRatio;
+% SA.setCurrentRecording(recName);
+% DB = SA.getDelta2BetaRatio;
 
-% stimulations timings:
-t_ch = stimTable.StimTrighCh(i);
-T=SA.getDigitalTriggers;
-stimStartT = T.tTrig{t_ch}(1);
-stimEndT = T.tTrig{t_ch}(end);
-firstTrig=T.tTrig{t_ch}(1:8:end-2);
-endStim=T.tTrig{t_ch}(8:8:end)+400;
-stimDuration=(endStim(1)-firstTrig(1));
-%% plot the movement binned to the whole night. 
-LM_DBt = stimTable.LM_DBt{i};
-figure; 
-plot(DB.t_ms/1000, LM_DBt); xlabel('Time[s]'), ylabel('MovCount');
-% save fig
-set(gcf,'PaperPosition',[.25 3 8 6])
-saveas (gcf, [analysisFolder filesep 'wholeNightmove.pdf']);
+curLMwake = LMdata.LMwake(i);
+curLMpre = LMdata.LMpre(i);
+curLMstim = LMdata.LMstimbin{i};
+curLMpost = LMdata.LMpost(i);
 
-%% calculate the mean of events in the hour before stim, during the stims,
-% and an hour after. 
-befind = find(DB.t_ms>stimStartT-1000-(60*60*1000)&DB.t_ms<stimStartT-1000);
-befMov = mean(LM_DBt(befind));
-wakeMov = mean(LM_DBt(1:3600));
-postind = find(DB.t_ms>stimEndT+(60*60*1000)&DB.t_ms<stimEndT+(2*60*60*1000));
-aftMov = mean(LM_DBt(postind));
-stimlength = 150;
-stimLM = zeros(numel(firstTrig),stimlength);
-post =150*1000;
-binSize = 10;
-stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
-% Add the last bin edge 
-for i=1:numel(firstTrig)
-    pTmp=find(DB.t_ms>(firstTrig(i)) & DB.t_ms<=(firstTrig(i)+post));
-        %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
-        if length(pTmp) ~=stimlength
-            pTmp = pTmp(1:stimlength);
-        end
-        curstimLM = LM_DBt(pTmp);
-        stimLM(i,:) = curstimLM;
-        
-        % Reshape the array to 15x10
-        curReshLM = reshape(curstimLM, binSize,stimlength/binSize);
-
-        % Sum along the rows (dim=1) to get a 1x15 array
-        curStimLMBin = sum(curReshLM, 1);
-        stimLMbin(i,:) = curStimLMBin/binSize;
-              
-end
-stimLMmean = mean(stimLM,1);
-stimLMbinmean = mean(stimLMbin,1);
-
-%% plot the data from the stimulation time:
-figure; subplot (2,1,1)
-plot(stimLM')
-hold on; plot(stimLMmean,'black','LineWidth',3); 
-ylabel('Event count'), xlabel('Time [s]'); xline(0,'color','r');xline(38,'color','r');
-hold off
-
-subplot (2,1,2);plot(stimLMbin')
-hold on;
-plot(stimLMbinmean,'black','LineWidth',3); 
-ylabel('Event count'), xlabel('Time [10s]'); xline(0,'color','r');xline(3.8,'color','r');
-hold off
-% save fig
-set(gcf,'PaperPosition',[.25 3 8 6])
-saveas (gcf, [analysisFolder filesep 'movDurStimsinglenight.pdf']);
-
-%% plot the full movement data for a night
 figure;
 hold on;
 xWak = 1;
 xBef = 2;
-xdur = linspace(3,5,length(stimLMbinmean));
+xdur = linspace(3,5,length(curLMstim));
 xaft = 6;
 
-plot(xWak,wakeMov,'.','Color','black', 'MarkerSize',20);
-plot(xBef,befMov,'.','Color','black','MarkerSize',20);
-plot(xdur,stimLMbinmean,'-o','Color','black','MarkerFaceColor','black');
-plot(xaft,aftMov,'.','Color','black','MarkerSize',20);
+plot(xWak,curLMwake,'.','Color','black', 'MarkerSize',20);
+plot(xBef,curLMpre,'.','Color','black','MarkerSize',20);
+plot(xdur,curLMstim,'-o','Color','black','MarkerFaceColor','black');
+plot(xaft,curLMpost,'.','Color','black','MarkerSize',20);
 xlim([0.5,xaft+0.5])
 xticklabels({'Wake','sleep Before','during stimulation','sleep After'})
-xticks([xWak,xBef,xdur(round(length(stimLMbinmean)/2)),xaft])
+xticks([xWak,xBef,xdur(round(length(curLMstim)/2)),xaft])
 title('Mean movement during stimulation, PV161,Night18')
 ylabel('Mov/s')
-
+hold on;
 xline(xdur(1),'Color','r','LineWidth',2);
 xline(xdur(4),'Color','r','LineWidth',2)
-
+hold off;
 % save fig
 set(gcf,'PaperPosition',[1,5,3.5,4])
 saveas (gcf, [analysisFolder filesep 'lizMovWholeNightPV161N18.pdf']);
 
-%% Movement during stimulation - All Nights:
-% get data:
-LMwake = zeros(height(stimTable),1);
-LMpre = zeros(height(stimTable),1);
-LMstim = cell(height(stimTable),1);
-LMstimbin = cell(height(stimTable),1);
-LMpost = zeros(height(stimTable),1);
-LMallMean = zeros(height(stimTable),1);
-
-stimlength = 150;
-post =150*1000;
-binSize = 10;
-
-for i = 1:height(stimTable)
-    %set the recording:
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);
-    DB = SA.getDelta2BetaRatio;
-    LM_DBt = stimTable.LM_DBt{i};
-    AC = SA.getDelta2BetaAC;
-    
-    %check if LM analysis was already done for this Rec
-    if isempty(LM_DBt)
-        disp('run Lizard movement on this recording. Moving to next rec.');
-        LMpre(i) = NaN;
-        LMwake(i) = NaN;
-        LMpost(i) = NaN;
-        continue; % Skip to the next iteration;
-    end
-
-    % stimulations timings:
-    t_ch = stimTable.StimTrighCh(i);
-    T=SA.getDigitalTriggers;
-    stimStartT = T.tTrig{t_ch}(1);
-    stimEndT = T.tTrig{t_ch}(end);
-    firstTrig=T.tTrig{t_ch}(1:8:end-2);
-    endStim=T.tTrig{t_ch}(8:8:end)+400;
-    stimDuration=(endStim(1)-firstTrig(1));
-
-    % get and save mov for each part
-    LMallMean(i) = mean(LM_DBt(LM_DBt<450));
-    
-    % deivided byt the general mean of the recording:
-    timeBin = DB.parDBRatio.movWin-DB.parDBRatio.movOLWin;
-    win = 60*60*1000; %ms
-    p = 5*60*1000; % buffer time between stages
-    if win+p<AC.tStartSleep %make sure it is in the wake time zomd
-        wakind = find(DB.t_ms> p & DB.t_ms< p+win); 
-    else
-        wakind = find(DB.t_ms> p & DB.t_ms < AC.tStartSleep);
-    end
-    LMwake(i) = mean(LM_DBt(wakind))/LMallMean(i);
-    
-    befind = find(DB.t_ms>stimStartT-p-win & DB.t_ms<stimStartT-p); % 1 hour before stimulation
-    LMpre(i) = mean(LM_DBt(befind))/LMallMean(i);
-    
-    if stimEndT +p + win < AC.tEndSleep
-        postind = find(DB.t_ms>stimEndT+p & DB.t_ms<stimEndT+p+win);
-    else
-        postind = find(DB.t_ms>stimEndT+p & DB.t_ms<AC.tEndSleep);
-    end
-
-    LMpost(i) = mean(LM_DBt(postind))/LMallMean(i);
-    
-    
-    stimLM = zeros(numel(firstTrig),stimlength);
-    stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
-    % Add the last bin edge
-    for j=1:numel(firstTrig)
-        pTmp=find(DB.t_ms>(firstTrig(j)) & DB.t_ms<=(firstTrig(j)+post));
-        %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
-        if length(pTmp) ~=stimlength
-            pTmp = pTmp(1:stimlength);
-        end
-        curstimLM = LM_DBt(pTmp);
-        stimLM(i,:) = curstimLM;
-
-        % Reshape the array to 15x10
-        curReshLM = reshape(curstimLM, binSize,stimlength/binSize);
-
-        % Sum along the rows (dim=1) to get a 1x15 array
-        curStimLMBin = sum(curReshLM, 1);
-        stimLMbin(j,:) = curStimLMBin/(binSize*LMallMean(i)); %normelized to sec - to bin size.
-
-    end
-    LMstim(i) = {mean(stimLM,1)};
-    LMstimbin(i) = {mean(stimLMbin,1)};
-    
-end
-
-%%
-LMpre = LMpre(~any(isnan(LMpre), 2), :);
-LMwake = LMwake(~any(isnan(LMwake), 2), :);
-LMpost = LMpost(~any(isnan(LMpost), 2), :);
 
 
 %% PLOT - Movement during stimulation - All Nights 
-
 % change LMbin to mat:
-LMstimbinM = cell2mat(LMstimbin);
+LMstimbinM = cell2mat(LMdata.LMstimbin);
 LMstimbinMean = mean(LMstimbinM,1);
 n = height(LMstimbinM);
 
@@ -1517,17 +1436,17 @@ xBef = 2;
 xdur = linspace(3,5,length(LMstimbinMean));
 xaft = 6;
 
-plot(xWak,LMwake,'.','Color','black', 'MarkerSize',20);
-plot(xBef,LMpre,'.','Color','black','MarkerSize',20);
+plot(xWak,LMdata.LMwake,'.','Color','black', 'MarkerSize',20);
+plot(xBef,LMdata.LMpre,'.','Color','black','MarkerSize',20);
 plot(xdur,LMstimbinM','-','Color',[0.75, 0.75, 0.75]);
 plot(xdur,LMstimbinMean,'-','Color','black','LineWidth',2);
-plot(xaft,LMpost,'.','Color','black','MarkerSize',20);
+plot(xaft,LMdata.LMpost,'.','Color','black','MarkerSize',20);
 
 xlim([0.5,xaft+0.5])
 % ylim([0 100])
 Groups = {'Wake','Sleep Before','during stimulation','sleep After'};
 xticklabels(Groups)
-xticks([xWak,xBef,xdur(round(length(stimLMbinmean)/2)),xaft])
+xticks([xWak,xBef,xdur(round(length(LMstimbinMean)/2)),xaft])
 ylabel('Mov/s')
 
 title('Mean movement during stimulation, All Nights, norm')
@@ -1544,22 +1463,24 @@ saveas (gcf, [analysisFolder filesep 'lizMovAllNights_norm.pdf']);
 
 % clearvars -except stimTable SA analysisFolder
 %% plot with mov with violin :
+% get data from table - no NAN!
+LMpre = LMdata.LMpre(~any(isnan(LMdata.LMpre), 2), :);
+LMwake = LMdata.LMwake(~any(isnan( LMdata.LMwake), 2), :);
+LMpost = LMdata.LMpost(~any(isnan(LMdata.LMpost), 2), :);
+LMstimbinM = cell2mat(LMdata.LMstimbin); % takes out the nan val
+LMstimbintrialM = mean(LMstimbinM,2); % mean for eact night
 
-% change LMbin to mat:
-LMstimbinM = cell2mat(LMstimbin);
-LMstimbintrialM = mean(LMstimbinM,2);
-n = height(LMstimbinM);
-LMData = {LMwake,LMpre,LMstimbintrialM,LMpost};
+LMvioData = [LMwake, LMpre, LMstimbintrialM, LMpost];
+n = height(LMvioData);
 
 % check the statistics:
 % Assuming data in columns where each row is a subject and each column is a timepoint
 
-[p, tbl, stats] = friedman(LMData, 1); % Here, 1 indicates within-subjects design
+[p, tbl, stats] = friedman(LMvioData, 1); % Here, 1 indicates within-subjects design
 fprintf('p-value for freidman ANOVA test: %.5f\n',p)
 % p-valure is very low, post hoc:
 % Bonferroni-corrected alpha level
 alpha = 0.05 / 6;
-LMData = [LMwake,LMpre,LMstimbintrialM,LMpost];
 % Pairwise Wilcoxon signed-rank tests
 [p_wake_pre, ~, stats_wake_pre] = signrank(LMwake, LMpre);
 [p_wake_during, ~, stats_wake_during] = signrank(LMwake, LMstimbintrialM);
@@ -1586,25 +1507,137 @@ fLM = figure;
 set(fLM, 'PaperPositionMode','auto')
 Groups = ["Wake","Sleep Before","During Stim","Sleep After"];
 colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
-violin(LMData, 'xlabel',Groups, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[]);
+violin(LMvioData, 'xlabel',Groups, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[]);
 
 % savefigure
 set(fLM,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'LMviolinallnights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
+clearvars -except stimTable SA analysisFolder LMdata
 %% plot polar histogram 
+% all nights:
+mPhasePre.movs = zeros(height(stimTable),1);
+mPhasePre.DBs = zeros(height(stimTable),1);
+mPhaseStim.movs = zeros(height(stimTable),1);
+mPhaseStim.DBs = zeros(height(stimTable),1);
+%
+for i = 34:height(stimTable)
+    if isempty(stimTable.LM_DBt{i})
+        disp('run Lizard movement on this recording. Moving to next rec.');
+        mPhasePre.movs(i) = NaN;
+        mPhasePre.DBs(i) = NaN;
+        mPhaseStim.movs(i) = NaN;
+        mPhaseStim.DBs(i) = NaN;
+        continue; % Skip to the next iteration;
+    end
+
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    t_ch = stimTable.StimTrighCh(i);
+    T=SA.getDigitalTriggers;
+    stimStartT = T.tTrig{t_ch}(1);
+    stimEndT = T.tTrig{t_ch}(end);
+
+    % get AC for the pre:
+    SA.getDelta2BetaAC('tStart', 0, 'overwrite', 1);
+    SA.getSlowCycles('excludeIrregularCycles',0,'overwrite',1);
+
+    %for the beggining of the stimulations
+    hOutPre = SA.plotLizardMovementDB('stim',1 ,'part',1,'tStartStim', ...
+        stimStartT,'tEndStim',stimEndT);
+    mPhasePre.movs(i) = hOutPre.mPhaseMov;
+    mPhasePre.DBs(i) = hOutPre.mPhaseDB;
+
+    % get AC for the stimulation:
+    ACwin = 2*60*60*1000;
+    SA.getDelta2BetaAC('tStart',stimStartT,'win',ACwin,'overwrite', 1);
+    SA.getSlowCycles('excludeIrregularCycles',0,'overwrite',1);
+
+    %for the beggining of the stimulations
+    hOutStim = SA.plotLizardMovementDB('stim',1 ,'part',2,'tStartStim', ...
+        stimStartT,'tEndStim',stimEndT);
+    mPhaseStim.movs(i) = hOutStim.mPhaseMov;
+    mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
+end
+
+%%
+fileName = [analysisFolder filesep 'polarhistoAllNights.mat'];
+save(fileName,"mPhasePre" ,"mPhaseStim")
 
 
+%% plot polser histogram - All nights
+uniqueAnimals = unique(stimTable.Animal);
+relativePhasePre = mPhasePre.movs -mPhasePre.DBs;
+relativePhaseStim = mPhaseStim.movs -mPhaseStim.DBs;
+pVal = cellfun(@(x) ~isempty(x),stimTable.LM_DBt);
 
+animalColor = [
+    0.2, 0.6, 0.8;   % soft blue
+    0.8, 0.4, 0.2;   % warm orange
+    0.4, 0.7, 0.4;   % gentle green
+    0.6, 0.3, 0.6;   % muted purple
+    0.7, 0.5, 0.3;   % earthy brown
+    0.3, 0.6, 0.5    % teal
+];
 
+fMOVdb=figure;
+h1=subplot(2,1,1,polaraxes);hold on;
+title('Pre Stimulations')
+Rlim=0.5;
 
+hP={};
+for i=1:numel(uniqueAnimals)
+    p=find(pVal & strcmp(stimTable.Animal,uniqueAnimals(i)));
+    hP{i}=polarplot([relativePhasePre(p)';relativePhasePre(p)'],[zeros(1,numel(p));Rlim*ones(1,numel(p))],'color',animalColor(i,:),'LineWidth',1);
+end
+hold on;
+hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
 
+hRose=polarhistogram(h1,relativePhasePre(pVal),12,'Normalization','probability');
+hRose.FaceColor=[0.7 0.7 0.7];
+hRose.FaceAlpha=0.5;
 
+text(0.2, Rlim/2, '\delta/\beta');
+h1.ThetaTick=[0:90:330];
+h1.RTick=[0.1:0.1:0.4];
+%h2.ThetaTickLabels([2 3 5 6 8 9 11 12])=cell(size([2 3 5 6 8 9 11 12]));
 
+l1=legend([hP{2}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off');
+l1.Position=[0.7386    0.8238    0.2125    0.1190];
 
+%figure 2 : during stim:
+h2=subplot(2,1,2,polaraxes);hold on;% Stimulation time
+title('During Stimulations')
 
+Rlim=0.5;
 
+hP={};
+for i=1:numel(uniqueAnimals)
+    p=find(pVal & strcmp(stimTable.Animal,uniqueAnimals(i)));
+    hP{i}=polarplot([relativePhaseStim(p)';relativePhaseStim(p)'],[zeros(1,numel(p));Rlim*ones(1,numel(p))],'color',animalColor(i,:),'LineWidth',1);
+end
+hold on;
+hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
 
+hRose=polarhistogram(h2,relativePhaseStim(pVal),12,'Normalization','probability');
+hRose.FaceColor=[0.7 0.7 0.7];
+hRose.FaceAlpha=0.5;
 
+text(0.2, Rlim/2, '\delta/\beta');
+h2.ThetaTick=[0:90:330];
+h2.RTick=[0.1:0.1:0.4];
+%h2.ThetaTickLabels([2 3 5 6 8 9 11 12])=cell(size([2 3 5 6 8 9 11 12]));
 
+l2=legend([hP{2}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off');
+l2.Position=[0.7386    0.4238    0.2125    0.1190];
+
+% savefigure
+
+set(gcf, 'PaperUnits', 'inches');         % Set paper units to inches
+set(gcf, 'PaperSize', [4, 6]);            % Set the paper size (width x height in inches)
+set(gcf, 'PaperPosition', [0, 0, 4, ]);  % Set position on paper to match size exactly
+
+% Print to PDF
+print(gcf, 'PolarMovDBallnights.pdf', '-dpdf', '-r300');  % '-r300' sets resolution to 300 DPI
+% clearvars -except stimTable SA analysisFolder LMdata
