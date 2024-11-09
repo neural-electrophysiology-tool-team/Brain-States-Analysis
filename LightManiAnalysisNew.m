@@ -1582,7 +1582,7 @@ animalColor = [
 ];
 
 fMOVdb=figure;
-h1=subplot(2,1,1,polaraxes);hold on;
+h1=subplot(1,2,1,polaraxes);hold on;
 title('Pre Stimulations')
 Rlim=0.5;
 
@@ -1607,7 +1607,7 @@ l1=legend([hP{2}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off
 l1.Position=[0.7386    0.8238    0.2125    0.1190];
 
 %figure 2 : during stim:
-h2=subplot(2,1,2,polaraxes);hold on;% Stimulation time
+h2=subplot(1,2,2,polaraxes);hold on;% Stimulation time
 title('During Stimulations')
 
 Rlim=0.5;
@@ -1629,14 +1629,14 @@ h2.ThetaTick=[0:90:330];
 h2.RTick=[0.1:0.1:0.4];
 %h2.ThetaTickLabels([2 3 5 6 8 9 11 12])=cell(size([2 3 5 6 8 9 11 12]));
 
-l2=legend([hP{2}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off');
-l2.Position=[0.7386    0.4238    0.2125    0.1190];
+% l2=legend([hP{2}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off');
+% l2.Position=[0.7386    0.4238    0.2125    0.1190];
 
 % savefigure
 
 set(gcf, 'PaperUnits', 'inches');         % Set paper units to inches
-set(gcf, 'PaperSize', [4, 6]);            % Set the paper size (width x height in inches)
-set(gcf, 'PaperPosition', [0, 0, 4, ]);  % Set position on paper to match size exactly
+set(gcf, 'PaperSize', [6,4]);            % Set the paper size (width x height in inches)
+set(gcf, 'PaperPosition', [0, 0, 6,4]);  % Set position on paper to match size exactly
 
 % Print to PDF
 print(gcf, 'PolarMovDBallnights.pdf', '-dpdf', '-r300');  % '-r300' sets resolution to 300 DPI
