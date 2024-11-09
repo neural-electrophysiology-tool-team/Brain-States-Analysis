@@ -1338,8 +1338,8 @@ saveas (gcf, [analysisFolder filesep 'wholeNightmove.pdf']);
 befind = find(DB.t_ms>stimStartT-1000-(60*60*1000)&DB.t_ms<stimStartT-1000);
 befMov = mean(LM_DBt(befind));
 wakeMov = mean(LM_DBt(1:3600));
-aftind = find(DB.t_ms>stimEndT+(60*60*1000)&DB.t_ms<stimEndT+(2*60*60*1000));
-aftMov = mean(LM_DBt(aftind));
+postind = find(DB.t_ms>stimEndT+(60*60*1000)&DB.t_ms<stimEndT+(2*60*60*1000));
+aftMov = mean(LM_DBt(postind));
 stimlength = 150;
 stimLM = zeros(numel(firstTrig),stimlength);
 post =150*1000;
@@ -1426,7 +1426,7 @@ for i = 1:height(stimTable)
     SA.setCurrentRecording(recName);
     DB = SA.getDelta2BetaRatio;
     LM_DBt = stimTable.LM_DBt{i};
-%     AC = SA.getDelta2BetaAC;
+    AC = SA.getDelta2BetaAC;
     
     %check if LM analysis was already done for this Rec
     if isempty(LM_DBt)
@@ -1450,11 +1450,27 @@ for i = 1:height(stimTable)
     LMallMean(i) = mean(LM_DBt(LM_DBt<450));
     
     % deivided byt the general mean of the recording:
-    befind = find(DB.t_ms>stimStartT-1000-(60*60*1000)&DB.t_ms<stimStartT-1000);
+    timeBin = DB.parDBRatio.movWin-DB.parDBRatio.movOLWin;
+    win = 60*60*1000; %ms
+    p = 5*60*1000; % buffer time between stages
+    if win+p<AC.tStartSleep %make sure it is in the wake time zomd
+        wakind = find(DB.t_ms> p & DB.t_ms< p+win); 
+    else
+        wakind = find(DB.t_ms> p & DB.t_ms < AC.tStartSleep);
+    end
+    LMwake(i) = mean(LM_DBt(wakind))/LMallMean(i);
+    
+    befind = find(DB.t_ms>stimStartT-p-win & DB.t_ms<stimStartT-p); % 1 hour before stimulation
     LMpre(i) = mean(LM_DBt(befind))/LMallMean(i);
-    LMwake(i) = mean(LM_DBt(1:3600))/LMallMean(i);
-    aftind = find(DB.t_ms>stimEndT+(60*60*1000)&DB.t_ms<stimEndT+(2*60*60*1000));
-    LMpost(i) = mean(LM_DBt(aftind))/LMallMean(i);
+    
+    if stimEndT +p + win < AC.tEndSleep
+        postind = find(DB.t_ms>stimEndT+p & DB.t_ms<stimEndT+p+win);
+    else
+        postind = find(DB.t_ms>stimEndT+p & DB.t_ms<AC.tEndSleep);
+    end
+
+    LMpost(i) = mean(LM_DBt(postind))/LMallMean(i);
+    
     
     stimLM = zeros(numel(firstTrig),stimlength);
     stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
@@ -1480,6 +1496,8 @@ for i = 1:height(stimTable)
     LMstimbin(i) = {mean(stimLMbin,1)};
     
 end
+
+%%
 LMpre = LMpre(~any(isnan(LMpre), 2), :);
 LMwake = LMwake(~any(isnan(LMwake), 2), :);
 LMpost = LMpost(~any(isnan(LMpost), 2), :);
@@ -1520,7 +1538,6 @@ annotation('textbox', [0.5, 0.85, 0.03, 0.1], 'String', ...
 xline(xdur(1),'Color','r','LineWidth',2);
 xline(xdur(4),'Color','r','LineWidth',2)
     
-
 % save fig
 set(gcf,'PaperPosition',[.25 3 8 6])
 saveas (gcf, [analysisFolder filesep 'lizMovAllNights_norm.pdf']);
@@ -1532,7 +1549,7 @@ saveas (gcf, [analysisFolder filesep 'lizMovAllNights_norm.pdf']);
 LMstimbinM = cell2mat(LMstimbin);
 LMstimbintrialM = mean(LMstimbinM,2);
 n = height(LMstimbinM);
-LMData = [LMwake,LMpre,LMstimbintrialM,LMpost];
+LMData = {LMwake,LMpre,LMstimbintrialM,LMpost};
 
 % check the statistics:
 % Assuming data in columns where each row is a subject and each column is a timepoint
