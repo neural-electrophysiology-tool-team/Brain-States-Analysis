@@ -121,7 +121,7 @@ save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
 %% look at single traces from one night:
 
-i = 22;
+i = 30;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 % recName2 = 'Animal=PV157,recNames=Night37';
 SA.setCurrentRecording(recName);
@@ -216,7 +216,7 @@ ch = 17;
 % end
 
 
-saveas (gcf, [analysisFolder filesep sprintf('singleTrialRasterPV161N13t%i.pdf',j)]);
+% saveas (gcf, [analysisFolder filesep sprintf('singleTrialRasterPV161N13t%i.pdf',j)]);
 
 
 %% spike rates for each recording: 
@@ -289,8 +289,10 @@ post=100000;
 meanWin = 1000;
 win = pre+post;
 OL = 100;
+spikeRateT = meanWin/2:OL:win-meanWin/2; %time in ms
 
-%%%%
+
+%%
 for k = 1:length(spikeRecs)
     i= spikeRecs(k);
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -413,20 +415,31 @@ hold off
 %figure 2: all units one night: 
 h2=subplot(3,1,2);
 meanOneNight = mean(unitMean,1);
-title ('Mean all units - One Night')
+n = height(unitMean);
+title 'Mean all units - One Night')
 plot(spikeRateT/OL,meanOneNight,'Color','k', 'LineWidth',1); hold on;
 xline(xPositions,'r','LineWidth',1)
 ylabel('Spike/s')
 hold off
+annotation('textbox', [0.8, 0.5, 0.03, 0.1], 'String', ...
+    sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
 
 %figure 3: all units - all nights
 h3=subplot(3,1,3);
-title ('Mean all units, all Red Nights')
+title('Mean all units, all Red Nights')
 plot(spikeRateT/OL,mean(AllNightsUnits,1),'Color','k', 'LineWidth',1); hold on;
 xline(xPositions,'r','LineWidth',1)
 xlabel('Time[s]'); 
 ylabel('Spike/s')
-linkaxes([h1,h2,h3],'x')
+n= height(AllNightsUnits);
+N = numel(spikeRecs);
+annotation('textbox', [0.8, 0.2, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% linkaxes([h1,h2,h3],'x')
 %savefigure
 set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'spikeRates-allnights'];
@@ -435,7 +448,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% PLOT ISI vs ITI: violin plot with swarm plot. 
 N = 4;
-groupNames = ["ITI", "ISI"];
+groupNames = ["ITI"; "ISI"];
 colors = [0.6 0.8 0.6; 1 0.7 0.4];
 
 fall = figure; % all units:
@@ -445,11 +458,15 @@ violin(IIdata, groupNames, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[
 hold on
 x = [ones(length(ITIsamples),1) 2*ones(length(ITIsamples),1)];
 swarmchart(x,IIdata,15,colors,'filled');
+ylabel('Spikes/S')
+
 subplot(1,2,2)
 plot([1,1.2] ,IIdata, '-o','Color',[0.5 0.5 0.5]);
 hold on;
 plot([1,1.2] ,mean(IIdata), '-o','Color','k', 'LineWidth',2);
 xlim([0.7 1.5])
+xticks([1,1.2]);xticklabels(["Inter-Trial Interval", "Inter-Stim Interval"]);
+ylabel('Spikes/S')
 sgtitle('all units')
 n = length(ITIsamples);
 [pWilcoxon, ~, statsWilcoxon] = signrank(ITIsamples, ISIsamples);
@@ -457,11 +474,15 @@ n = length(ITIsamples);
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
-annotation('textbox', [0.8, 0.75, 0.03, 0.1], 'String', ...
-    sprintf('Wilcoxon Signed-Rank Test p-value: %.4f\n', pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
+    sprintf('Wilcoxon  p-va: %.4f\n', pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
+% savefigures
+    set(fall,'PaperPositionMode','auto');
+    fileName=[analysisFolder filesep 'ITIISIallunits'];
+    print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-ffigure; % only good units:
+fgood = figure; % only good units:
 subplot(1,2,1)
 goodUnitsL = logical(goodUnits);
 IIdataGood = [ITIsamples(goodUnitsL), ISIsamples(goodUnitsL)];
@@ -469,6 +490,7 @@ violin(IIdataGood, groupNames, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'med
 hold on
 x = [ones(length(IIdataGood),1) 2*ones(length(IIdataGood),1)];
 swarmchart(x,IIdataGood,15,colors,'filled');
+ylabel('Spikes/S')
 
 subplot(1,2,2)
 plot([1,1.2] ,IIdataGood, '-o','Color',[0.5 0.5 0.5]);
@@ -477,14 +499,22 @@ plot([1,1.2] ,mean(IIdataGood), '-o','Color','k', 'LineWidth',2);
 xlim([0.7 1.5])
 sgtitle ('good units)')
 n = sum(goodUnits); 
+xticks([1,1.2]);xticklabels(["Inter-Trial Interval", "Inter-Stim Interval"]);
+ylabel('Spikes/S')
 [pWilcoxon, ~, statsWilcoxon] = signrank(ITIsamples(goodUnitsL), ISIsamples(goodUnitsL));
 
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
-annotation('textbox', [0.8, 0.75, 0.03, 0.1], 'String', ...
-    sprintf('Wilcoxon Signed-Rank Test p-value: %.4f\n', pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
+    sprintf('Wilcoxon p-val: %.4f\n', pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
+% avefigures
+    set(fgood,'PaperPositionMode','auto');
+    fileName=[analysisFolder filesep 'ITIISIgoodunits'];
+    print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
 %% Delta 2 Beta general decrease: SWS
 
 %% plot D2B general decrease for each part of the stimulation - SWS parts
@@ -539,6 +569,8 @@ for i = 1:height(stimTable)
 end
 
 stimTable.dbSWMeans = dbSWMeans;
+%%
+save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
 %% plot one night: D/B decrease
  
@@ -553,18 +585,23 @@ i =22 ;
     dbStimData = {stimTable.dbSW(i).Pre stimTable.dbSW(i).Stim stimTable.dbSW(i).Post};
     violin(dbStimData, groupNames, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[]);
     hold on
-    jitterAmount = 0.4;
-    for i = 1:numel(dbStimData)
-        % Generate x-coordinates with jitter for each group
-        x = i + (rand(size(dbStimData{i})) - 0.5) * jitterAmount;
-
-        % Plot data points for this group
-        scatter(x, dbStimData{i}, 20, colors(i,:), 'filled', 'MarkerFaceAlpha', 0.5); % Adjust size and transparency
-    end
-
+    % jitterAmount = 0.4;
+    % for j = 1:numel(dbStimData)
+    %     % Generate x-coordinates with jitter for each group
+    %     x = j + (rand(size(dbStimData{j})) - 0.5) * jitterAmount;
+    % 
+    %     % Plot data points for this group
+    %     scatter(x, dbStimData{j}, 20, colors(j,:), 'filled', 'MarkerFaceAlpha', 0.5); % Adjust size and transparency
+    % end
+    yswarm = [stimTable.dbSW(i).Pre stimTable.dbSW(i).Stim stimTable.dbSW(i).Post];
+    xswarm=[1*ones(1,length(stimTable.dbSW(i).Pre)), 2*ones(1,length(stimTable.dbSW(i).Stim)), 3*ones(1,length(stimTable.dbSW(i).Post))];
+    colorswarm = [repmat([0.2, 0.6, 0.8;], length(stimTable.dbSW(i).Pre), 1);  % Red for Array 1
+          repmat([0.9, 0.4, 0.3], length(stimTable.dbSW(i).Stim), 1);  % Green for Array 2
+          repmat([0.5, 0.8, 0.5], length(stimTable.dbSW(i).Post), 1)]; % Blue for Array 3
+    swarmchart(xswarm,yswarm,15,colorswarm,"filled","o")
 
     ylabel('D/B power during SWS bouts')
-
+    
     set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
     title('D/B power during SWS bouts - one night')
     
@@ -612,11 +649,11 @@ fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_bef
 
 %plot
 figure;
-plot(stimTable.dbSWMeans(curTrials,:)','-o','Color',[0.5 0.5 0.5])
+plot(stimTable.dbSWMeans(curTrials,:)','Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
 hold on; 
-plot(mean(stimTable.dbSWMeans(curTrials,:),1,'omitnan'),'-o','Color','k','LineWidth',2)
+plot(mean(stimTable.dbSWMeans(curTrials,:),1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 xlim([0.5, 3.5])
-
+grid on;
 ylim([0 450])
 xticks(1:3)
 xticklabels(groupNames)
@@ -648,6 +685,60 @@ fileName=[analysisFolder filesep 'DBSWS'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
  %% plot D/B decrease - all nights
 
+animals = unique(stimTable.Animal);
+stimType = ["Blue","Green","Red","WhiteEx"];
+stimWaveL = ["47","532","635","LED"];
+plotColors = {"blue","green","red", [0.5 0.5 0.5]};
+numAnimal = length(animals);
+numType = length(stimType);
+markers = {'o', 's', 'd', '^', 'v','x'};
+x=1:3;
+%plot Period Times:
+f=figure;
+set(f, 'Position', [100, 100, 800, 400]);
+hold on
+for type = 1:numType
+    %plot the data
+    subplot(1,4,type)
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType)&~contains(stimTable.Remarks,"Ex");
+    n = sum(curTrials);
+    curCol = plotColors{type};
+    curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1,'omitnan');
+    
+    if n>0
+
+        plot(x,curMean,'color',curCol,'LineWidth',4)
+        hold on
+        for animal = 1:numAnimal
+            curAni = animals{animal};
+            curcurT = contains(stimTable.Remarks,curType) & contains(stimTable.Animal,curAni);
+            if any(curcurT)
+            plot(x, stimTable.ACcomPer(curcurT,:)/1000,'Marker',markers{animal},'Color',curCol ...
+                ,'MarkerFaceColor',curCol)
+            end
+        end
+        hold off
+
+        annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
+            sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            'right', 'VerticalAlignment', 'middle');
+    end
+    ylabel('Time[s]')
+    ylim([40 250])
+    xticklabels({'Pre','During','Post'})
+    xticks(1:3); xlim([0.5 3.5])
+end
+
+sgtitle ('Perios Times According to stim wavelangth and animal')
+
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'ACperiodstimColor.pdf']);
+
+
+%% AC changes 
+
 %% plot sliding AC sith stimulations:
 %set the recording:
 i = 22;
@@ -655,8 +746,6 @@ recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 AC = SA.getDelta2BetaAC;
 SA.plotDelta2BetaSlidingAC ('stim',1,'stimCh',stimTable.StimTrighCh(i));
-
-%% AC changes 
 
 %% AC - plot specific before during and after AC - for a specific rec/
 i = 22;
@@ -765,7 +854,7 @@ fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_bef
 figure;
 x = 1:3;
 curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1,'omitnan');
-plot(x, stimTable.ACcomPer(curTrials,:)/1000,'Color',[0.5 0.5 0.5],'Marker','.')
+plot(x, stimTable.ACcomPer(curTrials,:)/1000,'Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
 hold on
 plot(x, curMean,'Color','k','LineWidth',2)
 xlim([0.75 3.25])
@@ -1025,7 +1114,11 @@ save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 % numAnimal = length(animals);
 type = 'Red';
 wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength); %& contains(stimTable.Animal,curAni);
+curTrials = contains(stimTable.Remarks,wavelength) & ...
+    ~contains(stimTable.Remarks,'Ex') & ...
+    (~any(isnan(stimTable.dbDiffShamM), 2) & ~any(isnan(stimTable.dbDiffStimM), 2));% &...
+    % ~contains(stimTable.Animal,'157');
+    
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 
@@ -1033,6 +1126,8 @@ N = length(unique(stimTable.Animal(curTrials)));
 % trying different methods: 
 groupSham = stimTable.dbDiffShamM(curTrials);
 groupStim = stimTable.dbDiffStimM(curTrials);
+
+
 
 % 1. Wilcoxon Signed-Rank Test
 [pWilcoxon, ~, statsWilcoxon] = signrank(groupSham, groupStim);
@@ -1057,11 +1152,11 @@ figure;
 title('Change in mean D/B norm across trials - All nights')
 x=[1,2];
 plot(x,[stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)] ...
-    ,'-o','Color',[0.5, 0.5, 0.5])
+    ,'Color',[0.5, 0.5, 0.5],'Marker','.','MarkerSize',10)
 hold on
 curMeanStim = mean(stimTable.dbDiffStimM(curTrials),1,'omitnan');
 curMeanSham = mean(stimTable.dbDiffShamM(curTrials),1,'omitnan');
-plot(x,[curMeanSham,curMeanStim],'-o','color','k','LineWidth',2)
+plot(x,[curMeanSham,curMeanStim],'color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 hold off
 
 grid on
@@ -1188,7 +1283,20 @@ saveas (gcf, [analysisFolder filesep 'meanNormBDStimSham.pdf']);
 
 LMdata = getLMData(SA, stimTable,analysisFolder);
 
+%% check the correlation of mevement with th D/B
+i = 19;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+LM_DBt= stimTable.LM_DBt{i};
+DB = SA.getDelta2BetaRatio;
 
+%%
+figure;
+yyaxis left
+plot(DB.bufferedDelta2BetaRatio)
+hold on;
+yyaxis right
+plot(LM_DBt,'k')
 %% plot the full movement data for a night
 
 % for one night:

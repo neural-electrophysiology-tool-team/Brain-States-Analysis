@@ -48,7 +48,7 @@ SA.currentDataObj.convertPhySorting2tIc([],2*60*60*1000); % is there manual anno
 % and add it in a folder namde spikeSorting in the original recording
 % folder. 
 Sb=sleepAnalysis('/media/sil2/Data/Lizard/Stellagama/brainStatesSS.xlsx'); 
-Sb.setCurrentRecording('Animal=SA07,recNames=sleepNight11');
+Sb.setCurrentRecording('Animal=SA15,recNames=sleepNight5');
 SA.currentDataObj.generateChannelMapFile('40_16x2_FlexLin'); % 120_32x1_H4_CamNeuro for PV24. all layouts in TSV/electrode layouts 
 SA.currentDataObj.convert2Binary([SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'ch1_32.bin'],1:32,1:32);
 
