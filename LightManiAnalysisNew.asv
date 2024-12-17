@@ -121,7 +121,7 @@ save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
 %% look at single traces from one night:
 
-i = 30;
+i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 % recName2 = 'Animal=PV157,recNames=Night37';
 SA.setCurrentRecording(recName);
@@ -146,7 +146,7 @@ ch = 17;
 %% plot plot trace + raster:
 
  % for j=22:numel(firstTrig)
-    j = 22;
+    j = 26;
     pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
     %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
     dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
@@ -169,13 +169,13 @@ ch = 17;
     nClusters = length(allClusters);
    
 %% plot trace + raster:
-    figure;
+    f = figure;
     h1 = subplot(2,1,1);
     % set(f, 'Position', [100, 100, 1200, 400]);
     % yyaxis left
     plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
     curstims = trial(j,:) -trial(j,1) +pre ;
-    xline(curstims/1000,'r')
+    xline(curstims/1000,'r','LineWidth',1.5)
     % yyaxis right
     plot(dbTmp,'Color','b','LineWidth',2)
     sgtitle(sprintf('Trial num: %i',j));
@@ -197,7 +197,7 @@ ch = 17;
 
     end
     curstims = trial(j,:) -trial(j,1) +pre ;
-    xline(curstims,'r')
+    xline(curstims,'r','LineWidth',1.5)
     box on
     % Convert x-axis labels from ms to s by setting the x-axis ticks and labels
     xticks = get(gca, 'XTick');          % Get current x-axis tick values in ms
@@ -217,7 +217,9 @@ ch = 17;
 
 
 % saveas (gcf, [analysisFolder filesep sprintf('singleTrialRasterPV161N13t%i.pdf',j)]);
-
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'singleTrialRasterPV161N18t26'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% spike rates for each recording: 
 
@@ -346,6 +348,8 @@ end
 %% plot all neurons from all nights traces & baseline changes
 % ITI vector for all units and ISI vector
 % timings: ITI- interTrial: first 200 s, and last 200 s vs ISI: seconds 2:4 from each stimulation
+
+load(spikeRateFile, "spikeRateAll","spikeRateT")
 ITIt = find(spikeRateT<20000 | spikeRateT>110000);
 
 ITIsamples = [];
@@ -461,11 +465,11 @@ swarmchart(x,IIdata,15,colors,'filled');
 ylabel('Spikes/S')
 
 subplot(1,2,2)
-plot([1,1.2] ,IIdata, '-o','Color',[0.5 0.5 0.5]);
+plot([1,1.2] ,IIdata,'Color',[0.5 0.5 0.5], 'Marker','.','MarkerSize',10);
 hold on;
 plot([1,1.2] ,mean(IIdata), '-o','Color','k', 'LineWidth',2);
 xlim([0.7 1.5])
-xticks([1,1.2]);xticklabels(["Inter-Trial Interval", "Inter-Stim Interval"]);
+% xticks([1,1.2]);xticklabels(["Inter-Trial Interval", "Inter-Stim Interval"]);
 ylabel('Spikes/S')
 sgtitle('all units')
 n = length(ITIsamples);
@@ -478,10 +482,10 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
     sprintf('Wilcoxon  p-va: %.4f\n', pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
 % savefigures
-    set(fall,'PaperPositionMode','auto');
-    fileName=[analysisFolder filesep 'ITIISIallunits'];
-    print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-
+    % set(fall,'PaperPositionMode','auto');
+    % fileName=[analysisFolder filesep 'ITIISIallunits'];
+    % print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+%%
 fgood = figure; % only good units:
 subplot(1,2,1)
 goodUnitsL = logical(goodUnits);
@@ -493,14 +497,15 @@ swarmchart(x,IIdataGood,15,colors,'filled');
 ylabel('Spikes/S')
 
 subplot(1,2,2)
-plot([1,1.2] ,IIdataGood, '-o','Color',[0.5 0.5 0.5]);
+plot([1,2] ,IIdataGood,'Color',[0.5 0.5 0.5],'Marker','.');
 hold on;
-plot([1,1.2] ,mean(IIdataGood), '-o','Color','k', 'LineWidth',2);
-xlim([0.7 1.5])
+plot([1,2] ,mean(IIdataGood),'Color','k', 'LineWidth',2,'Marker','.');
+xticks([1,2]);xticklabels(["Inter-Trial Interval", "Inter-Stim Interval"]);
+xlim([0.5 2.5])
+% grid on;
+ylabel('Spikes/S')
 sgtitle ('good units)')
 n = sum(goodUnits); 
-xticks([1,1.2]);xticklabels(["Inter-Trial Interval", "Inter-Stim Interval"]);
-ylabel('Spikes/S')
 [pWilcoxon, ~, statsWilcoxon] = signrank(ITIsamples(goodUnitsL), ISIsamples(goodUnitsL));
 
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
@@ -511,7 +516,7 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
     'right', 'VerticalAlignment', 'middle');
 % avefigures
     set(fgood,'PaperPositionMode','auto');
-    fileName=[analysisFolder filesep 'ITIISIgoodunits'];
+    fileName=[analysisFolder filesep 'ITIISIgoodunitss'];
     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
@@ -818,7 +823,9 @@ end
 %% plot AC - only Red nights:
 type = 'Red';
 wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength); %& contains(stimTable.Animal,curAni);
+curTrials = contains(stimTable.Remarks,wavelength) & ...
+    ~contains(stimTable.Remarks,'Ex') ;%& ...
+    % (~any(isnan(stimTable.dbDiffShamM), 2) & ~any(isnan(stimTable.dbDiffStimM), 2));
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 
@@ -1594,3 +1601,138 @@ set(gcf, 'PaperPosition', [0, 0, 6,4]);  % Set position on paper to match size e
 % Print to PDF
 print(gcf, 'PolarMovDBAllnights.pdf', '-dpdf', '-r300');  % '-r300' sets resolution to 300 DPI
 % clearvars -except stimTable SA analysisFolder LMdata
+
+
+%% Head angle to floor analysis:
+% 2: go over all records
+%
+% one night:
+% PV159, night34
+i = 17;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+LM = SA.getLizardMovements;%('overwrite',1);
+[angleF, angleF_t] = getHeadLifts(LM.angles,LM.t_static_ms,100,5);
+
+t_ch = stimTable.StimTrighCh(i);
+ T=SA.getDigitalTriggers;
+ stimStartT = T.tTrig{t_ch}(1);
+ stimEndT = T.tTrig{t_ch}(end);
+AC= SA.getDelta2BetaAC;
+parts ={[AC.tStartSleep,stimStartT],[stimStartT,stimEndT], [stimEndT,AC.tEndSleep]};
+numParts = numel(parts);
+
+
+% plot one liner:
+figure;
+plot(angleF_t/(1000*60*60), angleF,'k');
+xlabel('Time (hours)'); ylabel('Head Angle')
+xline(AC.tStartSleep/(1000*60*60),'b')
+xline(stimStartT/(1000*60*60),'r')
+xline(stimEndT/(1000*60*60),'Color','r');
+xline(AC.tEndSleep/(1000*60*60),'b')
+legend({'';'Start Sleep';'Start Stimulations';'End Stimulations';'End Sleep'})
+
+%save figure:
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'headAnglesPV158N34'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% plot for all nights:
+
+load([analysisFolder filesep 'HeadAngleAvg.mat'])
+
+%threshold at 10:
+
+inds = find(headAngDiff(:,1)>10);
+headAngAvgTh = HeadAngleAvg(inds,:);
+
+% recordings startin with 60: 1 3 7 8 
+% to flip:
+flipInd = 1:4;
+headAngAvgTh(flipInd,:) = 180 - headAngAvgTh(flipInd,:);
+% set the zero to 90 Deg, according to accelerometer data ( this is the z
+% axis, when it is 90 the accelerometer is penpendicular to the ground)
+headAngAvgTh = headAngAvgTh -90;
+
+%% plots:
+% plot head angles:
+figure;
+x1 = 1:4;
+plot(x1,headAngAvgTh,'Color',[0.5 0.5 0.5],'Marker','.'); hold on;
+plot(x1, mean(headAngAvgTh), 'Color','k','Marker','.','LineWidth',1.5)
+xlim([0.7,4.2]); xticks(x1); xticklabels(["Wake","Sleep","Stim","Sleep after"])
+ylabel('Avg Head Angles (Deg)')
+yline(0,'--','Headstage penpendicular to floor')
+title('Head Angle avg - all')
+n= height(headAngAvgTh);
+N = unique(stimTable.Animal(inds));
+
+% STATISTICAL TEST:
+
+[p, tbl, stats] = friedman(headAngAvgTh, 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Example data for three groups
+wakeAng = headAngAvgTh(:,1);
+beforeAng = headAngAvgTh(:,2);
+duringAng = headAngAvgTh(:,3);
+afterAng = headAngAvgTh(:,4);
+
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 4;
+
+% Pairwise Wilcoxon signed-rank tests
+[p_wake_before, ~, stats_wake_before] = signrank(wakeAng, beforeAng);
+[p_before_during, ~, stats_before_during] = signrank(beforeAng, duringAng);
+[p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
+[p_wake_during, ~, stats_wake_during] = signrank(p_wake_during, duringAng);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Wake vs Before: p-value = %.4f (Significant if < %.4f)\n', p_wake_before, alpha);
+fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('Wake vs During: p-value = %.4f (Significant if < %.4f)\n', p_wake_during, alpha);
+
+
+annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
+    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.15, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('wake-before p = %.4f (Significant if < %.4f)', p_wake_before, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.15, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('before-during p-value = %.4f (Significant if < %.4f)', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f', p_wake_during), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+
+% savefigure
+set(gcf,'PaperPositionMode','auto')
+saveas (gcf, [analysisFolder filesep 'ACperiodReds.pdf']);
+
+%%
+i = 3;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+LM = SA.getLizardMovements;
+[angleF, angleF_t] = getHeadLifts(LM.angles,LM.t_static_ms,100,5);
+figure; plot(angleF_t/(1000*60*60),angleF)
+title(recName)
+angleFlip = 180-angleF;
+figure; plot(angleF_t/(1000*60*60),angleFlip)
+title([recName 'fliped'])
