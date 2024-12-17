@@ -619,7 +619,7 @@ i =22 ;
 
 type = 'Red';
 wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength); %& contains(stimTable.Animal,curAni);
+curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex'); %& contains(stimTable.Animal,curAni);
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 
@@ -653,12 +653,12 @@ fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_af
 fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
 
 %plot
-figure;
+fdb = figure;
 plot(stimTable.dbSWMeans(curTrials,:)','Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
 hold on; 
 plot(mean(stimTable.dbSWMeans(curTrials,:),1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 xlim([0.5, 3.5])
-grid on;
+% grid on;
 ylim([0 450])
 xticks(1:3)
 xticklabels(groupNames)
@@ -685,18 +685,15 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
     'right', 'VerticalAlignment', 'middle');
 
 % savefigure
-set(gcf,'PaperPositionMode','auto');
+set(fdb,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'DBSWS'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
  %% plot D/B decrease - all nights
 
-animals = unique(stimTable.Animal);
-stimType = ["Blue","Green","Red","WhiteEx"];
+ stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
-plotColors = {"blue","green","red", [0.5 0.5 0.5]};
-numAnimal = length(animals);
+plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
 numType = length(stimType);
-markers = {'o', 's', 'd', '^', 'v','x'};
 x=1:3;
 %plot Period Times:
 f=figure;
@@ -708,39 +705,31 @@ for type = 1:numType
     curType = stimWaveL(type);
     curTrials = contains(stimTable.Remarks,curType)&~contains(stimTable.Remarks,"Ex");
     n = sum(curTrials);
+    N = numel(unique(stimTable.Animal(curTrials)));
     curCol = plotColors{type};
-    curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1,'omitnan');
+    curMean = mean(stimTable.dbSWMeans(curTrials,:),1,'omitnan');
     
     if n>0
-
-        plot(x,curMean,'color',curCol,'LineWidth',4)
+        plot(x,curMean,'color',curCol,'LineWidth',3,'Marker', '.')
         hold on
-        for animal = 1:numAnimal
-            curAni = animals{animal};
-            curcurT = contains(stimTable.Remarks,curType) & contains(stimTable.Animal,curAni);
-            if any(curcurT)
-            plot(x, stimTable.ACcomPer(curcurT,:)/1000,'Marker',markers{animal},'Color',curCol ...
-                ,'MarkerFaceColor',curCol)
-            end
-        end
-        hold off
+        plot(x,stimTable.dbSWMeans(curTrials,:),'Color',curCol,'Marker', '.')
 
         annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
-            sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
             'right', 'VerticalAlignment', 'middle');
     end
     ylabel('Time[s]')
-    ylim([40 250])
+    ylim([0 600])
     xticklabels({'Pre','During','Post'})
     xticks(1:3); xlim([0.5 3.5])
 end
 
-sgtitle ('Perios Times According to stim wavelangth and animal')
+sgtitle ('D/B decrease during SWS bouts according to wavelangth ')
 
 % savefigure
-set(gcf,'PaperPosition',[.25 3 8 6])
-saveas (gcf, [analysisFolder filesep 'ACperiodstimColor.pdf']);
-
+set(gcf,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'DBdecreaseAllnigthscolors'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% AC changes 
 
@@ -895,15 +884,14 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 % savefigure
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'ACperiodReds.pdf']);
-%% plot AC - According to color and animal
+%% plot AC period time changes - According to color and animal
 
 animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
-plotColors = {"blue","green","red", [0.5 0.5 0.5]};
+plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
 numAnimal = length(animals);
 numType = length(stimType);
-markers = {'o', 's', 'd', '^', 'v','x'};
 x=1:3;
 %plot Period Times:
 f=figure;
@@ -913,27 +901,22 @@ for type = 1:numType
     %plot the data
     subplot(1,4,type)
     curType = stimWaveL(type);
-    curTrials = contains(stimTable.Remarks,curType);
+    curTrials = contains(stimTable.Remarks,curType)&~contains(stimTable.Remarks,'Ex');
     n = sum(curTrials);
+    N = numel(unique(stimTable.Animal(curTrials)));
     curCol = plotColors{type};
     curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1,'omitnan');
     
     if n>0
 
-        plot(x,curMean,'color',curCol,'LineWidth',4)
+        plot(x,curMean,'Color',curCol,'LineWidth',2,'Marker','.')
         hold on
-        for animal = 1:numAnimal
-            curAni = animals{animal};
-            curcurT = contains(stimTable.Remarks,curType) & contains(stimTable.Animal,curAni);
-            if any(curcurT)
-            plot(x, stimTable.ACcomPer(curcurT,:)/1000,'Marker',markers{animal},'Color',curCol ...
-                ,'MarkerFaceColor',curCol)
-            end
-        end
+        plot(x,stimTable.ACcomPer(curTrials,:)/1000,'Color',curCol,'Marker','.')
+
         hold off
 
         annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
-            sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
             'right', 'VerticalAlignment', 'middle');
     end
     ylabel('Time[s]')
@@ -945,8 +928,9 @@ end
 sgtitle ('Perios Times According to stim wavelangth and animal')
 
 % savefigure
-set(gcf,'PaperPosition',[.25 3 8 6])
-saveas (gcf, [analysisFolder filesep 'ACperiodstimColor.pdf']);
+set(gcf,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'ACperiodstimColor'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% plot P2V Times:
 f=figure;
@@ -1288,7 +1272,8 @@ saveas (gcf, [analysisFolder filesep 'meanNormBDStimSham.pdf']);
 
 %% Get LM DATA
 
-LMdata = getLMData(SA, stimTable,analysisFolder);
+% LMdata = getLMData(SA, stimTable,analysisFolder);
+load([analysisFolder filesep 'LMdata.mat'])
 
 %% check the correlation of mevement with th D/B
 i = 19;
@@ -1312,35 +1297,64 @@ recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 % SA.setCurrentRecording(recName);
 % DB = SA.getDelta2BetaRatio;
 
-curLMwake = LMdata.LMwake(i);
-curLMpre = LMdata.LMpre(i);
-curLMstim = LMdata.LMstimbin{i};
-curLMpost = LMdata.LMpost(i);
+curLMwake = LMData.LMwake(i);
+curLMpre = LMData.LMpre(i);
+curLMstim = LMData.LMstimbin{i};
+curLMpost = LMData.LMpost(i);
 
 figure;
-hold on;
-xWak = 1;
-xBef = 2;
-xdur = linspace(3,5,length(curLMstim));
-xaft = 6;
 
-plot(xWak,curLMwake,'.','Color','black', 'MarkerSize',20);
-plot(xBef,curLMpre,'.','Color','black','MarkerSize',20);
-plot(xdur,curLMstim,'-o','Color','black','MarkerFaceColor','black');
-plot(xaft,curLMpost,'.','Color','black','MarkerSize',20);
-xlim([0.5,xaft+0.5])
-xticklabels({'Wake','sleep Before','during stimulation','sleep After'})
-xticks([xWak,xBef,xdur(round(length(curLMstim)/2)),xaft])
-title('Mean movement during stimulation, PV161,Night18')
-ylabel('Mov/s')
+% Total number of horizontal slots = 5
+% Subplot widths:
+w_small = 0.12;  % Width for small subplots (1/5)
+w_large = 0.39;  % Width for the large subplot (2/5)
+
+h = 0.8;  % Height of all subplots (80% of the figure height)
+bottom = 0.1;  % Distance from the bottom edge of the figure
+
+% Subplot 1: Position manually
+left1 = 0.05;  % Left edge for subplot 1
+a1 = subplot('Position', [left1, bottom, w_small, h]);
+plot(1, curLMwake, '.', 'Color', 'black', 'MarkerSize', 20);
+xticks(1); xticklabels('Wake');
+ylabel('Mov/s');
+
+% Subplot 2: Position manually
+left2 = left1 + w_small + 0.05;  % Space after subplot 1
+a2 = subplot('Position', [left2, bottom, w_small, h]);
+plot(1, curLMpre, '.', 'Color', 'black', 'MarkerSize', 20);
+xticks(1); xticklabels('Sleep before');
+
+% Subplot 3: Larger width
+left3 = left2 + w_small + 0.05;  % Space after subplot 2
+a3 = subplot('Position', [left3, bottom, w_large, h]);
+plot(xdur, curLMstim, '-o', 'Color', 'black', 'MarkerFaceColor', 'black');
+xlabel('Stimulations Avg.: Time from start trial (10 sec)');
+% ylabel('Trials Avg.');
 hold on;
-xline(xdur(1),'Color','r','LineWidth',2);
-xline(xdur(4),'Color','r','LineWidth',2)
+xline(1, 'Color', 'r', 'LineWidth', 2);
+xline(4, 'Color', 'r', 'LineWidth', 2);
 hold off;
-% save fig
-set(gcf,'PaperPosition',[1,5,3.5,4])
-saveas (gcf, [analysisFolder filesep 'lizMovWholeNightPV161N18.pdf']);
 
+% Subplot 4: Position manually
+left4 = left3 + w_large + 0.05;  % Space after subplot 3
+a4 = subplot('Position', [left4, bottom, w_small, h]);
+plot(1, curLMpost, '.', 'Color', 'black', 'MarkerSize', 20);
+xticks(1); xticklabels('Sleep After');
+
+% Link y-axes and set limits
+linkaxes([a1, a2, a3, a4], 'y'); ylim([0 4.5]);
+
+% Add a shared title
+sgtitle('Mean movement during stimulation, PV161, Night18');
+
+
+% save fig
+% set(gcf,'PaperPosition',)
+% saveas (gcf, [analysisFolder filesep 'lizMovWholeNightPV161N18new.pdf']);
+set(gcf,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'lizMovWholeNightPV161N18new'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% PLOT - Movement during stimulation - All Nights 
@@ -1444,9 +1458,9 @@ mPhaseStim.DBs = zeros(height(stimTable),1);
 mPhasePost.movs = zeros(height(stimTable),1);
 mPhasePost.DBs = zeros(height(stimTable),1);
 
-%%
+%% create data set for all nights:
 % for i = 34:height(stimTable)
-i = 22;
+i = 25;
     if isempty(stimTable.LM_DBt{i})
         disp('run Lizard movement on this recording. Moving to next rec.');
         mPhasePre.movs(i) = NaN;
@@ -1726,7 +1740,7 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'HeadliftsAllNights.pdf']);
 
-%%
+%% check out one night: look at the angles over night/ 
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
@@ -1734,6 +1748,3 @@ LM = SA.getLizardMovements;
 [angleF, angleF_t] = getHeadLifts(LM.angles,LM.t_static_ms,100,5);
 figure; plot(angleF_t/(1000*60*60),angleF-90)
 title(recName)
-% angleFlip = 180-angleF;
-% figure; plot(angleF_t/(1000*60*60),angleFlip)
-% title([recName 'fliped'])
