@@ -1,6 +1,5 @@
 %% calculating the zeroGBais and the sensetivity of each accelerometer.
 
-
 AcAn = sleepAnalysis('/media/sil3/Data/accelerometer_calibrations/headtagse_cali_recs/AccRecs.xlsx');
 
 Headstages = unique(AcAn.recTable.Animal);
@@ -18,20 +17,21 @@ for i = 1:numHS
         %get the posotive data:
         curRecPos = ['Animal=' currentHS ',recNames=' axes{j} '_Pos'];
         AcAn.setCurrentRecording(curRecPos);
-        AcAn.currentDataObj.extractMetaData;
+        % AcAn.currentDataObj.extractMetaData;
         curPos = AcAn.currentDataObj.getAnalogData(j,0,6000); 
-        curPosMean = mean(curPos,3);
+        curPosMean = mean(curPos,3)/1000000; % change to Volts
         fprintf('positive mean: %.3f\n',curPosMean)
         
         % get the negative data: 
         curRecNeg = ['Animal=' currentHS ',recNames=' axes{j} '_Neg'];
         AcAn.setCurrentRecording(curRecNeg);
-        AcAn.currentDataObj.extractMetaData;
+        % AcAn.currentDataObj.extractMetaData;
         curNeg = AcAn.currentDataObj.getAnalogData(j,0,6000); 
-        curNegMean = mean(curNeg,3);
+        curNegMean = mean(curNeg,3)/1000000; % change to Volts
         fprintf('negative mean: %.3f\n',curNegMean)
+       
         % calculate sensetivity
-        curSens = (curNegMean - curPosMean) / 2; % volts/g
+        curSens = (curPosMean - curNegMean) / 2; % volts/g
         HSSensitivity(j) = curSens;
         fprintf('sensativity in %i axis: %.3f\n',j, curSens)
         
@@ -46,3 +46,7 @@ for i = 1:numHS
     cali_result.(currentHS).zeroGbais = HSzeroGbias;  
 
 end
+
+
+% save(['/media/sil3/Data/accelerometer_calibrations/headtagse_cali_recs/' ...
+    % 'calibration_results.mat'],'cali_result','-mat','-v7.3')
