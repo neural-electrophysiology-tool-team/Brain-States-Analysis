@@ -435,3 +435,46 @@ clearvars -except stimTable SA analysisFolder LM
 % set(gcf,'PaperPosition',[.25 3 8 6])
 % saveas (gcf, [analysisFolder filesep 'movDurStimsinglenight.pdf']);
 
+%% D/B stim sham old calculation 
+f=figure;
+% set(f, 'Position', [100, 100, 1200, 400]);
+% sgtitle('Max average D/B')
+% for type = 1:numType
+%     h = subplot(1,numType,type);
+%     %plot the data
+%     %curAni = animals{animal};
+%     curType = stimWaveL(type);
+%     curTrials = contains(stimTable.Remarks,curType); %& contains(stimTable.Animal,curAni);
+%     n = sum(curTrials);
+%     N = length(unique(stimTable.Animal(curTrials)));
+%     curCol = plotColors{type};
+%     curMeanStim = mean(stimTable.maxStim(curTrials),1,'omitnan');
+%     curMeanSham = mean(stimTable.maxSham(curTrials),1,'omitnan');
+%     if n>0
+%         x=[1,2];
+%         plot(x,[curMeanSham,curMeanStim],'-o','color',curCol,'LineWidth',3)
+%         hold on
+%         plot(x,[stimTable.maxSham(curTrials), stimTable.maxStim(curTrials)] ...
+%             ,'-o','Color',curCol)
+%           hold off
+%     end
+%     xticks([1, 2]); % Position of the x-ticks
+%     xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
+%     xlim([0.5, 2.5]);
+%     annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
+%         sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%         'right', 'VerticalAlignment', 'middle');
+% 
+%     if n==0
+%         plot(0,0)
+%     end
+% 
+%     % add titles. labels...
+%     ylabel('D2B power')
+%     title(stimType(type))
+%     ylim([0 450])
+% end
+% 
+% % savefigure
+% set(gcf,'PaperPosition',[.25 3 8 6])
+% saveas (gcf, [analysisFolder filesep 'maxStimShamAll1.pdf']);

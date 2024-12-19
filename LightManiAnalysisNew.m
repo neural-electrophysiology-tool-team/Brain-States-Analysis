@@ -2,7 +2,7 @@
 % This is the new version. 
 
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles';
+analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 load([analysisFolder filesep 'stimTable.mat'])
 load([analysisFolder filesep 'LMdata.mat'])
 
@@ -345,7 +345,7 @@ for k = 1:length(spikeRecs)
     end
 end
 
-%% plot all neurons from all nights traces & baseline changes
+%% plot all neurons from all nights traces & baseline changes - TODO
 % ITI vector for all units and ISI vector
 % timings: ITI- interTrial: first 200 s, and last 200 s vs ISI: seconds 2:4 from each stimulation
 
@@ -1174,63 +1174,19 @@ clearvars -except stimTable SA analysisFolder
 animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
-plotColors = {"blue","green","red", [0.5 0.5 0.5]};
+plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
 numAnimal = length(animals);
 numType = length(stimType);
 
-
+% mean normelized change in D/B.
 f=figure;
-set(f, 'Position', [100, 100, 1200, 400]);
-sgtitle('Max average D/B')
-for type = 1:numType
-    h = subplot(1,numType,type);
-    %plot the data
-    %curAni = animals{animal};
-    curType = stimWaveL(type);
-    curTrials = contains(stimTable.Remarks,curType); %& contains(stimTable.Animal,curAni);
-    n = sum(curTrials);
-    N = length(unique(stimTable.Animal(curTrials)));
-    curCol = plotColors{type};
-    curMeanStim = mean(stimTable.maxStim(curTrials),1,'omitnan');
-    curMeanSham = mean(stimTable.maxSham(curTrials),1,'omitnan');
-    if n>0
-        x=[1,2];
-        plot(x,[curMeanSham,curMeanStim],'-o','color',curCol,'LineWidth',3)
-        hold on
-        plot(x,[stimTable.maxSham(curTrials), stimTable.maxStim(curTrials)] ...
-            ,'-o','Color',curCol)
-          hold off
-    end
-    xticks([1, 2]); % Position of the x-ticks
-    xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
-    xlim([0.5, 2.5]);
-    annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
-        sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-        'right', 'VerticalAlignment', 'middle');
-   
-    if n==0
-        plot(0,0)
-    end
-
-    % add titles. labels...
-    ylabel('D2B power')
-    title(stimType(type))
-    ylim([0 450])
-end
-
-% savefigure
-set(gcf,'PaperPosition',[.25 3 8 6])
-saveas (gcf, [analysisFolder filesep 'maxStimShamAll1.pdf']);
-%% mean normelized change in D/B.
-f=figure;
-set(f, 'Position', [100, 100, 1200, 400]);
 sgtitle('mean normelized D/B')
 for type = 1:numType
     h = subplot(1,numType,type);
     %plot the data
     %curAni = animals{animal};
     curType = stimWaveL(type);
-    curTrials = contains(stimTable.Remarks,curType); %& contains(stimTable.Animal,curAni);
+    curTrials = contains(stimTable.Remarks,curType)& ~contains(stimTable.Remarks,'Ex'); %& contains(stimTable.Animal,curAni);
     n = sum(curTrials);
     N = length(unique(stimTable.Animal(curTrials)));
     curCol = plotColors{type};
@@ -1238,10 +1194,10 @@ for type = 1:numType
     curMeanNdbSham = mean(stimTable.dbDiffShamM(curTrials),1,'omitnan');
     if n>0
         x=[1,2];
-        plot(x,[curMeanNdbSham,curMeanNdbStim],'-o','color',curCol,'LineWidth',3)
+        plot(x,[curMeanNdbSham,curMeanNdbStim],'Color',curCol,'LineWidth',3,'Marker','.')
         hold on
         plot(x,[stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)] ...
-            ,'-o','Color',curCol)
+            ,'Color',curCol,'Marker','.')
           hold off
     end
     xticks([1, 2]); % Position of the x-ticks
@@ -1262,8 +1218,10 @@ for type = 1:numType
 end
 
 % savefigure
-set(gcf,'PaperPosition',[.25 3 8 6])
-saveas (gcf, [analysisFolder filesep 'meanNormBDStimSham.pdf']);
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'meanNormBDStimSham'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
 
 % clearvars -except stimTable SA analysisFolder
 
