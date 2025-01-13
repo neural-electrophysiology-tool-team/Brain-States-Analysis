@@ -19,7 +19,8 @@ for i = 1:height(stimTable)
     SA.setCurrentRecording(recName);
     DB = SA.getDelta2BetaRatio;
     LM_DBt = stimTable.LM_DBt{i};
-    AC = SA.getDelta2BetaAC;
+    startSleepT = stimTable.sleepStartT(i);
+    endSleepT = stimTable.sleepEndT(i);
 
     %check if LM analysis was already done for this Rec
     if isempty(LM_DBt)
@@ -31,13 +32,14 @@ for i = 1:height(stimTable)
     end
 
     % stimulations timings:
+    stimStartT = stimTable.stimStartT(i);
+    stimEndT = stimTable.stimEndT(i);
+    
     t_ch = stimTable.StimTrighCh(i);
     T=SA.getDigitalTriggers;
-    stimStartT = T.tTrig{t_ch}(1);
-    stimEndT = T.tTrig{t_ch}(end);
-    firstTrig=T.tTrig{t_ch}(1:8:end-2);
-    endStim=T.tTrig{t_ch}(8:8:end)+400;
-    % stimDuration=(endStim(1)-firstTrig(1));
+    stims = T.tTrig{t_ch};
+    firstTrig=stims(1:8:end-2);
+
 
     % get and save mov for each part
     LMallMean(i) = mean(LM_DBt(LM_DBt<450)); %general mean movement for all night- fo rnorm
@@ -46,20 +48,20 @@ for i = 1:height(stimTable)
     % timeBin = DB.parDBRatio.movWin-DB.parDBRatio.movOLWin;
     win = 60*60*1000; %ms
     p = 5*60*1000; % buffer time between stages
-    if win+p<AC.tStartSleep %make sure it is in the wake time zomd
+    if win+p<startSleepT %make sure it is in the wake time zomd
         wakind = find(DB.t_ms> p & DB.t_ms< p+win);
     else
-        wakind = find(DB.t_ms> p & DB.t_ms < AC.tStartSleep);
+        wakind = find(DB.t_ms> p & DB.t_ms < startSleepT);
     end
     LMwake(i) = mean(LM_DBt(wakind))/LMallMean(i);
 
     befind = find(DB.t_ms>stimStartT-p-win & DB.t_ms<stimStartT-p); % 1 hour before stimulation
     LMpre(i) = mean(LM_DBt(befind))/LMallMean(i);
 
-    if stimEndT +p + win < AC.tEndSleep
+    if stimEndT +p + win < endSleepT
         postind = find(DB.t_ms>stimEndT+p & DB.t_ms<stimEndT+p+win);
     else
-        postind = find(DB.t_ms>stimEndT+p & DB.t_ms<AC.tEndSleep);
+        postind = find(DB.t_ms>stimEndT+p & DB.t_ms<endSleepT);
     end
 
     LMpost(i) = mean(LM_DBt(postind))/LMallMean(i);
@@ -93,10 +95,7 @@ fileName = [analysisFolder filesep 'LMdata.mat'];
 save(fileName,"LMwake","LMpre","LMstim","LMpost","LMallMean",'-mat')
 LMdata = table(LMwake, LMpre, LMstimbin ,LMpost, LMallMean,...
                'VariableNames', {'LMwake', 'LMpre', 'LMstimbin','LMpost','LMallMean'});
-% LMData.LMwake = LMwake
-% LMData.L
-% LMData(:,3) = LMstimbin;
-% LMData(:,4) = {LMpost};
+
 
 save(fileName,"LMdata",'-mat')
 

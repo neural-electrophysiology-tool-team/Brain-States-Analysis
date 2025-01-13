@@ -19,7 +19,9 @@ load([analysisFolder filesep 'LMdata.mat'])
 headstageIDperRec = zeros(height(stimTable),1);
 ZGB = [cali_result.HS2.zeroGbais ; cali_result.HS4.zeroGbais]*1000000;
 Sens = [cali_result.HS2.sensetivity ; cali_result.HS4.sensetivity] *1000000;
-for i = 1:height(stimTable)
+
+for j = 3:height(scaleInd)
+    i = scaleInd(j);
     if stimTable.LizMov(i)==0
         continue
     else
@@ -28,7 +30,7 @@ for i = 1:height(stimTable)
         %try with headstage2:
         SA.getLizardMovements('zeroGBias',ZGB(1,:)','sensitivity',Sens(1,:)','overwrite',1)
         LM = SA.getLizardMovements;
-        plot(LM.angles(3,:))
+        figure; plot(LM.angles(3,:))
 
         % Wait for a key press
         disp('Press "s" or "n".');
@@ -64,5 +66,34 @@ for i = 1:height(stimTable)
         else
             disp('Key not recognized. Please press "s" or "n".');
         end
+    end
+end
+
+
+
+
+%%
+
+%% go over the recordings and plot it with an headstage. 
+headstageIDperRec = zeros(height(stimTable),1);
+ZGB = [cali_result.HS2.zeroGbais ; cali_result.HS4.zeroGbais]*1000000;
+Sens = [cali_result.HS2.sensetivity ; cali_result.HS4.sensetivity] *1000000;
+
+for j = 7:height(scaleInd)
+    i = scaleInd(j);
+    if stimTable.LizMov(i)==0
+        continue
+    else
+        recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+        SA.setCurrentRecording(recName);
+        %try with headstage2:
+        SA.getLizardMovements('zeroGBias',ZGB(1,:)','sensitivity',Sens(1,:)','overwrite',1)
+        LM = SA.getLizardMovements;
+        figure; plot(LM.angles(3,:)); title ('HS2')
+
+        SA.getLizardMovements('zeroGBias',ZGB(2,:)','sensitivity',Sens(2,:)','overwrite',1)
+        LM2 = SA.getLizardMovements;
+        figure;   plot(LM.angles(3,:)); title('HS4')
+         
     end
 end

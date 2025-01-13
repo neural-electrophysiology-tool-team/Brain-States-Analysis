@@ -1,5 +1,17 @@
  % light manipulation left overs
  %stuff i dont need or use for the paper:
+
+
+
+%% get the stim sham for single rec
+SA.setCurrentRecording('Animal=PV162,recNames=Night23');
+getStimSham(SA,11);
+SA.getDelta2BetaRatio('tStart', 0 ,'win',1000*60*60*11);
+SA.getDelta2BetaAC;
+SA.plotDelta2BetaRatio
+SA.plotDelta2BetaAC;
+SA.plotDelta2BetaSlidingAC;
+plotStimSham(SA)
  %% Check for spikes in recording:
 stimTable.spikes = zeros(height(stimTable),1);
 
@@ -632,4 +644,168 @@ xline(xdur(4),'Color','r','LineWidth',2)
 set(gcf,'PaperPosition',[.25 3 8 6])
 saveas (gcf, [analysisFolder filesep 'lizMovAllNights_norm.pdf']);
 
+% clearvars -except stimTable SA analysisFolder
+
+
+%% plots all nights combined:
+
+% STATISTICAL TEST:
+
+[p, tbl, stats] = friedman(headAngAvgTh, 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Example data for three groups
+wakeAng = headAngAvgTh(:,1);
+beforeAng = headAngAvgTh(:,2);
+duringAng = headAngAvgTh(:,3);
+afterAng = headAngAvgTh(:,4);
+
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 4;
+
+% Pairwise Wilcoxon signed-rank tests
+[p_wake_before, ~, stats_wake_before] = signrank(wakeAng, beforeAng);
+[p_before_during, ~, stats_before_during] = signrank(beforeAng, duringAng);
+[p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
+[p_wake_during, ~, stats_wake_during] = signrank(wakeAng, duringAng);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Wake vs Before: p-value = %.4f (Significant if < %.4f)\n', p_wake_before, alpha);
+fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('Wake vs During: p-value = %.4f (Significant if < %.4f)\n', p_wake_during, alpha);
+
+% plot head angles:
+figure;
+x1 = 1:4;
+plot(x1,headAngAvgTh,'Color',[0.5 0.5 0.5],'Marker','.'); hold on;
+plot(x1, mean(headAngAvgTh), 'Color','k','Marker','.','LineWidth',1.5)
+xlim([0.7,4.2]); xticks(x1); xticklabels(["Wake","Sleep","Stim","Sleep after"])
+ylabel('Avg Head Angles (Deg)')
+yline(0,'--','Headstage penpendicular to floor')
+title('Head Angle avg - all')
+n= height(headAngAvgTh);
+N = numel(unique(stimTable.Animal(inds)));
+
+
+annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
+    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.55, 0.25, 0.1], 'String', ...
+    sprintf('wake-before p = %.4f (Significant if < %.4f)', p_wake_before, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.15, 0.2, 0.25, 0.1], 'String', ...
+    sprintf('before-during p-value = %.4f ', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('during after p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
+    sprintf('wake during p-value = %.4f', p_wake_during), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+
+% savefigure
+set(gcf,'PaperPositionMode','auto')
+saveas (gcf, [analysisFolder filesep 'HeadliftsAllNights.pdf']);
+
+
+%% plot stim according to animal and color
+% assuming the table is in the workspace
+% load([analysisFolder filesep 'stimTable.mat'])
+
+animals = unique(stimTable.Animal);
+stimType = ["Blue","Green","Red","LED"];
+stimWaveL = ["47","532","635","LED"];
+plotColors = {"blue","green","red", [0.5 0.5 0.5]};
+numAnimal = length(animals);
+numType = length(stimType);
+
+times = stimTable.times{1};
+pre=50000;
+% STIM DUTRATION NEEDS A THINK!!!!!!!
+mStimDur = mean(stimTable.stimDuration(3:end));
+post=100000;
+
+f=figure;
+set(f, 'Position', [100, 100, 1200, 800]);
+
+ylims = [0 300];
+for animal = 1:numAnimal
+    for type = 1:numType
+        h= subplot(numAnimal,numType, (animal-1)*numType+type);
+        
+        %plot the data
+        curAni = animals{animal};
+        curType = stimWaveL(type);
+        curTrials = contains(stimTable.Remarks,curType) & contains(stimTable.Animal,curAni);
+        n = sum(curTrials);
+        curCol = plotColors{type};
+        curMean = mean(cell2mat(stimTable.StimAvg(curTrials)),1,'omitnan');
+        
+        
+        
+        
+        if n>0
+            plot(times,curMean,'color',curCol,'LineWidth',4)
+            hold on
+            for i = 1:height(stimTable)
+                if curTrials(i) && stimTable.Mani(i) == 1
+                    plot(times,stimTable.StimAvg{i},'Color',curCol)
+                end
+                if curTrials(i) && stimTable.Mani(i) == 2
+                    plot(times,stimTable.StimAvg{i},'Color',curCol,'LineStyle','--')
+                end
+
+            end
+
+            xline(pre/1000, 'LineWidth',1,'Color','black')
+            xline((pre+mStimDur)/1000,'LineWidth',1,'Color','black')
+            hold off
+            
+            annotation('textbox', [.095 + 0.195*type, 0.98 - 0.142*animal, 0.03, 0.1], 'String', ...
+                sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+                'right', 'VerticalAlignment', 'middle');
+
+        end
+        if n==0
+            plot(0,0)
+        end
+
+        % add titles. labels...
+        ylim(ylims);xlabel('Time[S]'), ylabel('D2B power')
+        if animal == 1
+            title(stimType(type))
+        end
+%         legend()
+      
+        pos = get(h, 'Position');
+        pos(1) = pos(1) + 0.03; % Shift subplot right to make space for row titles
+        set(h, 'Position', pos);
+        
+        % Add row titles using text function
+        if type == 1
+            ypos = (ylims(1) + ylims(2)) / 2; % Center vertically
+
+            annotation('textbox', [0.1, 0.98 - 0.142*animal, 0.03, 0.1], 'String', animals{animal}, ...
+                'EdgeColor', 'none', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'middle', ...
+                'FontWeight', 'bold');
+        
+        end
+    end 
+end
+
+
+% savefigure
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas (gcf, [analysisFolder filesep 'animal_type.pdf']);
 % clearvars -except stimTable SA analysisFolder
