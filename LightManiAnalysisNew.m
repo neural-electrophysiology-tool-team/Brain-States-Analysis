@@ -1107,8 +1107,9 @@ for type = 1:numType
         ExTrials = contains(stimTable.Remarks,curType) & ...
                 contains(stimTable.Remarks,'Ex') &...
                 all(~isnan(stimTable.ACcomPer),2);
-        plot(x,stimTable.ACcomPer(ExTrials,:)/1000,'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
-
+        if sum(ExTrials) >0 
+            plot(x,stimTable.ACcomPer(ExTrials,:)/1000,'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
+        end
         hold off
 
         annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
@@ -1342,7 +1343,7 @@ for type = 1:numType
     sprintf('Wilcoxon test p =%.3f',pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
     
-    ylim([-55 160])
+    ylim([-40 160])
 
     if n==0
         plot(0,0)
@@ -1450,7 +1451,85 @@ sgtitle('Mean movement during stimulation, PV161, Night18');
 set(gcf,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'lizMovWholeNightPV161N18new'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+%% plot head movements - Red nights!
 
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ...
+    ~contains(stimTable.Remarks,'Ex') & ...
+     ~any(isempty(stimTable.LM_DBt), 2) &...
+     ~cellfun(@isempty, stimTable.LM_DBt);
+
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+
+LMpre = LMData.LMpre(curTrials, :);
+LMwake = LMData.LMwake(curTrials, :);
+LMpost = LMData.LMpost(curTrials, :);
+LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
+LMstimbintrialM = mean(LMstimbinM(curTrials),2); % mean for each night
+
+
+LMplotData = [LMwake, LMpre, LMstimbintrialM, LMpost];
+
+% check the statistics:
+% Assuming data in columns where each row is a subject and each column is a timepoint
+
+[p, tbl, stats] = friedman(LMplotData, 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 6;
+% Pairwise Wilcoxon signed-rank tests
+[p_wake_pre, ~, stats_wake_pre] = signrank(LMwake, LMpre);
+[p_wake_during, ~, stats_wake_during] = signrank(LMwake, LMstimbintrialM);
+[p_wake_after, ~, stats_wake_after] = signrank(LMwake, LMpost);
+[p_pre_during, ~, stats_pre_during] = signrank(LMstimbintrialM,LMpre);
+[p_during_after, ~, stats_during_after] = signrank(LMstimbintrialM, LMpost);
+[p_pre_after, ~, stats_pre_after] = signrank(LMpre, LMpost);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Wake vs Pre: p-value = %.5f (Significant if < %.4f)\n', p_wake_pre, alpha);
+fprintf('Wake vs During: p-value = %.5f (Significant if < %.4f)\n', p_wake_during, alpha);
+fprintf('Wake vs Post: p-value = %.5f (Significant if < %.4f)\n', p_wake_after, alpha);
+fprintf('During vs Pre: p-value = %.5f (Significant if < %.4f)\n', p_pre_during, alpha);
+fprintf('During vs Post: p-value = %.5f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('Pre vs Post: p-value = %.5f (Significant if < %.4f)\n', p_pre_after, alpha);
+
+fileName = [analysisFolder filesep 'postHocPvalLMRedNights.mat'];
+save(fileName, 'alpha','p_wake_pre','p_wake_during','p_wake_after','p_pre_during', ...
+    'p_during_after','p_pre_after')
+
+
+fLMr = figure;
+set(fLMr, 'PaperPositionMode','auto')
+Groups = ["Wake","Pre","During Stim","Post"];
+% colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+% violin(LMplotData, 'xlabel',Groups, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[]);
+
+x = [ones(length(LMplotData),1) 2*ones(length(LMplotData),1) 3*ones(length(LMplotData),1) 4*ones(length(LMplotData),1)];
+swarmchart(x,LMplotData,15,colors,'filled','XJitterWidth',0.1);
+xticks(1:4), xticklabels(Groups); xlim([0.7 4.3]);
+ylim([0 5.5]);
+
+annotation('textbox', [0.4, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.5, 0.65, 0.3, 0.1], 'String', ...
+    sprintf(['Wake vs Pre: p-value = %.5f (Significant if < %.4f)\nWake vs During: ' ...
+    'p-value = %.5f \nWake vs Post: p-value = %.5f \nDuring vs Pre: p-value = ' ...
+    '%.5f \nDuring vs Post: p-value = %.5f \nPre vs Post: p-value = %.5f \n'],...
+    p_wake_pre, alpha,p_wake_during,p_wake_after,p_pre_during, p_during_after,p_pre_after), ...
+    'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% savefigure
+set(fLMr,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'LMRednights2'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+% clearvars -except stimTable SA analysisFolder LMdata
 
 
 %% plot head movements - Red nights!
@@ -1506,11 +1585,15 @@ save(fileName, 'alpha','p_wake_pre','p_wake_during','p_wake_after','p_pre_during
 fLMr = figure;
 set(fLMr, 'PaperPositionMode','auto')
 Groups = ["Wake","Pre","During Stim","Post"];
-colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+% colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
 % violin(LMplotData, 'xlabel',Groups, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[]);
 
-x = [ones(length(LMplotData),1) 2*ones(length(LMplotData),1) 3*ones(length(LMplotData),1) 4*ones(length(LMplotData),1)];
-swarmchart(x,LMplotData,15,colors,'filled','XJitterWidth',0.1);
+ LMplotData = [LMwake; LMpre; LMstimbintrialM; LMpost];
+ x = [ones(length(LMwake),1); 2*ones(length(LMwake),1);  3*ones(length(LMwake),1); 4*ones(length(LMwake),1)];
+ [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+ curColorMat = animalsColors(animalIndices, :);
+ curColorMatRe = repmat(curColorMat,4,1);
+ swarmchart(x,LMplotData,15,curColorMatRe,'filled','XJitterWidth',0.1);
 xticks(1:4), xticklabels(Groups); xlim([0.7 4.3]);
 ylim([0 5.5]);
 
