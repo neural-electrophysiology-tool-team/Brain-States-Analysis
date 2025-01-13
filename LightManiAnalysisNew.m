@@ -719,6 +719,8 @@ set(fdbDec,'PaperPositionMode','auto');
 fileName=[SA.currentPlotFolder filesep 'DBSWSpreStimPost'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
+fileName=[analysisFolder filesep 'DBSWSpreStimPostOneNight'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 %% plot all nights: - only red
 
 type = 'Red';
@@ -1255,9 +1257,9 @@ end
 plot(x,[curMeanSham,curMeanStim],'color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 hold off
 
-grid on
+
 ylim([-40 120])
-xlim([0.5 2.5]);
+xlim([0.9 2.1]);
 xticks([1, 2]); % Position of the x-ticks
 xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
 annotation('textbox', [0.85, 0.85, 0.03, 0.1], 'String', ...
@@ -1386,8 +1388,8 @@ plot(LM_DBt,'k')
 % for one night:
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-% SA.setCurrentRecording(recName);
-% DB = SA.getDelta2BetaRatio;
+SA.setCurrentRecording(recName);
+DB = SA.getDelta2BetaRatio;
 
 curLMwake = LMData.LMwake(i);
 curLMpre = LMData.LMpre(i);
@@ -1420,7 +1422,8 @@ xticks(1); xticklabels('Sleep before');
 % Subplot 3: Larger width
 left3 = left2 + w_small + 0.05;  % Space after subplot 2
 a3 = subplot('Position', [left3, bottom, w_large, h]);
-plot(xdur, curLMstim, '-o', 'Color', 'black', 'MarkerFaceColor', 'black');
+xdur = 1:length(curLMstim);
+plot(xdur, curLMstim, '-o', 'Color', 'black', 'Marker','.','MarkerSize',20);
 xlabel('Stimulations Avg.: Time from start trial (10 sec)');
 % ylabel('Trials Avg.');
 hold on;
@@ -1435,7 +1438,7 @@ plot(1, curLMpost, '.', 'Color', 'black', 'MarkerSize', 20);
 xticks(1); xticklabels('Sleep After');
 
 % Link y-axes and set limits
-linkaxes([a1, a2, a3, a4], 'y'); ylim([0 4.5]);
+linkaxes([a1, a2, a3, a4], 'y'); ylim([0 3.5]);
 
 % Add a shared title
 sgtitle('Mean movement during stimulation, PV161, Night18');
