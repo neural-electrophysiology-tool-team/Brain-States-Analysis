@@ -255,7 +255,7 @@ dbTmpC = DB.bufferedDelta2BetaRatio(pTmpC);
 [lfpC,lfp_tC] = SA.currentDataObj.getData(ch,tStart,win);
 % plot:
 f = figure;
-set(f, 'Position', [100, 100, 1200, 400]);
+set(f, 'Position', [100, 100, 600, 100]);
 hold on
 yyaxis left
 plot(lfp_tC/1000,squeeze(lfpC),'k'); hold on;
@@ -269,18 +269,14 @@ xlabel('Time[s]')
 ax = gca;
 ax.YAxis(1).Color = 'k';
 ax.YAxis(2).Color = 'blue';
-leftYLim = ax.YAxis(1).Limits; % Get left y-axis limits
-ax.YAxis(2).Limits = [leftYLim(1), 700];
-% linkaxes([ax.YAxis(1),ax.YAxis(2)],'y')
-% Link the y-axis limits
-% addlistener(ax, 'YLim', 'PostSet', @(src, event) syncYLim(ax));
+ax.YAxis(1).Limits = [-500 500]; % Get left y-axis limits
+ax.YAxis(2).Limits = [-800, 800];
 
-% Function to synchronize the y-axis limits
-% function syncYLim(ax)
-    % leftYLim = ax.YAxis(1).Limits; % Get left y-axis limits
-    % ax.YAxis(2).Limits = leftYLim; % Set right y-axis limits to match
-% end
-
+% saveas (gcf, [analysisFolder filesep sprintf('singleTrialRasterPV161N13t%i.pdf',j)]);
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'cleanTraces'];
+print(fileName,'-dpdf','-r300');
+% saveas(f,fileName)
 
 %% plot plot trace + raster:
 
@@ -319,6 +315,7 @@ ax.YAxis(2).Limits = [leftYLim(1), 700];
     plot(dbTmp,'Color','b','LineWidth',2)
     sgtitle(sprintf('Trial num: %i',j));
     hold off;
+
 
     % Plot RASTER!! spikes for each cluster, for each trig time!
     h2 = subplot(2,1,2);
@@ -1411,8 +1408,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Get LM DATA
 
-LMData = getLMData(SA, stimTable,analysisFolder);
-% load([analysisFolder filesep 'LMdata.mat'])
+% LMData = getLMData(SA, stimTable,analysisFolder);
+load([analysisFolder filesep 'LMdata.mat'])
 
 %% check the correlation of mevement with th D/B
 i = 19;
@@ -1505,6 +1502,7 @@ curTrials = contains(stimTable.Remarks,wavelength) & ...
 
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
+colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
 
 LMpre = LMData.LMpre(curTrials, :);
 LMwake = LMData.LMwake(curTrials, :);
@@ -1637,7 +1635,7 @@ Groups = ["Wake","Pre","During Stim","Post"];
  [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
  curColorMat = animalsColors(animalIndices, :);
  curColorMatRe = repmat(curColorMat,4,1);
- swarmchart(x,LMplotData,15,curColorMatRe,'filled','XJitterWidth',0.1);
+ swarmchart(x,LMplotData,15,curColorMatRe,'filled','XJitterWidth',0.5);
 xticks(1:4), xticklabels(Groups); xlim([0.7 4.3]);
 ylim([0 5.5]);
 
@@ -1654,7 +1652,7 @@ annotation('textbox', [0.5, 0.65, 0.3, 0.1], 'String', ...
     'right', 'VerticalAlignment', 'middle');
 
 % savefigure
-set(fLMr,'PaperPositionMode','auto');
+set(fLMr,'PaperPosition',[100 100 200 100]);
 fileName=[analysisFolder filesep 'LMRednights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 

@@ -1408,8 +1408,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Get LM DATA
 
-LMData = getLMData(SA, stimTable,analysisFolder);
-% load([analysisFolder filesep 'LMdata.mat'])
+% LMData = getLMData(SA, stimTable,analysisFolder);
+load([analysisFolder filesep 'LMdata.mat'])
 
 %% check the correlation of mevement with th D/B
 i = 19;
@@ -1502,6 +1502,7 @@ curTrials = contains(stimTable.Remarks,wavelength) & ...
 
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
+colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
 
 LMpre = LMData.LMpre(curTrials, :);
 LMwake = LMData.LMwake(curTrials, :);
@@ -1634,9 +1635,9 @@ Groups = ["Wake","Pre","During Stim","Post"];
  [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
  curColorMat = animalsColors(animalIndices, :);
  curColorMatRe = repmat(curColorMat,4,1);
- swarmchart(x,LMplotData,15,curColorMatRe,'filled','XJitterWidth',0.1);
+ swarmchart(x,LMplotData,15,curColorMatRe,'filled','XJitterWidth',0.5);
 xticks(1:4), xticklabels(Groups); xlim([0.7 4.3]);
-ylim([0 5.5]);
+ylim([0 6]);
 
 annotation('textbox', [0.4, 0.85, 0.03, 0.1], 'String', ...
     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
@@ -1651,7 +1652,7 @@ annotation('textbox', [0.5, 0.65, 0.3, 0.1], 'String', ...
     'right', 'VerticalAlignment', 'middle');
 
 % savefigure
-set(fLMr,'PaperPositionMode','auto');
+set(fLMr,'PaperPosition',[1 1 3 2]);
 fileName=[analysisFolder filesep 'LMRednights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
