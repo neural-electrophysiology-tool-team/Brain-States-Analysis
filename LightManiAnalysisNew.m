@@ -2132,13 +2132,14 @@ numParts = numel(parts);
 
 
 % plot one liner:
-figure;
-plot(angleF_t/(1000*60*60), angleF,'k');
+f = figure;
+plot(angleF_t/(1000*60*60), angleF-90,'k');
 xlabel('Time (hours)'); ylabel('Head Angle')
 xline(stimTable.sleepStartT(i)/(1000*60*60),'b')
 xline(stimTable.stimStartT(i)/(1000*60*60),'r')
 xline(stimTable.stimEndT(i)/(1000*60*60),'Color','r');
 xline(stimTable.sleepEndT(i)/(1000*60*60),'b')
+yline(0,'--','color',[0.5 0.5 0.5])
 legend({'';'Start Sleep';'Start Stimulations';'End Stimulations';'End Sleep'})
 
 %save figure:
