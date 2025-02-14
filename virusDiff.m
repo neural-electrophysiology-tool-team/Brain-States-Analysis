@@ -42,7 +42,7 @@ hold on
 h2 = plot(x,[stimTable.dbDiffShamM(ViTrials) stimTable.dbDiffStimM(ViTrials)], ...
     'Marker','.','LineStyle','--','Color','b');
 xlim([0.9 2.1])
-xticks([x]);xticklabels(["Stim","Sham"])
+xticks([x]);xticklabels(["Sham","Stim"])
 
 legend([h1(1), h2(1)],"Animals not injected","Animals injected with ChR2")
 
@@ -56,8 +56,100 @@ title({'reaction to stimulation in the D/B changes','across blue stimulations ni
 
 % save figue
 
-set(f,'PaperPositionMode','auto');
+set(f,'PaperPosition',[1 1 2 3]);
 fileName=[analysisFolder filesep 'virusChangeStimShamBlue'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+
+%% Traces of stimulations with virus:
+
+i = 6;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+DB = SA.getDelta2BetaRatio;
+
+% stimulations timings:
+t_ch = stimTable.StimTrighCh(i);
+T=SA.getDigitalTriggers;
+stims = T.tTrig{t_ch};
+stimStartT = stimTable.stimStartT(i);
+stimEndT = stimTable.stimEndT(i);
+firstTrig=stims(1:8:end-2);
+endStim=stims(8:8:end)+400;
+trial = reshape(stims,[8,length(stims)/8])';
+
+pre=20000;
+post=100000;
+ch = 17;
+% get the raw data and LFP:
+% for j = 10:40
+ j = 39;
+ VipTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
+ VidbTmp=DB.bufferedDelta2BetaRatio(VipTmp);
+ [vlfp,vlfp_t] = SA.currentDataObj.getData(ch,firstTrig(j)-pre,pre+post);
+    
+
+  f = figure;
+    h1 = subplot(2,1,1);
+    % set(f, 'Position', [100, 100, 1200, 400]);
+    % yyaxis left
+    plot(vlfp_t/1000,squeeze(vlfp),'k'); hold on;
+    curstims = trial(j,:) -trial(j,1) +pre ;
+    xline(curstims/1000,'r','LineWidth',1.5)
+    % yyaxis right
+    plot(VidbTmp,'Color','b','LineWidth',2)
+    title('With virus');
+    % sgtitle(sprintf('Trial num: %i',j))
+    hold off;
+% end
+
+% Traces of stimulations without virus:
+
+i = 9;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+DB = SA.getDelta2BetaRatio;
+
+% stimulations timings:
+t_ch = stimTable.StimTrighCh(i);
+T=SA.getDigitalTriggers;
+stims = T.tTrig{t_ch};
+stimStartT = stimTable.stimStartT(i);
+stimEndT = stimTable.stimEndT(i);
+firstTrig=stims(1:8:end-2);
+endStim=stims(8:8:end)+400;
+trial = reshape(stims,[8,length(stims)/8])';
+
+pre=20000;
+post=100000;
+ch = 17;
+
+% get the raw data and LFP:
+% for j = 10:40
+ j = 28;
+ pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
+ dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
+ [lfp,lfp_t] = SA.currentDataObj.getData(ch,firstTrig(j)-pre,pre+post);
+    
+  % f = figure;
+    h2 = subplot(2,1,2);
+    % set(f, 'Position', [100, 100, 1200, 400]);
+    % yyaxis left
+    plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
+    curstims = trial(j,:) -trial(j,1) +pre ;
+    xline(curstims/1000,'r','LineWidth',1.5)
+    % yyaxis right
+    plot(dbTmp,'Color','b','LineWidth',2)
+    title('Without Virus');
+    % sgtitle(sprintf('W/O Trial num:%i',j))
+    hold off;
+%end
+
+
+%save figue
+set(f,'PaperPosition', [1 1 4 2.5]);
+fileName=[analysisFolder filesep 'tracesVirusNovirus'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Third eye:

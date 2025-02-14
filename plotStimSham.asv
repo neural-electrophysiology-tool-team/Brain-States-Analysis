@@ -7,11 +7,10 @@ function plotStimSham(SA)
     SA.checkFileRecording(stimShamFile,'stim Sham file missing, please first run getStimSham');
     load(stimShamFile); %load data
     
-    trialsham = height(StimDBSham)-70+1;
-    
+    trialsham = hieght()
     colorLim=[0 600];
     f=figure;
-    subplot(4,2,[1:2:6]);imagesc(StimDBSham(trialsham:end,:),colorLim);ylabel('Trial #');title('Sham');hold on;set(gca,'XTick',[]);
+    subplot(4,2,[1:2:6]);imagesc(StimDBSham(,colorLim);ylabel('Trial #');title('Sham');hold on;set(gca,'XTick',[]);
     cb=colorbar('Position',[0.47 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
     line([pre/1000 pre/1000],ylim,'color','r');
     subplot(4,2,7);plot(ts-pre/1000,nanmean(StimDBSham));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);

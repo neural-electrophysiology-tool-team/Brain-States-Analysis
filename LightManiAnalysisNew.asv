@@ -179,7 +179,10 @@ for i = 1:height(stimTable)
     % 
     stimStartT = stimTable.stimStartT(i);
     stimEndT = stimTable.stimEndT(i);
-
+    % t_ch = stimTable.StimTrighCh(i);
+    % T=SA.getDigitalTriggers;
+    % stimStartT = T.tTrig{t_ch}(1);
+    % stimEndT = T.tTrig{t_ch}(end);
 
 
     p = 30*60*1000; %some time diff for the cycle to change.
