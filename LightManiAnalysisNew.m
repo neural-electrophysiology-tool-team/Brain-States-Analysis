@@ -237,57 +237,6 @@ stimTable.dbSWMeans = dbSWMeans;
 stimTable.dbMeans = dbMeans;
 stimTable.betaMeans = betaMeans;
 
-%% get the d/b +beta during whole cycle:
-
-for i = 1:height(stimTable)
-% i =22 ;
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);
-    DB = SA.getDelta2BetaRatio;
-
-
-    stimStartT = T.tTrig{t_ch}(1);
-    stimEndT = T.tTrig{t_ch}(end);
-
-    p = 30*60*1000; %some time diff for the cycle to change.
-    ACwin = 2*60*60*1000; % 4 hrs in ms
-    cycWin = 2*60*60*1000;
-    ACStartTimes = [stimStartT-ACwin,stimStartT+p,stimEndT+p];
-    partsTimings = [stimStartT-cycWin,stimStartT+p,stimEndT+p];
-
-    dbSW.Pre = [];
-    dbSW.Stim = [];
-    dbSW.Post = [];
-    parts = fieldnames(dbSW);  % Get a cell array of field names
-    
-    for j=1:numel(parts)
-        %calculate AC and SC for this part:
-        part = parts{j};
-        SA.getDelta2BetaAC('tStart',ACStartTimes(j),'win',ACwin,'overwrite',1);
-        
-        SA.getSlowCycles('excludeIrregularCycles',0,'overwrite',1)
-        SC = SA.getSlowCycles;
-        
-        curtimings = [partsTimings(j) partsTimings(j)+cycWin];
-        pCyc = find(SC.TcycleOnset>= curtimings(1)& SC.TcycleOnset<=curtimings(2));
-        curCyclesOns = SC.TcycleOnset(pCyc);
-        curCyclesMids = SC.TcycleMid(pCyc);
-
-        for k=1:numel(curCyclesOns)
-        %get the sws timings and the DB for them:
-            pTmp = find(DB.t_ms>curCyclesOns(k) & DB.t_ms<curCyclesMids(k));
-            dbSW.(part)(k) = mean(DB.bufferedDelta2BetaRatio(pTmp));
-        end
-    end
-    
-    dbMeans(i,:) = [mean(dbSW.Pre,'omitnan') mean(dbSW.Stim,'omitnan') mean(dbSW.Post,'omitnan')];
-    %save in stimTable
-    stimTable.dbSW(i) = dbSW;
-end
-
-stimTable.dbSWMeans = dbMeans;
-
-
 
 %% save stimTable
 save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
