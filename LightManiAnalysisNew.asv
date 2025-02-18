@@ -169,7 +169,7 @@ end
 dbSWMeans = zeros([height(stimTable),3]);
 dbMeans = zeros([height(stimTable),3]);
 betaMeans = zeros([height(stimTable),3]);
-
+betaSWMeans = zeros([height(stimTable),3]);
 
 for i = 1:height(stimTable)
 % i =22 ;
@@ -179,11 +179,6 @@ for i = 1:height(stimTable)
     % 
     stimStartT = stimTable.stimStartT(i);
     stimEndT = stimTable.stimEndT(i);
-    % t_ch = stimTable.StimTrighCh(i);
-    % T=SA.getDigitalTriggers;
-    % stimStartT = T.tTrig{t_ch}(1);
-    % stimEndT = T.tTrig{t_ch}(end);
-
 
     p = 30*60*1000; %some time diff for the cycle to change.
     ACwin = 2*60*60*1000; % 4 hrs in ms
@@ -194,6 +189,7 @@ for i = 1:height(stimTable)
     dbSW = struct('Pre',[],'Stim',[],'Post',[]);
     dbFull = struct('Pre',[],'Stim',[],'Post',[]);
     betaFull = struct('Pre',[],'Stim',[],'Post',[]);
+    betaSW = struct('Pre',[],'Stim',[],'Post',[]);
 
     parts = fieldnames(dbSW);  % Get a cell array of field names
     
@@ -217,6 +213,7 @@ for i = 1:height(stimTable)
         %get the sws timings and the DB for them:
             pTmp = find(DB.t_ms>curCyclesOns(k) & DB.t_ms<curCyclesMids(k));
             dbSW.(part)(k) = mean(DB.bufferedDelta2BetaRatio(pTmp));
+            betaSW.(part)(k) = mean(DB.bufferedBetaRatio(pTmp));
         %get the full cycles for db and betta
             pTmpF = find(DB.t_ms>curCyclesOns(k) & DB.t_ms<curCyclrsOffs(k));
             dbFull.(part)(k) = mean(DB.bufferedDelta2BetaRatio(pTmpF));
@@ -229,67 +226,18 @@ for i = 1:height(stimTable)
     dbSWMeans(i,:) = [mean(dbSW.Pre,'omitnan') mean(dbSW.Stim,'omitnan') mean(dbSW.Post,'omitnan')];
     dbMeans(i,:) = [mean(dbFull.Pre,'omitnan') mean(dbFull.Stim,'omitnan') mean(dbFull.Post,'omitnan')];
     betaMeans(i,:) = [mean(betaFull.Pre,'omitnan') mean(betaFull.Stim,'omitnan') mean(betaFull.Post,'omitnan')];
+    betaSWMeans(i,:) = [mean(betaSW.Pre,'omitnan') mean(betaSW.Stim,'omitnan') mean(betaSW.Post,'omitnan')];
     %save in stimTable
     stimTable.dbSW(i) = dbSW;
     stimTable.dbFull(i) = dbFull;
     stimTable.betaFull(i) = betaFull;
-
+    stimTable.betaSW(i) = betaSW;
 end
 
 stimTable.dbSWMeans = dbSWMeans;
 stimTable.dbMeans = dbMeans;
 stimTable.betaMeans = betaMeans;
-
-%% get the d/b +beta during whole cycle:
-
-for i = 1:height(stimTable)
-% i =22 ;
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);
-    DB = SA.getDelta2BetaRatio;
-
-
-    stimStartT = T.tTrig{t_ch}(1);
-    stimEndT = T.tTrig{t_ch}(end);
-
-    p = 30*60*1000; %some time diff for the cycle to change.
-    ACwin = 2*60*60*1000; % 4 hrs in ms
-    cycWin = 2*60*60*1000;
-    ACStartTimes = [stimStartT-ACwin,stimStartT+p,stimEndT+p];
-    partsTimings = [stimStartT-cycWin,stimStartT+p,stimEndT+p];
-
-    dbSW.Pre = [];
-    dbSW.Stim = [];
-    dbSW.Post = [];
-    parts = fieldnames(dbSW);  % Get a cell array of field names
-    
-    for j=1:numel(parts)
-        %calculate AC and SC for this part:
-        part = parts{j};
-        SA.getDelta2BetaAC('tStart',ACStartTimes(j),'win',ACwin,'overwrite',1);
-        
-        SA.getSlowCycles('excludeIrregularCycles',0,'overwrite',1)
-        SC = SA.getSlowCycles;
-        
-        curtimings = [partsTimings(j) partsTimings(j)+cycWin];
-        pCyc = find(SC.TcycleOnset>= curtimings(1)& SC.TcycleOnset<=curtimings(2));
-        curCyclesOns = SC.TcycleOnset(pCyc);
-        curCyclesMids = SC.TcycleMid(pCyc);
-
-        for k=1:numel(curCyclesOns)
-        %get the sws timings and the DB for them:
-            pTmp = find(DB.t_ms>curCyclesOns(k) & DB.t_ms<curCyclesMids(k));
-            dbSW.(part)(k) = mean(DB.bufferedDelta2BetaRatio(pTmp));
-        end
-    end
-    
-    dbMeans(i,:) = [mean(dbSW.Pre,'omitnan') mean(dbSW.Stim,'omitnan') mean(dbSW.Post,'omitnan')];
-    %save in stimTable
-    stimTable.dbSW(i) = dbSW;
-end
-
-stimTable.dbSWMeans = dbMeans;
-
+stimTable.betaSWMeans = betaSWMeans;
 
 
 %% save stimTable
@@ -823,7 +771,7 @@ colorswarm = [repmat([0.2, 0.6, 0.8;], length(stimTable.dbSW(i).Pre), 1);  % Red
     repmat([0.9, 0.4, 0.3], length(stimTable.dbSW(i).Stim), 1);  % Green for Array 2
     repmat([0.5, 0.8, 0.5], length(stimTable.dbSW(i).Post), 1)]; % Blue for Array 3
 swarmchart(xswarm,yswarm,20,colorswarm,"filled",'o','XJitterWidth',0.3)
-ylabel('D/B power during SWS bouts')
+ylabel('D/B power in SWS bouts')
 ylim([0 450])
 set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
 title('D/B power during SWS bouts - one night')
@@ -907,7 +855,7 @@ curData = stimTable.dbSWMeans(curTrials,:);
 % cleanDBSW = bdSWDataStat(~any(isnan(bdSWDataStat), 2), :);
 % n=height(cleanDBSW);
 
-[p, tbl, stats] = friedman(curData, 1); % Here, 1 indicates within-subjects design
+[p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
 fprintf('p-value for freidman ANOVA test: %.5f\n',p)
 % p-valure is very low, post hoc:
 % Example data for three groups
@@ -970,7 +918,7 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 
 % savefigure
 set(fdb,'PaperPositionMode','auto');
-fileName=[analysisFolder filesep 'DBSWS'];
+fileName=[analysisFolder filesep 'DBSWSredNights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
  %% plot D/B decrease - all nights
 
