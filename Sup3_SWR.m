@@ -1,81 +1,42 @@
 %% sup 3 - SWR:
 
 %% plot all raw traces, 1 nights:
-% recNums = [5 17 19 26 37]; %one for each animal. 149 159 161 157 162 correpondingly.
-% animals = ["PV149","PV159","PV161","PV157","PV162"];
-recNums = [27 38 51];
-animals = ["157","162","126"];
 
-figure;
-for j=1:3
-    i = recNums(j);
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);
+i = 22;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
     
-    % get the stimualtions time stamps:
-    t_ch = stimTable.StimTrighCh(i);
-    T=SA.getDigitalTriggers;
-    stims = T.tTrig{t_ch}; %stimulations timimng in ms
-    % first_stims = stims(1:8:end-2);
+% get the stimualtions time stamps:
+t_ch = stimTable.StimTrighCh(i);
+T=SA.getDigitalTriggers;
+stims = T.tTrig{t_ch}; %stimulations timimng in ms
     
-    % get the raw data for the second around each stim:
-    pre = 200;
-    post = 1000;
-    [mV, mV_t] = SA.currentDataObj.getData(SA.recTable.defaulLFPCh(SA.currentPRec),stims-pre,(pre+post));
-    % try abs for all data:
-    mVa = abs(mV);
+% get the raw data for the second around each stim:
+pre = 200;
+post = 1000;
+[mV, mV_t] = SA.currentDataObj.getData(SA.recTable.defaulLFPCh(SA.currentPRec),stims-pre,(pre+post));
+% try abs for all data:
+% mVa = abs(mV);
 
-    % plot
-    subplot(3,1,j)
-   
-    x = linspace(-pre,post,length(mV_t));
-    plot(x,squeeze(mVa),'Color',[0.7 0.7 0.7])
-    hold on
-    plot(x,mean(squeeze(mVa),1),'Color','k','LineWidth',2)
-    ylims = [0 300];
-    ylim(ylims)
-    title(animals(j))
-    x_shade = [0 200 200 0];  % X-coordinates of the shaded region
-    y_shade = [ylims(1) ylims(1) ylims(2) ylims(2)]; % Y-coordinates covering the full y-range
-    patch(x_shade, y_shade, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
-    xlabel('Time(ms)');ylabel('mV')
+% plot
+fraw = figure;
+x = linspace(-pre,post,length(mV_t));
+plot(x,squeeze(mV),'Color',[0.7 0.7 0.7])
+hold on
+plot(x,mean(squeeze(mV),1),'Color','k','LineWidth',2)
+ylims =[-1100 500];
+ylim(ylims)
+% title('Raw traces for 1 night')
+x_shade = [0 200 200 0];  % X-coordinates of the shaded region
+y_shade = [ylims(1) ylims(1) ylims(2) ylims(2)]; % Y-coordinates covering the full y-range
+patch(x_shade, y_shade, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+xlabel('Time(ms)');ylabel('mV')
 
-end
-
-%% nnight with artifact but no synchronization of sleep cycle:
-i = 37;
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);
-    plotStimSham(SA);
-    SA.plotDelta2BetaRatio
-
-
-  %% get the stimualtions time stamps:
-    t_ch = stimTable.StimTrighCh(i);
-    T=SA.getDigitalTriggers;
-    stims = T.tTrig{t_ch}; %stimulations timimng in ms
-    % first_stims = stims(1:8:end-2);
-    
-    % get the raw data for the second around each stim:
-    pre = 200;
-    post = 1000;
-    [mV, mV_t] = SA.currentDataObj.getData(SA.recTable.defaulLFPCh(SA.currentPRec),stims-pre,(pre+post));
-    % try abs for all data:
-    mVa = abs(mV);
-
-    % plot   
-    figure;
-    x = linspace(-pre,post,length(mV_t));
-    % plot(x,squeeze(mVa),'Color',[0.7 0.7 0.7])
-    hold on
-    plot(x,mean(squeeze(mVa),1),'Color','k','LineWidth',2)
-    ylims = [0 300];
-    ylim(ylims)
-    % title(animals(j))
-    x_shade = [0 200 200 0];  % X-coordinates of the shaded region
-    y_shade = [ylims(1) ylims(1) ylims(2) ylims(2)]; % Y-coordinates covering the full y-range
-    patch(x_shade, y_shade, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
-    xlabel('Time(ms)');ylabel('mV')
+% save figure
+set(fraw ,'PaperPosition',[1 2 7 1.5]);
+fileName=[analysisFolder filesep 'SWRrawPV161N18'];
+% print(fileName,'-depsc','-vector');
+print(fileName, '-dpdf', '-r300');
 
 %% plot cros corr 1 night:
 % detect SWR using SWR detection method.
@@ -151,7 +112,7 @@ ylim(ylims)
 title('Cross-Correlation SWR and stimulations');
 
 % save figure:
-set(f,'PaperPosition',[1 2 7 3]);
+set(f,'PaperPosition',[1 2 7 2]);
 fileName=[analysisFolder filesep 'SWRcrosPV161N18'];
 print(fileName,'-dpdf','-r300');
 
@@ -220,6 +181,11 @@ for i = 1:height(stimTable)
 
 end
 
+
+%% SHW save and load
+fName = [analysisFolder filesep 'ShWcrossCorrData.mat'];
+% save(fName,"cShort","cLong","boundsLong","boundsShort",'-mat')
+load(fName)
 %% plot: only red nights:
 
 wavelength = '635';
@@ -242,6 +208,8 @@ end
 plot(lagTimeS, mean(curDataShort,1)','Color','k','LineWidth',1.5)%,'Marker','.','MarkerSize',5)
 yline(mean(boundsShort(curTrials,:)),'Color',[0.4 0.4 0.4],'LineStyle','--')
 yline(0,'Color',[0.4 0.4 0.4])
+ylims = [-0.02 .12];
+ylim(ylims)
 
 % plot Long according to animaL
 subplot(1,2,2)
@@ -254,8 +222,9 @@ end
 plot(lagTimeL, mean(curDataLong,1)','Color','k','LineWidth',1.5)%,'Marker','.','MarkerSize',5)
 yline(mean(boundsLong(curTrials,:)),'Color',[0.4 0.4 0.4],'LineStyle','--')
 yline(0,'Color',[0.4 0.4 0.4])
+ylim(ylims)
 
 % save figure:
-set(fr,'PaperPosition',[1 2 7 3]);
+set(fr,'PaperPosition',[1 2 7 2]);
 fileName=[analysisFolder filesep 'SWRcrosRedNights'];
 print(fileName,'-dpdf','-r300');
