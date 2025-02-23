@@ -31,7 +31,8 @@ colorswarm = [repmat([0.2, 0.6, 0.8;], length(dbStimData{1}), 1);  % Red for Arr
     repmat([0.5, 0.8, 0.5], length(dbStimData{3}), 1)]; % Blue for Array 3
 swarmchart(xswarm,yswarm,10,colorswarm,"filled",'o','XJitterWidth',0.5)
 ylabel('1/beta power during full cycle')
-% ylim([0 450])
+ylims = [0 0.25];
+ylim(ylims)
 set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
 title('1/beta power during full cycles - one night')
 
@@ -98,7 +99,7 @@ fileName=[analysisFolder filesep 'BetafullcycOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% plot one night: Beta during full cycle
+%% plot one night: Beta during SW cycle
  
 % for i = 1:height(stimTable)
 i =22 ;
@@ -118,7 +119,7 @@ colorswarm = [repmat([0.2, 0.6, 0.8;], length(dbStimData{1}), 1);  % Red for Arr
     repmat([0.5, 0.8, 0.5], length(dbStimData{3}), 1)]; % Blue for Array 3
 swarmchart(xswarm,yswarm,10,colorswarm,"filled",'o','XJitterWidth',0.5)
 ylabel('beta power during SWS')
-% ylim([0 450])
+ylim([ylims])
 set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
 title('Beta power during SWS - one night')
 
@@ -241,12 +242,11 @@ for i = 1:height(curData)
 end
 plot(mean(curData,1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 xlim([0.5, 3.5])
-% grid on;
-% ylim([0 450])
 xticks(1:3)
 xticklabels(groupNames)
 ylabel('1/Beta means during full cycle')
-
+ylims = [0 0.14];
+ylim(ylims)
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
@@ -268,10 +268,10 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
     'right', 'VerticalAlignment', 'middle');
 
 % savefigure
-set(fdb,'PaperPositionMode','auto');
+set(fdb,'PaperPosition',[1 1 2.7 2.3]);
 fileName=[analysisFolder filesep 'BetachangeFullCycle'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-%% plot all nights: Beta full cycle - only red
+%% plot all nights: Beta SW- only red
 
 type = 'Red';
 wavelength = '635';
@@ -326,11 +326,10 @@ for i = 1:height(curData)
 end
 plot(mean(curData,1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 xlim([0.5, 3.5])
-% grid on;
-% ylim([0 450])
 xticks(1:3)
 xticklabels(groupNames)
-ylabel('1/Beta means during full cycle')
+ylabel('1/Beta means during SWS ')
+ylim(ylims)
 
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
@@ -353,197 +352,9 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
     'right', 'VerticalAlignment', 'middle');
 
 % savefigure
-set(fdb,'PaperPositionMode','auto');
+set(fdb,'PaperPosition',[1 1 2.7 2.3]);
 fileName=[analysisFolder filesep 'BetachangeSWS'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 
-
-%% plot D/B decrease full cycles - all nights
-
-stimType = ["Blue","Green","Red","WhiteEx"];
-stimWaveL = ["47","532","635","LED"];
-% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
-numType = length(stimType);
-x=1:3;
-%plot Period Times:
-f=figure;
-set(f, 'Position', [100, 100, 800, 400]);
-hold on
-for type = 1:numType
-    %plot the data
-    subplot(1,4,type)
-    curType = stimWaveL(type);
-    curName = stimType(type);
-    curTrials = contains(stimTable.Remarks,curType) &...
-                ~contains(stimTable.Remarks,"Ex") &...
-                all(~isnan(stimTable.dbMeans), 2);
-    n = sum(curTrials);
-    N = numel(unique(stimTable.Animal(curTrials)));
-    % curCol = plotColors{type};
-    curData = stimTable.dbMeans(curTrials,:);
-    curMean = mean(stimTable.dbMeans(curTrials,:),1,'omitnan');
-    statsdb = struct();
-    %statistics:
-
-    [p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
-    fprintf('p-value for freidman ANOVA test: %.5f\n',p)
-    % % p-valure is very low, post hoc:
-    % data for the four groups
-    beforedb = curData(:,1);
-    duringdb = curData(:,2);
-    afterdb = curData(:,3);
-
-    % Bonferroni-corrected alpha level
-    alpha = 0.05 / 3;
-
-    % Pairwise Wilcoxon signed-rank tests
-    [p_pre_during, ~, stats_before_during] = signrank(beforedb, duringdb);
-    [p_during_post, ~, stats_during_after] = signrank(duringdb, afterdb);
-    [p_pre_post, ~, stats_wake_during] = signrank(beforedb, afterdb);
-
-    % Display results with Bonferroni correction
-    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-    fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_pre_during, alpha);
-    fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_post, alpha);
-    fprintf('Pre vs. Post: p-value = %.4f (Significant if < %.4f)\n', p_pre_post, alpha);
-
-    %save statistics:
-    statsdb.(curName).alpha = alpha;
-    statsdb.(curName).pAnova = p;
-    statsdb.(curName).p_pre_post = p_pre_post;
-    statsdb.(curName).p_pre_during = p_pre_during;
-    statsdb.(curName).p_during_post = p_during_post;
-
-
-    if n>0
-        
-        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-        curColorMat = animalsColors(animalIndices, :); 
-        hold on
-        for j = 1:height(curData)
-            plot(x,curData(j,:),'Color',curColorMat(j,:),'Marker', '.')
-        end
-            plot(x,curMean,'color','k','LineWidth',3,'Marker', '.')
-        
-        %     % plot ExLight:
-        %     ExTrials = contains(stimTable.Remarks,curType) & ...
-        %         contains(stimTable.Remarks,'Ex') &...
-        %         all(~isnan(stimTable.dbSWMeans),2);
-        %     if sum(ExTrials)>0
-        %         plot(x,stimTable.dbSWMeans(ExTrials,:),'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
-        %     end
-        % hold off
-
-        annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
-            sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-            'right', 'VerticalAlignment', 'middle');
-    end
-    ylabel('Time[s]')
-    ylim([0 600])
-    xticklabels({'Pre','During','Post'})
-    xticks(1:3); xlim([0.5 3.5])
-end
-
-sgtitle ('D/B decrease full cycles according to wavelangth ')
-
-
-% savefigure
-set(gcf,'PaperPositionMode','auto');
-fileName=[analysisFolder filesep 'DBfullcycleAllnigthscolors'];
-print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-
-%% plot D/B decrease full cycles - all nights
-
-stimType = ["Blue","Green","Red","WhiteEx"];
-stimWaveL = ["47","532","635","LED"];
-% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
-numType = length(stimType);
-x=1:3;
-%plot Period Times:
-f=figure;
-set(f, 'Position', [100, 100, 800, 400]);
-hold on
-for type = 1:numType
-    %plot the data
-    subplot(1,4,type)
-    curType = stimWaveL(type);
-    curName = stimType(type);
-    curTrials = contains(stimTable.Remarks,curType) &...
-                ~contains(stimTable.Remarks,"Ex") &...
-                all(~isnan(stimTable.dbMeans), 2);
-    n = sum(curTrials);
-    N = numel(unique(stimTable.Animal(curTrials)));
-    % curCol = plotColors{type};
-    curData = stimTable.betaMeans(curTrials,:);
-    curMean = mean(stimTable.betaMeans(curTrials,:),1,'omitnan');
-    statsbeta = struct();
-    %statistics:
-
-    [p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
-    fprintf('p-value for freidman ANOVA test: %.5f\n',p)
-    % % p-valure is very low, post hoc:
-    % data for the four groups
-    beforedb = curData(:,1);
-    duringdb = curData(:,2);
-    afterdb = curData(:,3);
-
-    % Bonferroni-corrected alpha level
-    alpha = 0.05 / 3;
-
-    % Pairwise Wilcoxon signed-rank tests
-    [p_pre_during, ~, stats_before_during] = signrank(beforedb, duringdb);
-    [p_during_post, ~, stats_during_after] = signrank(duringdb, afterdb);
-    [p_pre_post, ~, stats_wake_during] = signrank(beforedb, afterdb);
-
-    % Display results with Bonferroni correction
-    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-    fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_pre_during, alpha);
-    fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_post, alpha);
-    fprintf('Pre vs. Post: p-value = %.4f (Significant if < %.4f)\n', p_pre_post, alpha);
-
-    %save statistics:
-    statsbeta.(curName).alpha = alpha;
-    statsbeta.(curName).pAnova = p;
-    statsbeta.(curName).p_pre_post = p_pre_post;
-    statsbeta.(curName).p_pre_during = p_pre_during;
-    statsbeta.(curName).p_during_post = p_during_post;
-
-
-    if n>0
-        
-        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-        curColorMat = animalsColors(animalIndices, :); 
-        hold on
-        for j = 1:height(curData)
-            plot(x,curData(j,:),'Color',curColorMat(j,:),'Marker', '.')
-        end
-            plot(x,curMean,'color','k','LineWidth',3,'Marker', '.')
-        
-        %     % plot ExLight:
-        %     ExTrials = contains(stimTable.Remarks,curType) & ...
-        %         contains(stimTable.Remarks,'Ex') &...
-        %         all(~isnan(stimTable.dbSWMeans),2);
-        %     if sum(ExTrials)>0
-        %         plot(x,stimTable.dbSWMeans(ExTrials,:),'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
-        %     end
-        % hold off
-
-        annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
-            sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-            'right', 'VerticalAlignment', 'middle');
-    end
-    ylabel('Time[s]')
-    ylim([0 600])
-    xticklabels({'Pre','During','Post'})
-    xticks(1:3); xlim([0.5 3.5])
-end
-
-sgtitle ('Beta decrease full cycles according to wavelangth ')
-
-
-% savefigure
-set(gcf,'PaperPositionMode','auto');
-fileName=[analysisFolder filesep 'BetafullcycleAllnigthscolors'];
-print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
