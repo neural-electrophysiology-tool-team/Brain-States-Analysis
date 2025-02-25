@@ -1,7 +1,7 @@
 %% plot for all nights:
 
 HeadAngleAvg = zeros(height(stimTable),4);
-
+headAngleSD = zeros(height(stimTable),4);
 %%
 for i = 1:height(stimTable)
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -32,8 +32,8 @@ for i = 1:height(stimTable)
     if wakeEnd>stimTable.sleepStartT(i)
         wakeEnd = stimTable.sleepStartT(i);
     end
-
-    parts ={[0, wakeEnd],[stimTable.sleepStartT(i),stimTable.stimStartT(i)],...
+    p = 1000*60*45;
+    parts ={[0, wakeEnd],[stimTable.sleepStartT(i)+p,stimTable.stimStartT(i)],...
         [stimTable.stimStartT(i),stimTable.stimEndT(i)], ...
         [stimTable.stimEndT(i),stimTable.sleepEndT(i)]};
     numParts = numel(parts);
@@ -43,16 +43,20 @@ for i = 1:height(stimTable)
         pTmp = find(angleF_t>curPart(1)&angleF_t<curPart(2));
         curAng = angleF(pTmp);
         meanCurAng = mean(curAng);
+        curSD = std(curAng);
         HeadAngleAvg(i,j) = meanCurAng;
-
+        headAngleSD(i,j) = curSD;
     end
- 
+    disp(headAngleSD(i,:))
+    
+    
     isplot = 1;
     if isplot
         figure;
         plot(angleF_t/(1000*60*60), angleF,'k');
         xlabel('Time (hours)'); ylabel('Head Angle')
         xline(stimTable.sleepStartT(i)/(1000*60*60),'k')
+        xline((stimTable.sleepStartT(i)+p)/(1000*60*60),'g')
         xline(stimTable.stimStartT(i)/(1000*60*60),'r')
         xline(stimTable.stimEndT(i)/(1000*60*60),'Color','r');
         xline(stimTable.sleepEndT(i)/(1000*60*60),'b')
@@ -72,6 +76,7 @@ HeadAngleAvg(flipInd,:) = 180 - HeadAngleAvg(flipInd,:);
 
 %%
 save([analysisFolder filesep 'HeadAngleAvg.mat'],'HeadAngleAvg','-mat')
+save([analysisFolder filesep 'HeadAngleSD.mat'],'headAngleSD','-mat')
 
 
 
