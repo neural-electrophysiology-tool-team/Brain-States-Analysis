@@ -1482,9 +1482,12 @@ end
 % 1. kruskal wallas:
 [p, tbl, stats] = kruskalwallis(dataForStat,groupNames);
 
-if p < 0.05
-    c = multcompare(stats, 'CType', 'dunn-sidak');
-end
+    
+    % 1. Wilcoxon Signed-Rank Test
+    [pWilcoxon, ~, statsWilcoxon] = signrank(curData(:,1), curData(:,2));
+    fprintf('Wilcoxon Signed-Rank Test p-value: %.4f\n', pWilcoxon);
+    disp(statsWilcoxon)
+
 % savefigure
 % set(f,'PaperPositionMode','auto');
 % fileName=[analysisFolder filesep 'meanNormBDStimSham'];
