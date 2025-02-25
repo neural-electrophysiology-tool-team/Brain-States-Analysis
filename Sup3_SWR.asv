@@ -2,7 +2,7 @@
 
 %% plot all raw traces, 1 nights:
 
-i = 22;
+i = 17;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
     
@@ -34,7 +34,7 @@ xlabel('Time(ms)');ylabel('mV')
 
 % save figure
 set(fraw ,'PaperPosition',[1 2 7 1.5]);
-fileName=[analysisFolder filesep 'SWRrawPV161N18'];
+fileName=[analysisFolder filesep 'SWRrawPV159N34'];
 % print(fileName,'-depsc','-vector');
 print(fileName, '-dpdf', '-r300');
 
@@ -185,7 +185,7 @@ end
 %% SHW save and load
 fName = [analysisFolder filesep 'ShWcrossCorrData.mat'];
 % save(fName,"cShort","cLong","boundsLong","boundsShort",'-mat')
-loa
+load(fName)
 %% plot: only red nights:
 
 wavelength = '635';
@@ -208,6 +208,8 @@ end
 plot(lagTimeS, mean(curDataShort,1)','Color','k','LineWidth',1.5)%,'Marker','.','MarkerSize',5)
 yline(mean(boundsShort(curTrials,:)),'Color',[0.4 0.4 0.4],'LineStyle','--')
 yline(0,'Color',[0.4 0.4 0.4])
+ylims = [-0.02 .12];
+ylim(ylims)
 
 % plot Long according to animaL
 subplot(1,2,2)
@@ -220,8 +222,9 @@ end
 plot(lagTimeL, mean(curDataLong,1)','Color','k','LineWidth',1.5)%,'Marker','.','MarkerSize',5)
 yline(mean(boundsLong(curTrials,:)),'Color',[0.4 0.4 0.4],'LineStyle','--')
 yline(0,'Color',[0.4 0.4 0.4])
+ylim(ylims)
 
 % save figure:
-set(fr,'PaperPosition',[1 2 7 3]);
+set(fr,'PaperPosition',[1 2 7 2]);
 fileName=[analysisFolder filesep 'SWRcrosRedNights'];
 print(fileName,'-dpdf','-r300');

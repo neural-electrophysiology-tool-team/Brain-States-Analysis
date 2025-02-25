@@ -2,7 +2,7 @@
 
 %% plot all raw traces, 1 nights:
 
-i = 22;
+i = 17;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
     
@@ -24,7 +24,7 @@ x = linspace(-pre,post,length(mV_t));
 plot(x,squeeze(mV),'Color',[0.7 0.7 0.7])
 hold on
 plot(x,mean(squeeze(mV),1),'Color','k','LineWidth',2)
-ylims =[-1100 500];
+ylims =[-750 500];
 ylim(ylims)
 % title('Raw traces for 1 night')
 x_shade = [0 200 200 0];  % X-coordinates of the shaded region
@@ -33,8 +33,8 @@ patch(x_shade, y_shade, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
 xlabel('Time(ms)');ylabel('mV')
 
 % save figure
-set(fraw ,'PaperPosition',[1 2 7 1.5]);
-fileName=[analysisFolder filesep 'SWRrawPV161N18'];
+set(fraw ,'PaperPosition',[1 2 7 2.5]);
+fileName=[analysisFolder filesep 'SWRrawPV159N34'];
 % print(fileName,'-depsc','-vector');
 print(fileName, '-dpdf', '-r300');
 
