@@ -266,7 +266,7 @@ endStim=stims(8:8:end)+400;
 trial = reshape(stims,[8,length(stims)/8])';
 
 pre=20000;
-post=100000;
+post=130000;
 ch = 17;
 
 %% plot trace from before stimulation:
@@ -1862,15 +1862,15 @@ mPhasePost.movs = zeros(height(stimTable),1);
 mPhasePost.DBs = zeros(height(stimTable),1);
 
 %% create data set for all nights:
-for i = 34:height(stimTable)
-% i = 25;
+% for i = 34:height(stimTable)
+i = 25;
     if stimTable.LizMov(i) ~= 1
         disp('run Lizard movement on this recording. Moving to next rec.');
         mPhasePre.movs(i) = NaN;
         mPhasePre.DBs(i) = NaN;
         mPhaseStim.movs(i) = NaN;
         mPhaseStim.DBs(i) = NaN;
-        continue; % Skip to the next iteration;
+        % continue; % Skip to the next iteration;
     end
 
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -1892,16 +1892,16 @@ for i = 34:height(stimTable)
     SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
     hOutPre = SA.plotLizardMovementDB('stim',1 ,'part',1,'tStartStim', ...
         stimStartT,'tEndStim',stimEndT,'nBins',nBins);
-    mPhasePre.movs(i) = hOutPre.mPhaseMov;
-    mPhasePre.DBs(i) = hOutPre.mPhaseDB;
+    % mPhasePre.movs(i) = hOutPre.mPhaseMov;
+    % mPhasePre.DBs(i) = hOutPre.mPhaseDB;
     
     % get AC for the stimulation:
     SA.getDelta2BetaAC('tStart',stimStartT+p,'win',stimWin,'overwrite', 1);
     SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
     hOutStim = SA.plotLizardMovementDB('stim',1 ,'part',2,'tStartStim', ...
         stimStartT,'tEndStim',stimEndT,'nBins',nBins);
-    mPhaseStim.movs(i) = hOutStim.mPhaseMov;
-    mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
+    % mPhaseStim.movs(i) = hOutStim.mPhaseMov;
+    % mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
 
     
     % get AC for the Post:
@@ -1909,11 +1909,11 @@ for i = 34:height(stimTable)
     SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
     hOutPost = SA.plotLizardMovementDB('stim',1 ,'part',3,'tStartStim', ...
         stimStartT,'tEndStim',stimEndT,'nBins',nBins);
-    mPhasePost.movs(i) = hOutPost.mPhaseMov;
-    mPhasePost.DBs(i) = hOutPost.mPhaseDB;
+    % mPhasePost.movs(i) = hOutPost.mPhaseMov;
+    % mPhasePost.DBs(i) = hOutPost.mPhaseDB;
 
-    close all
-end
+    % close all
+% end
 
 %% save histogram data
 fileName = [analysisFolder filesep 'polarhistoAllNights.mat'];
@@ -2253,6 +2253,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% prepare head angle data for plots:
 load([analysisFolder filesep 'HeadAngleAvg.mat'])
+load([analysisFolder filesep 'HeadAngleSD.mat'])
 
 %% plot Head Angle - RED NIGHTS ONLY"
 headAngDiff = diff(HeadAngleAvg,[],2);
@@ -2267,7 +2268,7 @@ curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 groupNames = {'Pre', 'During', 'After'};
-curHeadAvg = HeadAngleAvgP(curTrials,:);
+curHeadAvg = HeadAngleAvgP(curTrials,1:3);
 
 % STATISTICAL TEST:
 
@@ -2278,34 +2279,34 @@ fprintf('p-value for freidman ANOVA test: %.5f\n',p)
 wakeAng = curHeadAvg(:,1);
 beforeAng = curHeadAvg(:,2);
 duringAng = curHeadAvg(:,3);
-afterAng = curHeadAvg(:,4);
+% afterAng = curHeadAvg(:,4);
 
 % Bonferroni-corrected alpha level
-alpha = 0.05 / 4;
+alpha = 0.05 / 3;
 
 % Pairwise Wilcoxon signed-rank tests
 [p_wake_before, ~, stats_wake_before] = signrank(wakeAng, beforeAng);
 [p_before_during, ~, stats_before_during] = signrank(beforeAng, duringAng);
-[p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
+% [p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
 [p_wake_during, ~, stats_wake_during] = signrank(wakeAng, duringAng);
 
 % Display results with Bonferroni correction
 fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
 fprintf('Wake vs Before: p-value = %.4f (Significant if < %.4f)\n', p_wake_before, alpha);
 fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
 fprintf('Wake vs During: p-value = %.4f (Significant if < %.4f)\n', p_wake_during, alpha);
 
 % plot head angles:
 figure;
-x1 = 1:4;
+x1 = 1:width(curHeadAvg);
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
 curColorMat = animalsColors(animalIndices, :); 
 for i= 1:height(curHeadAvg)
     plot(x1,curHeadAvg(i,:),'Color',curColorMat(i,:),'Marker','.'); hold on;
 end
 plot(x1, mean(curHeadAvg), 'Color','k','Marker','.','LineWidth',1.5)
-xlim([0.7,4.2]); xticks(x1); xticklabels(["Wake","Sleep","Stim","Sleep after"])
+xlim([0.7,3.2]); xticks(x1); xticklabels(["Wake","Sleep","Stim"])
 ylabel('Avg Head Angles (Deg)')
 yline(0,'--','Headstage penpendicular to floor')
 title('Head Angle avg - red nights')
@@ -2327,9 +2328,9 @@ annotation('textbox', [0.15, 0.2, 0.25, 0.1], 'String', ...
     sprintf('before-during p-value = %.4f ', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
 
-annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
-    sprintf('during after p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
+% annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
+%     sprintf('during after p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
 
 annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
     sprintf('wake during p-value = %.4f', p_wake_during), 'EdgeColor', 'none', 'HorizontalAlignment', ...
@@ -2339,7 +2340,130 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 % savefigure
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'HeadliftsREDNights.pdf']);
+%% plot Head Angle - RED NIGHTS ONLY"
+headAngDiff = diff(HeadAngleAvg,[],2);
+% set the zero to 90 Deg, according to accelerometer data ( this is the z
+% axis, when it is 90 the accelerometer is penpendicular to the ground)
+HeadAngleAvgP = HeadAngleAvg -90;
 
+
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ...
+    & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); %& contains(stimTable.Animal,curAni);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+groupNames = {'Pre', 'During', 'After'};
+curHeadAvg = HeadAngleAvgP(curTrials,1:3);
+curHeadSD = headAngleSD(curTrials,1:3);
+% STATISTICAL TEST:
+
+[p, tbl, stats] = friedman(curHeadAvg, 1,'off'); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Example data for three groups
+wakeAng = curHeadAvg(:,1);
+beforeAng = curHeadAvg(:,2);
+duringAng = curHeadAvg(:,3);
+% afterAng = curHeadAvg(:,4);
+
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 3;
+
+% Pairwise Wilcoxon signed-rank tests
+[p_wake_before, ~, stats_wake_before] = signrank(wakeAng, beforeAng);
+[p_before_during, ~, stats_before_during] = signrank(beforeAng, duringAng);
+% [p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
+[p_wake_during, ~, stats_wake_during] = signrank(wakeAng, duringAng);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Wake vs Before: p-value = %.4f (Significant if < %.4f)\n', p_wake_before, alpha);
+fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('Wake vs During: p-value = %.4f (Significant if < %.4f)\n', p_wake_during, alpha);
+
+% plot head angles:
+figure;
+x1 = 1:width(curHeadAvg);
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+for i= 1:height(curHeadAvg)
+    plot(x1,curHeadAvg(i,:),'Color',curColorMat(i,:),'Marker','.'); hold on;
+end
+plot(x1, mean(curHeadAvg), 'Color','k','Marker','.','LineWidth',1.5)
+xlim([0.7,3.2]); xticks(x1); xticklabels(["Wake","Sleep","Stim"])
+ylabel('Avg Head Angles (Deg)')
+yline(0,'--','Headstage penpendicular to floor')
+title('Head Angle avg - red nights')
+
+
+annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
+    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.55, 0.25, 0.1], 'String', ...
+    sprintf('wake-before p = %.4f (Significant if < %.4f)', p_wake_before, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.15, 0.2, 0.25, 0.1], 'String', ...
+    sprintf('before-during p-value = %.4f ', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
+%     sprintf('during after p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
+    sprintf('wake during p-value = %.4f', p_wake_during), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% savefigure
+set(gcf,'PaperPositionMode','auto')
+saveas (gcf, [analysisFolder filesep 'HeadliftsREDNights.pdf']);
+
+%% plot head angles SD (run with previous):
+figure;
+x1 = 1:width(curHeadSD);
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+for i= 1:height(curHeadSD)
+    plot(x1,curHeadSD(i,:),'Color',curColorMat(i,:),'Marker','.'); hold on;
+end
+plot(x1, mean(curHeadSD), 'Color','k','Marker','.','LineWidth',1.5)
+xlim([0.7,3.2]); xticks(x1); xticklabels(["Wake","Pre","Stim"])
+ylabel('Avg Head SD')
+% yline(0,'--','Headstage penpendicular to floor')
+title('Head Angle SD - red nights')
+
+% stats:
+[p, tbl, stats] = friedman(curHeadSD, 1,'off'); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Example data for three groups
+wakeSD = curHeadSD(:,1);
+beforeSD = curHeadSD(:,2);
+duringSD = curHeadSD(:,3);
+% afterAng = curHeadAvg(:,4);
+
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 3;
+
+% Pairwise Wilcoxon signed-rank tests
+[p_wake_before, ~, stats_wake_before] = signrank(wakeSD, beforeSD);
+[p_before_during, ~, stats_before_during] = signrank(beforeSD, duringSD);
+% [p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
+[p_wake_during, ~, stats_wake_during] = signrank(wakeSD, duringSD);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Wake vs Before: p-value = %.4f (Significant if < %.4f)\n', p_wake_before, alpha);
+fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('Wake vs During: p-value = %.4f (Significant if < %.4f)\n', p_wake_during, alpha);
 
 %% plot Head Angle - all nights, 4 subplots:
 

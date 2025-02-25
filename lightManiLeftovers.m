@@ -857,3 +857,175 @@ i = 37;
     SA.setCurrentRecording(recName);
     plotStimSham(SA);
     SA.plotDelta2BetaRatio
+
+
+
+    %% plot Head Angle - RED NIGHTS ONLY"
+headAngDiff = diff(HeadAngleAvg,[],2);
+% set the zero to 90 Deg, according to accelerometer data ( this is the z
+% axis, when it is 90 the accelerometer is penpendicular to the ground)
+HeadAngleAvgP = HeadAngleAvg -90;
+
+
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ...
+    & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); %& contains(stimTable.Animal,curAni);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+groupNames = {'Pre', 'During', 'After'};
+curHeadAvg = HeadAngleAvgP(curTrials,1:3);
+
+% STATISTICAL TEST:
+
+[p, tbl, stats] = friedman(curHeadAvg, 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Example data for three groups
+wakeAng = curHeadAvg(:,1);
+beforeAng = curHeadAvg(:,2);
+duringAng = curHeadAvg(:,3);
+% afterAng = curHeadAvg(:,4);
+
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 3;
+
+% Pairwise Wilcoxon signed-rank tests
+[p_wake_before, ~, stats_wake_before] = signrank(wakeAng, beforeAng);
+[p_before_during, ~, stats_before_during] = signrank(beforeAng, duringAng);
+% [p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
+[p_wake_during, ~, stats_wake_during] = signrank(wakeAng, duringAng);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Wake vs Before: p-value = %.4f (Significant if < %.4f)\n', p_wake_before, alpha);
+fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('Wake vs During: p-value = %.4f (Significant if < %.4f)\n', p_wake_during, alpha);
+
+% plot head angles:
+figure;
+x1 = 1:width(curHeadAvg);
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+for i= 1:height(curHeadAvg)
+    plot(x1,curHeadAvg(i,:),'Color',curColorMat(i,:),'Marker','.'); hold on;
+end
+plot(x1, mean(curHeadAvg), 'Color','k','Marker','.','LineWidth',1.5)
+xlim([0.7,3.2]); xticks(x1); xticklabels(["Wake","Sleep","Stim"])
+ylabel('Avg Head Angles (Deg)')
+yline(0,'--','Headstage penpendicular to floor')
+title('Head Angle avg - red nights')
+
+
+annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
+    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.55, 0.25, 0.1], 'String', ...
+    sprintf('wake-before p = %.4f (Significant if < %.4f)', p_wake_before, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.15, 0.2, 0.25, 0.1], 'String', ...
+    sprintf('before-during p-value = %.4f ', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
+%     sprintf('during after p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
+    sprintf('wake during p-value = %.4f', p_wake_during), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+
+% savefigure
+set(gcf,'PaperPositionMode','auto')
+saveas (gcf, [analysisFolder filesep 'HeadliftsREDNights.pdf']);
+%% plot the bar plot - D/B change - stim sham -  all colors
+animals = unique(stimTable.Animal);
+stimType = ["Blue","Green","Red","LED"];
+stimWaveL = ["47","532","635","LED"];
+% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
+numAnimal = length(animals);
+numType = length(stimType);
+statsStimSham = struct();
+
+% mean normelized change in D/B.
+f=figure;
+sgtitle('mean normelized D/B')
+
+for type = 1:numType
+    h = subplot(1,numType,type);
+    %plot the data
+    %curAni = animals{animal};
+    curType = stimWaveL(type);
+    curName = stimType(type);
+    curTrials = contains(stimTable.Remarks,curType) &...
+                ~contains(stimTable.Remarks,'Ex') & ...
+                all(~isnan(stimTable.dbDiffStimM),2) & ...
+                all(~isnan(stimTable.dbDiffShamM),2); %& contains(stimTable.Animal,curAni);
+    n = sum(curTrials);
+    N = length(unique(stimTable.Animal(curTrials)));
+    % curCol = plotColors{type};
+    curMeanNdbStim = mean(stimTable.dbDiffStimM(curTrials),1);
+    curMeanNdbSham = mean(stimTable.dbDiffShamM(curTrials),1);
+    curData = [stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)];
+    %statistics:
+    % 1. Wilcoxon Signed-Rank Test
+    [pWilcoxon, ~, statsWilcoxon] = signrank(curData(:,1), curData(:,2));
+    fprintf('Wilcoxon Signed-Rank Test p-value: %.4f\n', pWilcoxon);
+    disp(statsWilcoxon)
+
+    if n>0
+        x=[1,2];
+        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+        curColorMat = animalsColors(animalIndices, :);
+        hold on
+        for j = 1:height(curData)
+            plot(x,curData(j,:),'Color',curColorMat(j,:),'Marker','.')
+        end
+        hold on
+        plot(x,[curMeanNdbSham,curMeanNdbStim],'Color','k','LineWidth',3,'Marker','.')
+        
+
+        %plot Ex
+        curExI = contains(stimTable.Remarks,curType) &...
+                contains(stimTable.Remarks,'Ex') & ...
+                all(~isnan(stimTable.dbDiffStimM),2) & ...
+                all(~isnan(stimTable.dbDiffShamM),2);
+        curEx = [stimTable.dbDiffShamM(curExI) stimTable.dbDiffStimM(curExI)];
+        if ~isempty(curEx )
+            plot(x,curEx,'Color',[0.3 0.3 0.3],'LineStyle','--','Marker','.')
+        end
+        hold off
+    end
+    xticks([1, 2]); % Position of the x-ticks
+    xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
+    xlim([0.5, 2.5]);
+    annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
+        sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+        'right', 'VerticalAlignment', 'middle');
+   annotation('textbox', [.15 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('Wilcoxon test p =%.3f',pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+    
+    ylim([-40 160])
+
+    if n==0
+        plot(0,0)
+    end
+
+    % add titles. labels...
+    ylabel('D2B power')
+    title(stimType(type))
+ 
+end
+
+% savefigure
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'meanNormBDStimSham'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
