@@ -1158,6 +1158,9 @@ stimWaveL = ["47","532","635","LED"];
 % plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
 numAnimal = length(animals);
 numType = length(stimType);
+stimData = [];
+groupNum=[];
+colorMat = [];
 x=1:3;
 %plot Period Times:
 f=figure;
@@ -1165,7 +1168,7 @@ set(f, 'Position', [100, 100, 800, 400]);
 hold on
 for type = 1:numType
     %plot the data
-    subplot(2,4,type)
+    subplot(1,4,type)
     curType = stimWaveL(type);
     curName = stimType(type);
     curTrials = contains(stimTable.Remarks,curType) & ...
@@ -1177,7 +1180,8 @@ for type = 1:numType
     % curCol = plotColors{type};
     curData = stimTable.ACcomPer(curTrials,:);
     curMean = mean(curData,1,'omitnan');
-    
+    stimData = [stimData; curData(:,2)];
+    groupNum = [groupNum; repmat(type, length(curData), 1)];
 
 %statistics:
 
@@ -1214,24 +1218,25 @@ for type = 1:numType
     if n>0
         [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
         curColorMat = animalsColors(animalIndices, :);
+        colorMat = [colorMat; curColorMat];
         hold on;
         for j = 1:height(curData)
             plot(x,curData(j,:)/1000,'Color',curColorMat(j,:),'Marker','.')
         end
         plot(x,curMean/1000,'Color','k','LineWidth',2,'Marker','.')
+        yline(156,'--', 'Color',[0.4 0.4 0.4])
+        % % plot ExLight:
+        % ExTrials = contains(stimTable.Remarks,curType) & ...
+        %         contains(stimTable.Remarks,'Ex') &...
+        %         all(~isnan(stimTable.ACcomPer),2);
+        % if sum(ExTrials) >0 
+        %     plot(x,stimTable.ACcomPer(ExTrials,:)/1000,'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
+        % end
+        % hold off
 
-        % plot ExLight:
-        ExTrials = contains(stimTable.Remarks,curType) & ...
-                contains(stimTable.Remarks,'Ex') &...
-                all(~isnan(stimTable.ACcomPer),2);
-        if sum(ExTrials) >0 
-            plot(x,stimTable.ACcomPer(ExTrials,:)/1000,'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
-        end
-        hold off
-
-        annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
-            sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-            'right', 'VerticalAlignment', 'middle');
+        % annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
+        %     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+        %     'right', 'VerticalAlignment', 'middle');
     end
     if type==1
         ylabel('Time[s]')
@@ -1239,87 +1244,96 @@ for type = 1:numType
     ylim([40 250])
     xticks(1:3); xlim([0.8 3.2])
     xticklabels({'Pre','During','Post'})
-    %PLOT P2V
-    subplot(2,4,type+4)
-    curP2V = stimTable.ACcomP2V(curTrials,:);
-    curP2Vmean = mean(curP2V,1);
-    hold on
-    ylim([0 1.3])
-    if type ==1
-        ylabel('P2V')
-    end
-    xticks(1:3); xlim([0.9 3.1])
-    xticklabels({'Pre','During','Post'})
-    for j = 1:height(curP2V)
-        plot(x,curP2V(j,:),'Color',curColorMat(j,:),'Marker','.')
-    end
-    plot(x,curP2Vmean,'Color','k','LineWidth',2,'Marker','.')
-    notTrials = contains(stimTable.Remarks,curType) & ...
-                ~contains(stimTable.Remarks,'Ex') &...
-                all(~isnan(stimTable.ACcomPer),2) &...
-                any(stimTable.ACcomP2V < 0.15,2);
-    yline(0.15,'r')
-    if any(notTrials~=0)
-        plot(x,stimTable.ACcomP2V(notTrials,:),'Color',[0.3 0.3 0.3])
-    end
-    hold off
-
-
-
-
+  
 end
 
-sgtitle ('Perios Times According to stim wavelangth and animal')
-
 % savefigure
-set(gcf,'PaperPositionMode','auto');
+set(gcf,'PaperPosition',[1 1 4.3 1.2]);
 fileName=[analysisFolder filesep 'ACperiodstimAll'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 save([analysisFolder filesep 'statsACperiodstimAll.mat'], "statsAC")
 
-%% plot P2V Times:
-f=figure;
-set(f, 'Position', [100, 200, 800, 300]);
+%% plot stim data on 1 line:
+%run previous
+pVals = zeros(numType,1);
+SDs = zeros(numType,1);
+means =zeros(numType,1);
+stimType = ["Blue","Green","Red","LED"];
+numType = 4;
+
+newPer = 156; %sec
+for i =1:numType
+    data = stimData(groupNum==i);
+    [p, h] = signrank(data/1000, newPer);
+    pVals(i) = p;
+    SDs(i) = std(data/1000);
+    means(i) = mean(data/1000);
+end
+disp(SDs)
+disp(pVals)
+
+figure;
+swarmchart(groupNum,stimData/1000,10,colorMat,'filled','XJitterWidth',0.5);
 hold on
+scatter(1:4,means,'k','Marker','+')
+ylabel('AC Period time (s)')
+yline(newPer,'--','Color', [0.4 0.4 0.4])
+xticks(1:4);xticklabels(stimType)
+
+
+
+% annotation ('textbox', [0.1 0.81, 0.3, 0.05], 'String', ...
+%             sprintf('Pvals: B:%.3f,G:%.3f,R:%.3f,LED:%.3f',pVals(1),pVals(2),pVals(3),pVals(4)), ...
+%             'EdgeColor', 'none', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'middle');
+% 
+% annotation ('textbox', [0.1 0.6, 0.5, 0.5], 'String', ...
+%             sprintf('SDs: B:%f,G:%f,R:%f,LED:%f',SDs(1),SDs(2),SDs(3),SDs(4)), ...
+%             'EdgeColor', 'none', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'middle');
+ 
+% savefigure
+set(gcf,'PaperPosition',[1 1 1.8 1.2]);
+fileName=[analysisFolder filesep 'ACto156'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% plot P2V diff between stim-pre
+numType =4;
+P2Vdiffs = [];
+groupNums = [];
+colorMat = [];
+stimWaveL = ["47","532","635","LED"];
+stimType = ["Blue","Green","Red","LED"];
+
 for type = 1:numType
-    %plot the data
-    subplot(1,4,type)
     curType = stimWaveL(type);
-    curTrials = contains(stimTable.Remarks,curType);
-    n = sum(curTrials);
-    curCol = plotColors{type};
-    curMean = mean(stimTable.ACcomP2V(curTrials,:)/1000,1,'omitnan');
-    
-    if n>0
-
-        plot(x,curMean,'color',curCol,'LineWidth',4)
-        hold on
-        for animal = 1:numAnimal
-            curAni = animals{animal};
-            curcurT = contains(stimTable.Remarks,curType) & contains(stimTable.Animal,curAni);
-            if any(curcurT)
-            plot(x, stimTable.ACcomP2V(curcurT,:)/1000,'Marker',markers{animal},'Color',curCol ...
-                ,'MarkerFaceColor',curCol)
-            end
-        end
-        hold off
-
-        annotation('textbox', [.07 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
-            sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-            'right', 'VerticalAlignment', 'middle');
-    end
-    ylabel('P2V')
-    ylim([0 0.0015])
-    xticklabels({'Pre','During','Post'})
-    xticks(1:3); xlim([0.5 3.5])
+    curTrials = contains(stimTable.Remarks,curType) & ...
+                ~contains(stimTable.Remarks,'Ex') &...
+                all(~isnan(stimTable.ACcomPer),2);
+    curP2Vdiff = stimTable.ACcomP2V(curTrials,2)-stimTable.ACcomP2V(curTrials,3);
+    P2Vdiffs = [P2Vdiffs; curP2Vdiff];
+    groupNums = [groupNums; repmat(type, length(curP2Vdiff), 1)];
+    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+    curColorMat = animalsColors(animalIndices, :);
+    colorMat = [colorMat; curColorMat];
 end
 
-sgtitle ('P2V According to stim wavelangth and animal')
 
+[p, tbl, statsP2V] = kruskalwallis(P2Vdiffs,groupNums);
+
+if p < 0.05
+    cP2V = multcompare(statsP2V, 'CType', 'dunn-sidak');
+end
+
+f = figure;
+swarmchart(groupNums,P2Vdiffs,10,colorMat,'filled','XJitterWidth',0.5);
+ylabel('P2V diff (Stim-Pre)')
+xticks(1:4);xticklabels(stimType)
+yline(0);
 % savefigure
-set(gcf,'PaperPosition',[.25 3 6 2])
-saveas (gcf, [analysisFolder filesep 'ACP2VstimColor.pdf']);
-% clearvars -except stimTable SA analysisFolder
+set(f,'PaperPosition',[1 1 1.8 1.2]);
+fileName=[analysisFolder filesep 'P2vDiffallcolors'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
 %% StimSham analysis:
 
 
@@ -1482,12 +1496,9 @@ end
 % 1. kruskal wallas:
 [p, tbl, stats] = kruskalwallis(dataForStat,groupNames);
 
-    
-    % 1. Wilcoxon Signed-Rank Test
-    [pWilcoxon, ~, statsWilcoxon] = signrank(curData(:,1), curData(:,2));
-    fprintf('Wilcoxon Signed-Rank Test p-value: %.4f\n', pWilcoxon);
-    disp(statsWilcoxon)
-
+if p < 0.05
+    c = multcompare(stats, 'CType', 'dunn-sidak');
+end
 % savefigure
 % set(f,'PaperPositionMode','auto');
 % fileName=[analysisFolder filesep 'meanNormBDStimSham'];

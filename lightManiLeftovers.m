@@ -1029,3 +1029,167 @@ end
 set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'meanNormBDStimSham'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+%% PLOT P2V
+    % subplot(2,4,type+4)
+    % curP2V = stimTable.ACcomP2V(curTrials,:);
+    % curP2Vmean = mean(curP2V,1);
+    % hold on
+    % ylim([0 1.3])
+    % if type ==1
+    %     ylabel('P2V')
+    % end
+    % xticks(1:3); xlim([0.9 3.1])
+    % xticklabels({'Pre','During','Post'})
+    % for j = 1:height(curP2V)
+    %     plot(x,curP2V(j,:),'Color',curColorMat(j,:),'Marker','.')
+    % end
+    % plot(x,curP2Vmean,'Color','k','LineWidth',2,'Marker','.')
+    % notTrials = contains(stimTable.Remarks,curType) & ...
+    %             ~contains(stimTable.Remarks,'Ex') &...
+    %             all(~isnan(stimTable.ACcomPer),2) &...
+    %             any(stimTable.ACcomP2V < 0.15,2);
+    % yline(0.15,'r')
+    % if any(notTrials~=0)
+    %     plot(x,stimTable.ACcomP2V(notTrials,:),'Color',[0.3 0.3 0.3])
+    % end
+    % hold off
+
+    %% plot P2V Times:
+f=figure;
+plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
+
+set(f, 'Position', [100, 200, 800, 300]);
+hold on
+for type = 1:numType
+    %plot the data
+    subplot(1,4,type)
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType);
+    n = sum(curTrials);
+    curCol = plotColors{type};
+    curMean = mean(stimTable.ACcomP2V(curTrials,:)/1000,1,'omitnan');
+    
+    if n>0
+
+        plot(x,curMean,'color',curCol,'LineWidth',4)
+        hold on
+        for animal = 1:numAnimal
+            curAni = animals{animal};
+            curcurT = contains(stimTable.Remarks,curType) & contains(stimTable.Animal,curAni);
+            if any(curcurT)
+            plot(x, stimTable.ACcomP2V(curcurT,:)/1000,'Marker',markers{animal},'Color',curCol ...
+                ,'MarkerFaceColor',curCol)
+            end
+        end
+        hold off
+
+        annotation('textbox', [.07 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
+            sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            'right', 'VerticalAlignment', 'middle');
+    end
+    ylabel('P2V')
+    ylim([0 0.0015])
+    xticklabels({'Pre','During','Post'})
+    xticks(1:3); xlim([0.5 3.5])
+end
+
+sgtitle ('P2V According to stim wavelangth and animal')
+
+% savefigure
+set(gcf,'PaperPosition',[.25 3 6 2])
+saveas (gcf, [analysisFolder filesep 'ACP2VstimColor.pdf']);
+% clearvars -except stimTable SA analysisFolder
+
+ %% plot D/B decrease - all nights
+
+stimType = ["Blue","Green","Red","WhiteEx"];
+stimWaveL = ["47","532","635","LED"];
+% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
+numType = length(stimType);
+x=1:3;
+%plot Period Times:
+f=figure;
+set(f, 'Position', [100, 100, 800, 400]);
+hold on
+for type = 1:numType
+    %plot the data
+    subplot(1,4,type)
+    curType = stimWaveL(type);
+    curName = stimType(type);
+    curTrials = contains(stimTable.Remarks,curType) &...
+                ~contains(stimTable.Remarks,"Ex") &...
+                all(~isnan(stimTable.dbSWMeans), 2);
+    n = sum(curTrials);
+    N = numel(unique(stimTable.Animal(curTrials)));
+    % curCol = plotColors{type};
+    curData = stimTable.dbSWMeans(curTrials,:);
+    curMean = mean(stimTable.dbSWMeans(curTrials,:),1,'omitnan');
+    statsdbSW = struct();
+    %statistics:
+
+    [p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
+    fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+    % % p-valure is very low, post hoc:
+    % data for the four groups
+    beforedb = curData(:,1);
+    duringdb = curData(:,2);
+    afterdb = curData(:,3);
+
+    % Bonferroni-corrected alpha level
+    alpha = 0.05 / 3;
+
+    % Pairwise Wilcoxon signed-rank tests
+    [p_pre_during, ~, stats_before_during] = signrank(beforedb, duringdb);
+    [p_during_post, ~, stats_during_after] = signrank(duringdb, afterdb);
+    [p_pre_post, ~, stats_wake_during] = signrank(beforedb, afterdb);
+
+    % Display results with Bonferroni correction
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_pre_during, alpha);
+    fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_post, alpha);
+    fprintf('Pre vs. Post: p-value = %.4f (Significant if < %.4f)\n', p_pre_post, alpha);
+
+    %save statistics:
+    statsdbSW.(curName).alpha = alpha;
+    statsdbSW.(curName).pAnova = p;
+    statsdbSW.(curName).p_pre_post = p_pre_post;
+    statsdbSW.(curName).p_pre_during = p_pre_during;
+    statsdbSW.(curName).p_during_post = p_during_post;
+
+
+    if n>0
+        
+        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+        curColorMat = animalsColors(animalIndices, :); 
+        hold on
+        for j = 1:height(curData)
+            plot(x,curData(j,:),'Color',curColorMat(j,:),'Marker', '.')
+        end
+            plot(x,curMean,'color','k','LineWidth',3,'Marker', '.')
+        
+            % plot ExLight:
+            ExTrials = contains(stimTable.Remarks,curType) & ...
+                contains(stimTable.Remarks,'Ex') &...
+                all(~isnan(stimTable.dbSWMeans),2);
+            if sum(ExTrials)>0
+                plot(x,stimTable.dbSWMeans(ExTrials,:),'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
+            end
+        hold off
+
+        annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
+            sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            'right', 'VerticalAlignment', 'middle');
+    end
+    ylabel('Time[s]')
+    ylim([0 600])
+    xticklabels({'Pre','During','Post'})
+    xticks(1:3); xlim([0.5 3.5])
+end
+
+sgtitle ('D/B decrease during SWS bouts according to wavelangth ')
+
+
+% savefigure
+set(gcf,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'DBdecreaseAllnigthscolors'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
