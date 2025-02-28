@@ -924,94 +924,53 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
-% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
 numType = length(stimType);
-x=1:3;
+DBdiff = [];
+groupNum = [];
+colorMat = [];
+ns = [];
+Ns = [];
 %plot Period Times:
-f=figure;
-set(f, 'Position', [100, 100, 800, 400]);
-hold on
+
+
 for type = 1:numType
     %plot the data
-    subplot(1,4,type)
+    % subplot(1,4,type)
     curType = stimWaveL(type);
-    curName = stimType(type);
+    % curName = stimType(type);
     curTrials = contains(stimTable.Remarks,curType) &...
                 ~contains(stimTable.Remarks,"Ex") &...
                 all(~isnan(stimTable.dbSWMeans), 2);
-    n = sum(curTrials);
-    N = numel(unique(stimTable.Animal(curTrials)));
-    % curCol = plotColors{type};
-    curData = stimTable.dbSWMeans(curTrials,:);
-    curMean = mean(stimTable.dbSWMeans(curTrials,:),1,'omitnan');
-    statsdbSW = struct();
-    %statistics:
-
-    [p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
-    fprintf('p-value for freidman ANOVA test: %.5f\n',p)
-    % % p-valure is very low, post hoc:
-    % data for the four groups
-    beforedb = curData(:,1);
-    duringdb = curData(:,2);
-    afterdb = curData(:,3);
-
-    % Bonferroni-corrected alpha level
-    alpha = 0.05 / 3;
-
-    % Pairwise Wilcoxon signed-rank tests
-    [p_pre_during, ~, stats_before_during] = signrank(beforedb, duringdb);
-    [p_during_post, ~, stats_during_after] = signrank(duringdb, afterdb);
-    [p_pre_post, ~, stats_wake_during] = signrank(beforedb, afterdb);
-
-    % Display results with Bonferroni correction
-    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-    fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_pre_during, alpha);
-    fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_post, alpha);
-    fprintf('Pre vs. Post: p-value = %.4f (Significant if < %.4f)\n', p_pre_post, alpha);
-
-    %save statistics:
-    statsdbSW.(curName).alpha = alpha;
-    statsdbSW.(curName).pAnova = p;
-    statsdbSW.(curName).p_pre_post = p_pre_post;
-    statsdbSW.(curName).p_pre_during = p_pre_during;
-    statsdbSW.(curName).p_during_post = p_during_post;
-
-
-    if n>0
-        
-        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-        curColorMat = animalsColors(animalIndices, :); 
-        hold on
-        for j = 1:height(curData)
-            plot(x,curData(j,:),'Color',curColorMat(j,:),'Marker', '.')
-        end
-            plot(x,curMean,'color','k','LineWidth',3,'Marker', '.')
-        
-            % plot ExLight:
-            ExTrials = contains(stimTable.Remarks,curType) & ...
-                contains(stimTable.Remarks,'Ex') &...
-                all(~isnan(stimTable.dbSWMeans),2);
-            if sum(ExTrials)>0
-                plot(x,stimTable.dbSWMeans(ExTrials,:),'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
-            end
-        hold off
-
-        annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
-            sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-            'right', 'VerticalAlignment', 'middle');
-    end
-    ylabel('Time[s]')
-    ylim([0 600])
-    xticklabels({'Pre','During','Post'})
-    xticks(1:3); xlim([0.5 3.5])
+    ns =[ns; sum(curTrials)];
+    Ns = [Ns; numel(unique(stimTable.Animal(curTrials)))];
+    curData = stimTable.dbSWMeans(curTrials,2)-stimTable.dbSWMeans(curTrials,1);
+    DBdiff = [DBdiff; curData];
+    groupNum = [groupNum; repmat(type,length(curData),1)];
+    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+    curColorMat = animalsColors(animalIndices, :);
+    colorMat = [colorMat;curColorMat]   ;
 end
 
-sgtitle ('D/B decrease during SWS bouts according to wavelangth ')
+%stats:
+[p, tbl, statsDBdiff] = kruskalwallis(DBdiff,groupNum);
+
+if p < 0.05
+    cDBdiff = multcompare(statsDBdiff, 'CType', 'dunn-sidak');
+end
+
+
+f=figure;
+swarmchart(groupNum,DBdiff,10,colorMat,'filled','XJitterWidth',0.5);
+ylabel('d/b diff')
+xticks(1:numType); xticklabels(stimType)
+yline(0,'Color',[0.4 0.4 0.4],'LineStyle','--')
+ylim([-350 150])
+
 
 
 % savefigure
-set(gcf,'PaperPositionMode','auto');
-fileName=[analysisFolder filesep 'DBdecreaseAllnigthscolors'];
+set(f,'PaperPosition',[2 1 2.5 1.5]);
+fileName=[analysisFolder filesep 'DBdecreaseDiffAllnigthscolors'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% AC changes 
