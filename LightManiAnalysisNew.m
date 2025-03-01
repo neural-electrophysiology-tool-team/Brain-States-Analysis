@@ -1390,6 +1390,79 @@ yline(0);
 set(f,'PaperPosition',[1 1 1.8 1.2]);
 fileName=[analysisFolder filesep 'P2vDiffallcolors'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+%% get the P2V at 156 sec:
+fs = 156*1000;
+P2Vfs = zeros(height(stimTable),3);
+
+for i=1:height(stimTable)
+    preAC = stimTable.ACpre{i};
+    P2Vfs(i,1) = preAC.xcf(preAC.autocorrTimes ==fs)-preAC.xcf(preAC.autocorrTimes ==preAC.vallyPeriod);
+    stimAC = stimTable.ACstim{i};
+    P2Vfs(i,2) = stimAC.xcf(stimAC.autocorrTimes ==fs)-stimAC.xcf(stimAC.autocorrTimes ==stimAC.vallyPeriod);
+    postAC = stimTable.ACpost{i};
+    P2Vfs(i,3) = postAC.xcf(postAC.autocorrTimes ==fs)-postAC.xcf(postAC.autocorrTimes ==postAC.vallyPeriod);
+end
+% plot
+stimP2V = [];
+groupNum = [];
+colorMat = [];
+
+stimType = ["Blue","Green","Red","WhiteEx"];
+stimWaveL = ["47","532","635","LED"];
+numType = length(stimType);
+x=1:3;
+%plot Period Times:
+f=figure;
+hold on
+for type = 1:numType
+    %plot the data
+    subplot(2,4,type)
+    curType = stimWaveL(type);
+    curName = stimType(type);
+    curTrials = contains(stimTable.Remarks,curType) &...
+                ~contains(stimTable.Remarks,"Ex");
+    n = sum(curTrials);
+    N = numel(unique(stimTable.Animal(curTrials)));
+    curData = P2Vfs(curTrials,:);
+    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+    curColorMat = animalsColors(animalIndices, :);
+    stimP2V = [stimP2V; curData(:,2)];
+    groupNum = [groupNum; repmat(type,height(curData),1)];
+    colorMat = [colorMat; curColorMat];
+    
+    hold on
+    for i = 1:height(curData)
+        plot(x, curData(i,:),'Color',curColorMat(i,:),'Marker','.','MarkerSize',10,'LineWidth',1)
+    end
+
+    if type ==1
+        ylabel('P2V in 156s')
+    end
+         ylim([-0.2 1.5])
+    xticks(1:3);xticklabels({'Pre','Stim','Post'})
+     xlim([0.7 3.3])
+end
+
+subplot(2,numType,[1:numType]+4)
+swarmchart(groupNum,stimP2V,10,colorMat,'filled','XJitterWidth',0.5);
+xticks(1:4);xticklabels(stimType)
+ylabel('P2V in 156s in Stim')
+
+% 
+% % savefigure
+set(gcf,'PaperPosition',[1 1 3.5 3]);
+fileName=[analysisFolder filesep 'P2V156'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+[p, tbl, statsP2Vfs] = kruskalwallis(stimP2V,groupNum,'off');
+
+if p < 0.05
+    figure;
+    cP2Vfs = multcompare(statsP2Vfs, 'CType', 'dunn-sidak');
+end
+
+
 
 
 %% StimSham analysis:
