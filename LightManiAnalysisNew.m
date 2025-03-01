@@ -920,7 +920,104 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 set(fdb,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'DBSWSredNights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
- %% plot D/B decrease - all nights
+%% plot D/B decrease - all nights
+
+stimType = ["Blue","Green","Red","WhiteEx"];
+stimWaveL = ["47","532","635","LED"];
+% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
+numType = length(stimType);
+x=1:2;
+%plot Period Times:
+f=figure;
+set(f, 'Position', [100, 100, 800, 400]);
+hold on
+for type = 1:numType
+    %plot the data
+    subplot(1,4,type)
+    curType = stimWaveL(type);
+    curName = stimType(type);
+    curTrials = contains(stimTable.Remarks,curType) &...
+                ~contains(stimTable.Remarks,"Ex") &...
+                all(~isnan(stimTable.dbSWMeans), 2);
+    n = sum(curTrials);
+    N = numel(unique(stimTable.Animal(curTrials)));
+    % curCol = plotColors{type};
+    curData = stimTable.dbSWMeans(curTrials,1:2);
+    curMean = mean(stimTable.dbSWMeans(curTrials,1:2),1,'omitnan');
+    statsdbSW = struct();
+    %statistics:
+    % 
+    % [p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
+    % fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+    % % % p-valure is very low, post hoc:
+    % data for the four groups
+    beforedb = curData(:,1);
+    duringdb = curData(:,2);
+    % afterdb = curData(:,3);
+
+    % Bonferroni-corrected alpha level
+    alpha = 0.05 ;
+
+    % Pairwise Wilcoxon signed-rank tests
+    [p_pre_during, ~, stats_before_during] = signrank(beforedb, duringdb);
+    % [p_during_post, ~, stats_during_after] = signrank(duringdb, afterdb);
+    % [p_pre_post, ~, stats_wake_during] = signrank(beforedb, afterdb);
+
+    % Display results with Bonferroni correction
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_pre_during, alpha);
+    % fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_post, alpha);
+    % fprintf('Pre vs. Post: p-value = %.4f (Significant if < %.4f)\n', p_pre_post, alpha);
+
+    % %save statistics:
+    % statsdbSW.(curName).alpha = alpha;
+    % statsdbSW.(curName).pAnova = p;
+    % statsdbSW.(curName).p_pre_post = p_pre_post;
+    % statsdbSW.(curName).p_pre_during = p_pre_during;
+    % statsdbSW.(curName).p_during_post = p_during_post;
+
+
+    if n>0
+        
+        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+        curColorMat = animalsColors(animalIndices, :); 
+        hold on
+        for j = 1:height(curData)
+            plot(x,curData(j,:),'Color',curColorMat(j,:),'Marker', '.')
+        end
+            plot(x,curMean,'color','k','LineWidth',3,'Marker', '.')
+        
+            % % plot ExLight:
+            % ExTrials = contains(stimTable.Remarks,curType) & ...
+            %     contains(stimTable.Remarks,'Ex') &...
+            %     all(~isnan(stimTable.dbSWMeans),2);
+            % if sum(ExTrials)>0
+            %     plot(x,stimTable.dbSWMeans(ExTrials,1:2),'Color',[0.2 0.2 0.2],'LineStyle','--','Marker','.')
+            % end
+        hold off
+
+        annotation('textbox', [.05 + 0.202*type 0.85, 0.03, 0.1], 'String', ...
+            sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            'right', 'VerticalAlignment', 'middle');
+    end
+    if type ==1
+        ylabel('Time[s]')
+    end
+        ylim([0 600])
+    xticklabels({'Pre','During'})
+    xticks(1:2); xlim([0.7 2.3])
+end
+
+sgtitle ('D/B decrease during SWS bouts according to wavelangth ')
+
+
+% savefigure
+set(gcf,'PaperPosition',[1 1 3.5 1.5]);
+fileName=[analysisFolder filesep 'DBdecreaseAllnigthscolors'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+%% plot D/B decrease - all nights DIFFS
 
 stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
@@ -1404,14 +1501,15 @@ stimWaveL = ["47","532","635","LED"];
 numAnimal = length(animals);
 numType = length(stimType);
 statsStimSham = struct();
-dataForStat = [];
+diffData = [];
 groupNames = [];
+colorMat =[];
 % mean normelized change in D/B.
 f=figure;
-sgtitle('mean normelized D/B')
+% sgtitle('mean normelized D/B')
 
 for type = 1:numType
-    % h = subplot(1,numType,type);
+    h = subplot(2,numType,type);
     %plot the data
     %curAni = animals{animal};
     curType = stimWaveL(type);
@@ -1425,19 +1523,33 @@ for type = 1:numType
     % curCol = plotColors{type};
     curMeanNdbStim = mean(stimTable.dbDiffStimM(curTrials),1);
     curMeanNdbSham = mean(stimTable.dbDiffShamM(curTrials),1);
-    % curData = [stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)];
-    curData = [stimTable.dbDiffStimM(curTrials)-stimTable.dbDiffShamM(curTrials)];
-    dataForStat = [dataForStat; curData];
-    groupNames = [groupNames; repmat(type, length(curData), 1)];
+    curData = [stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)];
+    curDatadiff = [stimTable.dbDiffStimM(curTrials)-stimTable.dbDiffShamM(curTrials)];
+    diffData = [diffData; curDatadiff];
+    groupNames = [groupNames; repmat(type, length(curDatadiff), 1)];
     [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
     curColorMat = animalsColors(animalIndices, :);
-    curX = ones(height(curData),1)*type;
+    colorMat = [colorMat; curColorMat];
     hold on
-    swarmchart(curX,curData,15,curColorMat,'filled','XJitterWidth',0.3);
+    for i = 1:height(curData)
+        plot(x, curData(i,:), 'Color',curColorMat(i,:), 'Marker','.', 'MarkerSize',10, 'LineWidth',1)
+    end
+    ylim([-50 200])
+
+    xticks(1:2); xticklabels(["Sham", "Stim"])
+    xlim([0.5, 2.5]);
 end
+
+    subplot(2,numType,[1:numType]+4)
+    swarmchart(groupNames,diffData,15,colorMat,'filled','XJitterWidth',0.5);
     xticks(1:length(stimType)); % Position of the x-ticks
     xticklabels(stimType); % Labels for the x-ticks
-    % xlim([0.5, 2.5]);
+    ylim([-40 250])
+% savefigure
+set(f,'PaperPosition',[1 1 4 2.5]);
+fileName=[analysisFolder filesep 'meanNormBDStimSham'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
 
    %  annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
    %      sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
@@ -1446,7 +1558,6 @@ end
    %  sprintf('Wilcoxon test p =%.3f',pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
    %  'right', 'VerticalAlignment', 'middle');
     
-    % ylim([-40 160])
 
     % add titles. labels...
     ylabel('Diff in D2B power')
@@ -1455,16 +1566,11 @@ end
 % end
 % statistics:
 % 1. kruskal wallas:
-[p, tbl, stats] = kruskalwallis(dataForStat,groupNames);
+[p, tbl, stats] = kruskalwallis(diffData,groupNames);
 
 if p < 0.05
     c = multcompare(stats, 'CType', 'dunn-sidak');
 end
-% savefigure
-% set(f,'PaperPositionMode','auto');
-% fileName=[analysisFolder filesep 'meanNormBDStimSham'];
-% print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-
 
 % clearvars -except stimTable SA analysisFolder
 
