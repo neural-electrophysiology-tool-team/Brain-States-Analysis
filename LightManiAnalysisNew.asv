@@ -98,6 +98,8 @@ clear s
 %% calculate stim sham diff:
 stimTable.dbDiffStim = cell(height(stimTable),1);
 stimTable.dbDiffSham = cell(height(stimTable),1);
+stimTable.dbDiffStimM1 = cell(height(stimTable),1);
+stimTable.dbDiffShamM1 = cell(height(stimTable),1);
 firstStimInd = 50000/1000;
 win = 30;
 for i=1:height(stimTable)
@@ -106,13 +108,19 @@ for i=1:height(stimTable)
     befStim = stimTable.StimAvg{i}(firstStimInd-win:firstStimInd-1);
     durStim = stimTable.StimAvg{i}(firstStimInd+CurStimDur-win:firstStimInd+CurStimDur-1);
     stimTable.dbDiffStim(i) = {durStim-befStim};
+    stimTable.dbDiffStimM1(i) = {mean(durStim,'omitnan')-mean(befStim,'omitnan')};
     % calc substracted stimulation from baseline
     befSham = stimTable.StimAvgSham{i}(firstStimInd-win:firstStimInd-1);
     durSham = stimTable.StimAvgSham{i}(firstStimInd+CurStimDur-win:firstStimInd+CurStimDur-1);
     stimTable.dbDiffSham(i) = {durSham-befSham};
+    stimTable.dbDiffShamM1(i) = {mean(durSham,'omitnan')-mean(befSham,'omitnan')};
+
 end
 stimTable.dbDiffStimM = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffStim);
 stimTable.dbDiffShamM = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffSham);
+
+%%
+diff([cell2mat(stimTable.dbDiffStimM); cell2stimTable.dbDiffStimM1])
 
 %% AC - get the Data 
 
@@ -576,7 +584,7 @@ end
     % 3 subplots: 1 unit, all units same night, all units
     spikeRateFile = [curPhyFoler filesep 'spikeRateAll.mat'];
     load(spikeRateFile,"spikeRateAll");
-    
+
 unitMean = mean(spikeRateAll,3);
 bestU = 48;
 bestUind = find(allClusters==bestU);
@@ -1494,8 +1502,8 @@ type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
     ~contains(stimTable.Remarks,'Ex') & ...
-    all(~isnan(stimTable.dbDiffStimM), 2) &...
-    all(~isnan(stimTable.dbDiffShamM), 2); %&...
+    all(~isnan(stimTable.dbDiffStimM), 2);% &...
+    % all(~isnan(stimTable.dbDiffShamM), 2); %&...
     % ~contains(stimTable.Animal,'157');
     
 n = sum(curTrials);

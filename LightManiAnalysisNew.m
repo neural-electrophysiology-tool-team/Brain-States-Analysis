@@ -98,6 +98,8 @@ clear s
 %% calculate stim sham diff:
 stimTable.dbDiffStim = cell(height(stimTable),1);
 stimTable.dbDiffSham = cell(height(stimTable),1);
+stimTable.dbDiffStimM = zeros(height(stimTable),1);
+stimTable.dbDiffShamM = zeros(height(stimTable),1);
 firstStimInd = 50000/1000;
 win = 30;
 for i=1:height(stimTable)
@@ -106,13 +108,16 @@ for i=1:height(stimTable)
     befStim = stimTable.StimAvg{i}(firstStimInd-win:firstStimInd-1);
     durStim = stimTable.StimAvg{i}(firstStimInd+CurStimDur-win:firstStimInd+CurStimDur-1);
     stimTable.dbDiffStim(i) = {durStim-befStim};
+    stimTable.dbDiffStimM(i) = mean(durStim,'omitnan')-mean(befStim,'omitnan');
     % calc substracted stimulation from baseline
     befSham = stimTable.StimAvgSham{i}(firstStimInd-win:firstStimInd-1);
     durSham = stimTable.StimAvgSham{i}(firstStimInd+CurStimDur-win:firstStimInd+CurStimDur-1);
     stimTable.dbDiffSham(i) = {durSham-befSham};
+    stimTable.dbDiffShamM(i) = mean(durSham,'omitnan')-mean(befSham,'omitnan');
+
 end
-stimTable.dbDiffStimM = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffStim);
-stimTable.dbDiffShamM = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffSham);
+stimTable.dbDiffStimM1 = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffStim);
+stimTable.dbDiffShamM1 = cellfun(@(x) mean(x,'omitnan'),stimTable.dbDiffSham);
 
 %% AC - get the Data 
 
@@ -1494,8 +1499,8 @@ type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
     ~contains(stimTable.Remarks,'Ex') & ...
-    all(~isnan(stimTable.dbDiffStimM), 2);% &...
-    % all(~isnan(stimTable.dbDiffShamM), 2); %&...
+    all(~isnan(stimTable.dbDiffStimM1), 2) &...
+    all(~isnan(stimTable.dbDiffShamM1), 2); %&...
     % ~contains(stimTable.Animal,'157');
     
 n = sum(curTrials);
