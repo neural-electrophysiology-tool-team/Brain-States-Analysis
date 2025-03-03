@@ -574,6 +574,8 @@ end
 
 %% Plot Spike rates avrages for all nights:
     % 3 subplots: 1 unit, all units same night, all units
+    spikeRateFile = [curPhyFoler filesep 'spikeRateAll.mat'];
+    load(spikeRateFile,"spikeRateAll");
 
 unitMean = mean(spikeRateAll,3);
 bestU = 48;
@@ -1492,8 +1494,8 @@ type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
     ~contains(stimTable.Remarks,'Ex') & ...
-    all(~isnan(stimTable.dbDiffStimM), 2) &...
-    all(~isnan(stimTable.dbDiffShamM), 2); %&...
+    all(~isnan(stimTable.dbDiffStimM), 2);% &...
+    % all(~isnan(stimTable.dbDiffShamM), 2); %&...
     % ~contains(stimTable.Animal,'157');
     
 n = sum(curTrials);
