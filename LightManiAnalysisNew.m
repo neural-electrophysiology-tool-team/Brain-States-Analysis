@@ -1499,8 +1499,8 @@ type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
     ~contains(stimTable.Remarks,'Ex') & ...
-    all(~isnan(stimTable.dbDiffStimM1), 2) &...
-    all(~isnan(stimTable.dbDiffShamM1), 2); %&...
+    all(~isnan(stimTable.dbDiffStimM), 2) &...
+    all(~isnan(stimTable.dbDiffShamM), 2); %&...
     % ~contains(stimTable.Animal,'157');
     
 n = sum(curTrials);
@@ -1618,6 +1618,9 @@ for type = 1:numType
 
     xticks(1:2); xticklabels(["Sham", "Stim"])
     xlim([0.5, 2.5]);
+
+    p = signrank(curData(:,1), curData(:,2));
+    fprintf('%s: p-value = %.5f\n',stimType(type), p);
 end
 
     subplot(2,numType,[1:numType]+4)
@@ -2065,7 +2068,7 @@ fileName = [analysisFolder filesep 'polarhistoAllNights.mat'];
 save(fileName,"mPhasePre" ,"mPhaseStim","mPhasePost")
 %% load data:
 load([analysisFolder filesep 'polarhistoAllNights.mat'])
-%% plot polser histogram - red nights
+%% plot polar histogram - red nights
 uniqueAnimals = unique(stimTable.Animal);
 relativePhasePre = mPhasePre.movs -mPhasePre.DBs;
 relativePhaseStim = mPhaseStim.movs -mPhaseStim.DBs;
@@ -2182,15 +2185,15 @@ p=find(pVal);
 relativePreMean = circ_mean(relativePhasePre(p));
 relativeStimMean = circ_mean(relativePhaseStim(p));
 relativePostMean = circ_mean(relativePhasePost(p));
-hP{1}=polarplot([relativePhasePre(p)';relativePhasePre(p)'],[zeros(1,numel(p)); ...
-        Rlim*ones(1,numel(p))],'color',[plotColors{1} a],'LineWidth',1);
-hP{1}=polarplot([relativePreMean relativePreMean],[0,Rlim],'color',plotColors{1},'LineWidth',3);
-    hP{2}=polarplot([relativePhaseStim(p)';relativePhaseStim(p)'],[zeros(1,numel(p)); ...
+% hP{1}=polarplot([relativePhasePre(p)';relativePhasePre(p)'],[zeros(1,numel(p)); ...
+%         Rlim*ones(1,numel(p))],'color',[plotColors{1} a],'LineWidth',1);
+% hP{1}=polarplot([relativePreMean relativePreMean],[0,Rlim],'color',plotColors{1},'LineWidth',3);
+hP{2}=polarplot([relativePhaseStim(p)';relativePhaseStim(p)'],[zeros(1,numel(p)); ...
         Rlim*ones(1,numel(p))],'color',[plotColors{2} a],'LineWidth',1);
 hP{2}=polarplot([relativeStimMean relativeStimMean],[0,Rlim],'color',plotColors{2},'LineWidth',3);
-    hP{3}=polarplot([relativePhasePost(p)';relativePhasePost(p)'], ...
-        [zeros(1,numel(p));Rlim*ones(1,numel(p))],'color',[plotColors{3} a],'LineWidth',1);
-hP{3}=polarplot([relativePostMean relativePostMean],[0,Rlim],'color',plotColors{3},'LineWidth',3);
+% hP{3}=polarplot([relativePhasePost(p)';relativePhasePost(p)'], ...
+%         [zeros(1,numel(p));Rlim*ones(1,numel(p))],'color',[plotColors{3} a],'LineWidth',1);
+% hP{3}=polarplot([relativePostMean relativePostMean],[0,Rlim],'color',plotColors{3},'LineWidth',3);
 
 hold on;
 hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
@@ -2205,8 +2208,8 @@ h1.ThetaTick=[0:90:330];
 h1.RTick=[0.1:0.1:0.4];
 %h2.ThetaTickLabels([2 3 5 6 8 9 11 12])=cell(size([2 3 5 6 8 9 11 12]));
 
-l1=legend([hP{1}(1),hP{2}(1),hP{3}(1),hP3,hRose],{'pre','during','post','\delta/\beta','Prob.'},'box','off');
-l1.Position=[0.7386    0.8238    0.2125    0.1190];
+% l1=legend([hP{1}(1),hP{2}(1),hP{3}(1),hP3,hRose],{'pre','during','post','\delta/\beta','Prob.'},'box','off');
+% l1.Position=[0.7386    0.8238    0.2125    0.1190];
 
 
 % statistics - using circular statistics.
