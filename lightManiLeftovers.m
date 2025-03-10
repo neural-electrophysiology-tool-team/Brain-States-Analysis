@@ -1193,3 +1193,296 @@ sgtitle ('D/B decrease during SWS bouts according to wavelangth ')
 set(gcf,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'DBdecreaseAllnigthscolors'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+%% plot all nights: Beta full cycle - only red
+
+type = 'Red';
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength)...
+        & ~contains(stimTable.Remarks,'Ex') ...
+        & ~any(isnan(stimTable.betaMeans),2); %& contains(stimTable.Animal,curAni);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+groupNames = {'Pre', 'During', 'After'};
+curData = 1./stimTable.betaMeans(curTrials,:);
+
+
+% statistics:
+
+% Assuming data in columns where each row is a subject and each column is a timepoint
+% bdSWDataStat = stimTable.dbSWMeans(curTrials,:);
+% cleanDBSW = bdSWDataStat(~any(isnan(bdSWDataStat), 2), :);
+% n=height(cleanDBSW);
+
+[p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Example data for three groups
+before = curData(:,1);
+during = curData(:,2);
+after = curData(:,3);
+
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 3;
+
+% Pairwise Wilcoxon signed-rank tests
+[p_before_during, ~, stats_before_during] = signrank(before, during);
+[p_during_after, ~, stats_during_after] = signrank(during, after);
+[p_after_before, ~, stats_after_before] = signrank(after, before);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+
+%plot
+fdb = figure;
+% plot(stimTable.dbSWMeans(curTrials,:)','Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
+%create color code:
+
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+hold on; 
+for i = 1:height(curData)
+    plot(curData(i,:),'Color',curColorMat(i,:),'Marker','.','MarkerSize',10)
+end
+plot(mean(curData,1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
+xlim([0.5, 3.5])
+xticks(1:3)
+xticklabels(groupNames)
+ylabel('1/Beta means during full cycle')
+ylims = [0 0.14];
+ylim(ylims)
+annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
+    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.15, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f (Significant if < %.4f)', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
+    sprintf('p-value = %.4f', p_after_before), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% savefigure
+set(fdb,'PaperPosition',[1 1 2.7 2.3]);
+fileName=[analysisFolder filesep 'BetachangeFullCycle'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% plot one night: Beta during full cycle
+ 
+% for i = 1:height(stimTable)
+i =22 ;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+
+dbStimData = {1./stimTable.betaFull(i).Pre 1./stimTable.betaFull(i).Stim 1./stimTable.betaFull(i).Post};
+
+fdbDec = figure;
+groupNames = ["Pre", "Stim","Post"];
+colors = [0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+
+yswarm = [dbStimData{1} dbStimData{2} dbStimData{3}];
+xswarm=[1*ones(1,length(dbStimData{1})), 2*ones(1,length(dbStimData{2})), 3*ones(1,length(dbStimData{3}))];
+colorswarm = [repmat([0.2, 0.6, 0.8;], length(dbStimData{1}), 1);  % Red for Array 1
+    repmat([0.9, 0.4, 0.3], length(dbStimData{2}), 1);  % Green for Array 2
+    repmat([0.5, 0.8, 0.5], length(dbStimData{3}), 1)]; % Blue for Array 3
+swarmchart(xswarm,yswarm,10,colorswarm,"filled",'o','XJitterWidth',0.5)
+ylabel('1/beta power during full cycle')
+ylims = [0 0.25];
+ylim(ylims)
+set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
+title('1/beta power during full cycles - one night')
+
+% statistics:
+
+% Group names
+groupNames = {'Pre', 'During', 'After'};
+
+% Combine data into a single vector and create a grouping variable
+allData = [dbStimData{1},dbStimData{2},dbStimData{3}]'; % Concatenate all data
+groupLabels = [...
+    repmat({'Pre'}, numel(dbStimData{1}), 1); ...
+    repmat({'During'}, numel(dbStimData{2}), 1); ...
+    repmat({'After'}, numel(dbStimData{3}), 1)]';
+
+% Kruskal-Wallis test
+[pKruskal, tblKruskal, statsKruskal] = kruskalwallis(allData, groupLabels, 'off');
+fprintf('Kruskal-Wallis test p-value: %.4f\n', pKruskal);
+annotation('textbox', [0.1, 0.8, 0.2, 0.1], 'String', ...
+    sprintf('Kruskal-Wallis test p-value: %.4f\n', pKruskal), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+
+if pKruskal < 0.05
+    disp('Significant differences found in Kruskal-Wallis test. Proceeding with pairwise comparisons...');
+    pMannWhitneyAll = [];
+    % Pairwise comparisons with Mann-Whitney U test
+    pairwiseComparisons = combnk(1:3, 2); % All pairwise combinations
+    numComparisons = height(pairwiseComparisons);
+    alpha = 0.05;
+    correctedAlpha = alpha / numComparisons;
+
+    for i = 1:size(pairwiseComparisons, 1)
+        group1 = dbStimData{pairwiseComparisons(i, 1)};
+        group2 = dbStimData{pairwiseComparisons(i, 2)};
+        
+        % Mann-Whitney U test (rank-sum test)
+        pMannWhitney = ranksum(group1, group2);
+        fprintf('Mann-Whitney U test (%s vs %s): p-value = %.4f\n', ...
+                groupNames{pairwiseComparisons(i, 1)}, ...
+                groupNames{pairwiseComparisons(i, 2)}, ...
+                pMannWhitney);
+        pMannWhitneyAll = [pMannWhitneyAll, pMannWhitney]; %for later in the caption
+
+        annotation('textbox', [0.1+0.2*i, 0.8, 0.2, 0.1], 'String', ...
+            sprintf('MW (%s vs %s): p = %.4f\n', ...
+            groupNames{pairwiseComparisons(i, 1)}, ...
+            groupNames{pairwiseComparisons(i, 2)}, ...
+            pMannWhitney), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+            'right', 'VerticalAlignment', 'middle');
+
+    end
+else
+    disp('No significant differences found in Kruskal-Wallis test.');
+end
+
+
+%savefigure
+set(fdbDec,'PaperPositionMode','auto');
+fileName=[SA.currentPlotFolder filesep 'betafullcycpreStimPost'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+set(fdbDec,'PaperPosition',[1 1 2.7 2.3]);
+fileName=[analysisFolder filesep 'BetafullcycOneNight'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+%% plot head movements - Red nights!
+% swarm plot - smae color. 
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ...
+    ~contains(stimTable.Remarks,'Ex') & ...
+     ~any(isempty(stimTable.LM_DBt), 2) &...
+     ~cellfun(@isempty, stimTable.LM_DBt);
+
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+
+LMpre = LMData.LMpre(curTrials, :);
+LMwake = LMData.LMwake(curTrials, :);
+LMpost = LMData.LMpost(curTrials, :);
+LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
+LMstimbintrialM = mean(LMstimbinM(curTrials),2); % mean for each night
+
+
+LMplotData = [LMwake, LMpre, LMstimbintrialM, LMpost];
+
+% check the statistics:
+% Assuming data in columns where each row is a subject and each column is a timepoint
+
+[p, tbl, stats] = friedman(LMplotData, 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+% Bonferroni-corrected alpha level
+alpha = 0.05 / 6;
+% Pairwise Wilcoxon signed-rank tests
+[p_wake_pre, ~, stats_wake_pre] = signrank(LMwake, LMpre);
+[p_wake_during, ~, stats_wake_during] = signrank(LMwake, LMstimbintrialM);
+[p_wake_after, ~, stats_wake_after] = signrank(LMwake, LMpost);
+[p_pre_during, ~, stats_pre_during] = signrank(LMstimbintrialM,LMpre);
+[p_during_after, ~, stats_during_after] = signrank(LMstimbintrialM, LMpost);
+[p_pre_after, ~, stats_pre_after] = signrank(LMpre, LMpost);
+
+% Display results with Bonferroni correction
+fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+fprintf('Wake vs Pre: p-value = %.5f (Significant if < %.4f)\n', p_wake_pre, alpha);
+fprintf('Wake vs During: p-value = %.5f (Significant if < %.4f)\n', p_wake_during, alpha);
+fprintf('Wake vs Post: p-value = %.5f (Significant if < %.4f)\n', p_wake_after, alpha);
+fprintf('During vs Pre: p-value = %.5f (Significant if < %.4f)\n', p_pre_during, alpha);
+fprintf('During vs Post: p-value = %.5f (Significant if < %.4f)\n', p_during_after, alpha);
+fprintf('Pre vs Post: p-value = %.5f (Significant if < %.4f)\n', p_pre_after, alpha);
+
+fileName = [analysisFolder filesep 'postHocPvalLMRedNights.mat'];
+save(fileName, 'alpha','p_wake_pre','p_wake_during','p_wake_after','p_pre_during', ...
+    'p_during_after','p_pre_after')
+
+
+fLMr = figure;
+set(fLMr, 'PaperPositionMode','auto')
+Groups = ["Wake","Pre","During Stim","Post"];
+% colors = [0.5 0.5 0.5;0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+% violin(LMplotData, 'xlabel',Groups, 'facecolor',colors,'edgecolor',[0.6 0.6 0.6],'medc',[]);
+
+x = [ones(length(LMplotData),1) 2*ones(length(LMplotData),1) 3*ones(length(LMplotData),1) 4*ones(length(LMplotData),1)];
+swarmchart(x,LMplotData,15,colors,'filled','XJitterWidth',0.1);
+xticks(1:4), xticklabels(Groups); xlim([0.7 4.3]);
+ylim([0 5.5]);
+
+annotation('textbox', [0.4, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+annotation('textbox', [0.5, 0.65, 0.3, 0.1], 'String', ...
+    sprintf(['Wake vs Pre: p-value = %.5f (Significant if < %.4f)\nWake vs During: ' ...
+    'p-value = %.5f \nWake vs Post: p-value = %.5f \nDuring vs Pre: p-value = ' ...
+    '%.5f \nDuring vs Post: p-value = %.5f \nPre vs Post: p-value = %.5f \n'],...
+    p_wake_pre, alpha,p_wake_during,p_wake_after,p_pre_during, p_during_after,p_pre_after), ...
+    'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% savefigure
+set(fLMr,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'LMRednights2'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+% clearvars -except stimTable SA analysisFolder LMdata
+
+%% plot P2V diff between stim-pre
+numType =4;
+P2Vdiffs = [];
+groupNums = [];
+colorMat = [];
+stimWaveL = ["47","532","635","LED"];
+stimType = ["Blue","Green","Red","LED"];
+
+for type = 1:numType
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType) & ...
+                ~contains(stimTable.Remarks,'Ex') &...
+                all(~isnan(stimTable.ACcomPer),2);
+    curP2Vdiff = stimTable.ACcomP2V(curTrials,2)-stimTable.ACcomP2V(curTrials,3);
+    P2Vdiffs = [P2Vdiffs; curP2Vdiff];
+    groupNums = [groupNums; repmat(type, length(curP2Vdiff), 1)];
+    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+    curColorMat = animalsColors(animalIndices, :);
+    colorMat = [colorMat; curColorMat];
+end
+
+
+[p, tbl, statsP2V] = kruskalwallis(P2Vdiffs,groupNums);
+
+if p < 0.05
+    cP2V = multcompare(statsP2V, 'CType', 'dunn-sidak');
+end
+
+f = figure;
+swarmchart(groupNums,P2Vdiffs,10,colorMat,'filled','XJitterWidth',0.5);
+ylabel('P2V diff (Stim-Pre)')
+xticks(1:4);xticklabels(stimType)
+yline(0);
+% savefigure
+set(f,'PaperPosition',[1 1 1.8 1.2]);
+fileName=[analysisFolder filesep 'P2vDiffallcolors'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
