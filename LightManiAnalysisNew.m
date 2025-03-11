@@ -1024,7 +1024,7 @@ fileName=[analysisFolder filesep 'DBdecreaseAllnigthscolors'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% plot D/B decrease - all nights DIFFS
+%% Fig3- plot D/B decrease - all nights DIFFS
 
 stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
@@ -1034,6 +1034,8 @@ groupNum = [];
 colorMat = [];
 ns = [];
 Ns = [];
+psFromZero = [];
+DBMean = [];
 %plot Period Times:
 
 
@@ -1049,14 +1051,17 @@ for type = 1:numType
     Ns = [Ns; numel(unique(stimTable.Animal(curTrials)))];
     curData = stimTable.dbSWMeans(curTrials,2)-stimTable.dbSWMeans(curTrials,1);
     DBdiff = [DBdiff; curData];
+    DBMean = [DBMean; mean(curData)];
     groupNum = [groupNum; repmat(type,length(curData),1)];
     [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
     curColorMat = animalsColors(animalIndices, :);
-    colorMat = [colorMat;curColorMat]   ;
+    colorMat = [colorMat;curColorMat];
+    [pfromZero, h] = signrank(curData, 0);
+    psFromZero = [psFromZero , pfromZero];
 end
 
 %stats:
-[p, tbl, statsDBdiff] = kruskalwallis(DBdiff,groupNum);
+[p, tbl, statsDBdiff] = kruskalwallis(DBdiff,groupNum,'off');
 
 if p < 0.05
     cDBdiff = multcompare(statsDBdiff, 'CType', 'dunn-sidak');
@@ -1065,6 +1070,8 @@ end
 
 f=figure;
 swarmchart(groupNum,DBdiff,10,colorMat,'filled','XJitterWidth',0.5);
+hold on;
+scatter(1:4, DBMean,14,'k','Marker','+')
 ylabel('d/b diff')
 xticks(1:numType); xticklabels(stimType)
 yline(0,'Color',[0.4 0.4 0.4],'LineStyle','--')
@@ -1224,6 +1231,8 @@ numType = length(stimType);
 stimData = [];
 groupNum=[];
 colorMat = [];
+Ns = [];
+ns = [];
 x=1:3;
 %plot Period Times:
 f=figure;
@@ -1240,6 +1249,8 @@ for type = 1:numType
                 all(stimTable.ACcomP2V > 0.15,2);
     n = sum(curTrials);
     N = numel(unique(stimTable.Animal(curTrials)));
+    ns = [ns; n];
+    Ns = [Ns; N];
     % curCol = plotColors{type};
     curData = stimTable.ACcomPer(curTrials,:);
     curMean = mean(curData,1,'omitnan');
@@ -1315,7 +1326,7 @@ numType = 4;
 
 newPer = 156; %sec
 for i =1:numType
-    data = stimData(groupNum=i);
+    data = stimData(groupNum==i);
     [p, h] = signrank(data/1000, newPer);
     pVals(i) = p;
     SDs(i) = std(data/1000);
@@ -1332,7 +1343,7 @@ correctedA = 0.05/6;
 [h,p12] = vartest2(stimData(groupNum==1), stimData(groupNum==2));
 [h,p13] = vartest2(stimData(groupNum==1), stimData(groupNum==3));
 [h,p14] = vartest2(stimData(groupNum==1), stimData(groupNum==4));
-[h,p23]= vartest2(stimData(groupNum==2), stimData(groupNum==3));
+[h,p23] = vartest2(stimData(groupNum==2), stimData(groupNum==3));
 [h,p24] = vartest2(stimData(groupNum==2), stimData(groupNum==4));
 [h,p34] = vartest2(stimData(groupNum==3), stimData(groupNum==4));
 
@@ -1426,7 +1437,7 @@ ylabel('P2V in 156s in Stim')
 % 
 % % savefigure
 set(gcf,'PaperPosition',[1 1 3.5 3]);
-fileName=[analysisFolder filesep 'P2V156'];
+fileName=[analysisFolder filesep 'P2V156n'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
@@ -1552,6 +1563,8 @@ statsStimSham = struct();
 diffData = [];
 groupNames = [];
 colorMat =[];
+ns = [];
+Ns = [];
 % mean normelized change in D/B.
 f=figure;
 % sgtitle('mean normelized D/B')
@@ -1568,6 +1581,8 @@ for type = 1:numType
                 all(~isnan(stimTable.dbDiffShamM),2); %& contains(stimTable.Animal,curAni);
     n = sum(curTrials);
     N = length(unique(stimTable.Animal(curTrials)));
+        ns = [ns; n];
+    Ns = [Ns; N];
     % curCol = plotColors{type};
     curMeanNdbStim = mean(stimTable.dbDiffStimM(curTrials),1);
     curMeanNdbSham = mean(stimTable.dbDiffShamM(curTrials),1);

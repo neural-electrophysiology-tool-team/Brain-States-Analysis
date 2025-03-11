@@ -11,7 +11,9 @@ Groups = ["Wake","Pre","Stim"];
 diffStimPre = [];
 groupNum = [];
 colorMat = [];
-
+diffStimPreM =[];
+ns = [];
+Ns = [];
 % Head movements:
 fLMdiff=figure;
 for type = 1:numType
@@ -25,7 +27,8 @@ for type = 1:numType
              all(~isnan(LMData.LMpre),2); 
     n = sum(curTrials);
     N = length(unique(stimTable.Animal(curTrials)));
-
+    ns = [ns; n];
+    Ns = [Ns; N];
     LMpre = LMData.LMpre(curTrials, :);
     LMwake = LMData.LMwake(curTrials, :);
     LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
@@ -33,9 +36,10 @@ for type = 1:numType
     
     curDiffStimPre = LMstimbintrialM-LMpre;
     diffStimPre = [diffStimPre;curDiffStimPre];
+    diffStimPreM = [diffStimPreM; mean(curDiffStimPre)];
     groupNum = [groupNum; repmat(type,length(curDiffStimPre),1)];
-    curDiffPreWake = LMpre-LMwake;
-    curDdiffStimWake = LMstimbintrialM-LMwake;
+    curDiffPreWake = LMpre;
+    curDdiffStimWake = LMstimbintrialM;
     curData = [curDiffPreWake,curDdiffStimWake];
     % plot normelized to wake:
 
@@ -74,15 +78,25 @@ xticks(1:8);xticklabels(repmat(["Pre","Stim"],1,numType))
 % plot only stim-pre diff:
 subplot(2,1,2)
 swarmchart(groupNum,diffStimPre,15,colorMat,'filled','XJitterWidth',0.5);
+hold on;
+scatter(1:4,diffStimPreM,15,'k','Marker','+')
 xticks(1:4), xticklabels(stimType); xlim([0.7 4.3]); %ylim([0 10]);
-
+yline(0,'--','Color',[0.4 0.4 0.4])
 [pKW, tbl, stats] = kruskalwallis(diffStimPre,groupNum,'off');
 
 if pKW < 0.05
     c = multcompare(stats, 'CType', 'dunn-sidak');
 end
 
+psFromZero = zeros(1,numType);
+for i= 1:numType
+    curData = diffStimPre(groupNum==i);
+    [pfromZero, h] = signrank(curData, 0);
+    psFromZero(1,i) = pfromZero; 
+
+end
+
 % savefigure
-set(fLMdiff,'PaperPositionMode','auto');
+set(fLMdiff,'PaperPosition',[1 5 3.5 4]);
 fileName=[analysisFolder filesep 'LMdiffs'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);

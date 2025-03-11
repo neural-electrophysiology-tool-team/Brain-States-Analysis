@@ -18,6 +18,13 @@ statsHeadangSd = struct();
 % mean normelized change in D/B.
 fHA=figure;
 sgtitle('Head Angles over night')
+headSDdiff = [];
+groupNum = [];
+headSDdiffM = [];
+colorMat = [];
+psFromZero = [];
+ns = [];
+Ns = [];
 for type = 1:numType
     h = subplot(2,2,type);
 
@@ -36,6 +43,16 @@ for type = 1:numType
     curHeadSD = headAngleSD(curTrials,1:3);
     curHeadSDmean = mean(curHeadSD,1,'omitnan');
 
+    %data for swarmplot
+    curData = curHeadSD(:,3) - curHeadSD(:,2);
+    headSDdiff = [headSDdiff; curData];
+    headSDdiffM = [headSDdiffM; mean(curData)];
+    groupNum = [groupNum; repmat(type,length(curData),1)];
+    colorMat = [colorMat; curColorMat];
+    [pfromZero, h] = signrank(curData, 0);
+    psFromZero = [psFromZero , pfromZero];
+    ns = [ns; n];
+    Ns = [Ns; N];
     %statistics:
 
     [p, tbl, stats] = friedman(curHeadSD, 1,'off'); % Here, 1 indicates within-subjects design
@@ -87,7 +104,7 @@ for type = 1:numType
     annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
         sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
         'right', 'VerticalAlignment', 'middle');
-   ylim([-30 50])
+   % ylim([-30 50])
     if n==0
         plot(0,0)
     end
@@ -97,13 +114,26 @@ for type = 1:numType
     title(stimType(type))
  
 end
-
 % savefigure
 set(fHA,'Position',[50 50 1000 720]);
 fileName=[analysisFolder filesep 'headLiftsalltypesSD'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)],'-bestfit');
 save([analysisFolder filesep 'headLiftsalltypesSD.mat'], "statsHeadangSd")
 
+
+fHL = figure;
+swarmchart(groupNum,headSDdiff,10,colorMat,'filled','XJitterWidth',0.5);
+hold on;
+scatter(1:4, headSDdiffM,14,'k','Marker','+')
+ylabel('Head Angle SD Diff -  (Stim-Pre)')
+xticks(1:numType); xticklabels(stimType)
+yline(0,'Color',[0.4 0.4 0.4],'LineStyle','--')
+% ylim([-350 150])
+
+%save figure #2
+set(fHL,'PaperPosition',[1 5 3.5 2]);
+fileName=[analysisFolder filesep 'headAngleSDalltypesDiffs'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% diffs: 
 diff32 = HeadAngleAvgP(:,3)-HeadAngleAvgP(:,2);

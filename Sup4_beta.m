@@ -31,7 +31,7 @@ colorswarm = [repmat([0.2, 0.6, 0.8;], length(dbStimData{1}), 1);  % Red for Arr
     repmat([0.5, 0.8, 0.5], length(dbStimData{3}), 1)]; % Blue for Array 3
 swarmchart(xswarm,yswarm,10,colorswarm,"filled",'o','XJitterWidth',0.5)
 ylabel('beta power during SWS')
-ylim([ylims])
+% ylim([ylims])
 set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
 title('Beta power during SWS - one night')
 
@@ -158,7 +158,7 @@ xlim([0.5, 3.5])
 xticks(1:3)
 xticklabels(groupNames)
 ylabel('1/Beta means during SWS ')
-ylim(ylims)
+% ylim(ylims)
 
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
@@ -190,7 +190,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 %% plot one night: Delta during SW cycle
  
 % for i = 1:height(stimTable)
-i =22 ;
+i =25;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 
@@ -274,10 +274,10 @@ fileName=[analysisFolder filesep 'DeltaSWOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% plot all nights: Beta SW- only red
+%% plot all nights: delta SW- only red
 
-type = 'Red';
-wavelength = '635';
+type = 'Blue';
+wavelength = '532';
 curTrials = contains(stimTable.Remarks,wavelength)...
         & ~contains(stimTable.Remarks,'Ex') ...
         & ~any(isnan(stimTable.deltaSWMeans),2); %& contains(stimTable.Animal,curAni);
