@@ -224,9 +224,23 @@ for i = 1:height(stimTable)
         %get the full cycles for db and betta
             pTmpF = find(DB.t_ms>curCyclesOns(k) & DB.t_ms<curCyclrsOffs(k));
             dbFull.(part)(k) = mean(DB.bufferedDelta2BetaRatio(pTmpF));
+        end
+        
+        % get the data for regStimSham:
+        if j == 1
+            DB=SA.getDelta2BetaRatio;
+            pre=50000;
+            post=100000;
+            curSleepDB = zeros([length(curCyclesOns),150]);
+            for k = 1:length(curCyclesOns)
+                pTmpSS = find(DB.t_ms>(curCyclesOns(k)-pre) & DB.t_ms<=(curCyclesOns(k)+post));
+                curSleepDB(k,:) = DB.bufferedDelta2BetaRatio(pTmpSS);
+            end
 
+            stimTable.sleepAvg(i) = {mean(curSleepDB,1)};
         end
     end
+
     
     dbSWMeans(i,:) = [mean(dbSW.Pre,'omitnan') mean(dbSW.Stim,'omitnan') mean(dbSW.Post,'omitnan')];
     dbMeans(i,:) = [mean(dbFull.Pre,'omitnan') mean(dbFull.Stim,'omitnan') mean(dbFull.Post,'omitnan')];
@@ -243,6 +257,21 @@ stimTable.dbSWMeans = dbSWMeans;
 stimTable.dbMeans = dbMeans;
 stimTable.deltaSWMeans = deltaSWMeans;
 stimTable.betaSWMeans = betaSWMeans;
+%%
+stimTable.dbDiffSleep = cell(height(stimTable),1);
+stimTable.dbDiffSleepM = zeros(height(stimTable),1);
+
+firstStimInd = 50000/1000;
+win = 30;
+for i=1:height(stimTable)
+    CurStimDur = round(stimTable.stimDuration(i)/1000);
+    % calc substracted stimulation from baseline
+    befSleep = stimTable.sleepAvg{i}(firstStimInd-win:firstStimInd-1);
+    durSleep = stimTable.sleepAvg{i}(firstStimInd+CurStimDur-win:firstStimInd+CurStimDur-1);
+    stimTable.dbDiffSleep(i) = {durSleep-befSleep};
+    stimTable.dbDiffSleepM(i) = mean(durSleep,'omitnan')-mean(befSleep,'omitnan');
+    
+end
 
 
 %% save stimTable
@@ -546,7 +575,7 @@ for k = 1:length(spikeRecs)
     load(spikeRateFile,"spikeRateAll");
 
     unitM = mean(spikeRateAll,3); % avarage across trials.
-    AllNightsUnits = [AllNightsUnits;unitM]; %add to one matrix for all units, all nights
+    % AllNightsUnits = [AllNightsUnits;unitM]; %add to one matrix for all units, all nights
     
     % avarage spike rate for each unit:
     unitsBaseline = mean(mean(spikeRateAll,2),3);
@@ -1644,10 +1673,10 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 if p < 0.05
     c = multcompare(stats, 'CType', 'dunn-sidak');
-end
+end 
 
-% clearvars -except stimTable SA analysisFolder
 
+% clearvars -except stimTable SA analysisFolde
 %% Lizard Movement Data analysis:
 
 %% Get LM DATA
