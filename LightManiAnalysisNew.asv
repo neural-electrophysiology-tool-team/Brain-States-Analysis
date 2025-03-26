@@ -176,6 +176,9 @@ dbMeans = zeros([height(stimTable),3]);
 deltaSWMeans = zeros([height(stimTable),3]);
 betaSWMeans = zeros([height(stimTable),3]);
 
+% get the "stim-Sham" in the regular cycles before stim
+regStimSham = zeros([height(stimTable),1]);
+
 for i = 1:height(stimTable)
 % i =22 ;
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -225,6 +228,10 @@ for i = 1:height(stimTable)
             pTmpF = find(DB.t_ms>curCyclesOns(k) & DB.t_ms<curCyclrsOffs(k));
             dbFull.(part)(k) = mean(DB.bufferedDelta2BetaRatio(pTmpF));
 
+        % get the data for regStimSham:
+            if j == 1
+                
+            end
         end
     end
     
@@ -546,7 +553,7 @@ for k = 1:length(spikeRecs)
     load(spikeRateFile,"spikeRateAll");
 
     unitM = mean(spikeRateAll,3); % avarage across trials.
-    AllNightsUnits = [AllNightsUnits;unitM]; %add to one matrix for all units, all nights
+    % AllNightsUnits = [AllNightsUnits;unitM]; %add to one matrix for all units, all nights
     
     % avarage spike rate for each unit:
     unitsBaseline = mean(mean(spikeRateAll,2),3);
@@ -1644,10 +1651,32 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 if p < 0.05
     c = multcompare(stats, 'CType', 'dunn-sidak');
+end 
+
+%% add  white night - regular sleep stim sham.
+% 1. go over all white nights
+type = 4;
+stimWaveL = ["47","532","635","LED"];
+curType = stimWaveL(type);
+curTrials = contains(stimTable.Remarks,curType) &...
+    ~contains(stimTable.Remarks,'Ex') & ...
+    all(~isnan(stimTable.dbDiffStimM),2) & ...
+    all(~isnan(stimTable.dbDiffShamM),2);
+trials = stimTable(curTrials,:);
+for i = 1:length(trials)
+    % 2. get the slow oscilations timing for each
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);    
+    SO = 
+
+    % 3. calculate the differences pre stim timings
+% mean for each night
 end
+% plot
 
-% clearvars -except stimTable SA analysisFolder
 
+
+% clearvars -except stimTable SA analysisFolde
 %% Lizard Movement Data analysis:
 
 %% Get LM DATA
