@@ -21,19 +21,21 @@ post = 1000;
 % plot
 fraw = figure;
 x = linspace(-pre,post,length(mV_t));
-plot(x,squeeze(mV),'Color',[0.7 0.7 0.7])
+% plot(x,squeeze(mV),'Color',[0.7 0.7 0.7])
+mV1 = squeeze(mV);
+[d,h] = hist2(repmat(x,height(mV1),1),mV1,'dX1',3,'dX2',5);
 hold on
-plot(x,mean(squeeze(mV),1),'Color','k','LineWidth',2)
+plot(downsample(x,100),downsample(mean(mV1,1),100),'Color','r','LineWidth',2)
 ylims =[-750 500];
 ylim(ylims)
 % title('Raw traces for 1 night')
 x_shade = [0 200 200 0];  % X-coordinates of the shaded region
 y_shade = [ylims(1) ylims(1) ylims(2) ylims(2)]; % Y-coordinates covering the full y-range
 patch(x_shade, y_shade, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
-xlabel('Time(ms)');ylabel('mV')
+xlabel('Time(ms)');ylabel('Voltage[uV]')
 
 % save figure
-set(fraw ,'PaperPosition',[1 2 7 2.5]);
+set(fraw ,'PaperPosition',[1 2 4.3 1.7]);
 fileName=[analysisFolder filesep 'SWRrawPV159N34'];
 % print(fileName,'-depsc','-vector');
 print(fileName, '-dpdf', '-r300');
