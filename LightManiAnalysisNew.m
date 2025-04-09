@@ -67,8 +67,8 @@ for i = 1:height(stimTable)
     % get and save the stim avg
     s = getStimSham(SA,stimTable.StimTrighCh(i),1);
     disp('got Stim for this rec')
-    stimTable.StimAvg(i) = {mean(s.StimDB,1)};
-    stimTable.StimAvgSham(i) = {mean(s.StimDBSham,1)};
+    stimTable.StimAvg(i) = {mean(s.StimDB,1,"omitnan")};
+    stimTable.StimAvgSham(i) = {mean(s.StimDBSham,1,"omitnan")};
     stimTable.times(i) = {s.ts};
     stimTable.stimDuration(i) = s.stimDur;
     disp('stimsham in table')
@@ -1076,7 +1076,7 @@ for type = 1:numType
     % curName = stimType(type);
     curTrials = contains(stimTable.Remarks,curType) &...
                 ~contains(stimTable.Remarks,"Ex") &...
-                all(~isnan(stimTable.dbSWMeans), 2);
+                all(~isnan(stimTable.dbSWMeans(:,1:2)), 2);
     ns =[ns; sum(curTrials)];
     Ns = [Ns; numel(unique(stimTable.Animal(curTrials)))];
     curData = stimTable.dbSWMeans(curTrials,2)-stimTable.dbSWMeans(curTrials,1);
@@ -1419,6 +1419,8 @@ stimP2V = [];
 groupNum = [];
 colorMat = [];
 means = [];
+Ns = [];
+ns = [];
 
 stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
@@ -1436,6 +1438,8 @@ for type = 1:numType
                 ~contains(stimTable.Remarks,"Ex");
     n = sum(curTrials);
     N = numel(unique(stimTable.Animal(curTrials)));
+    ns = [ns;n];
+    Ns = [Ns; N];
     curData = P2Vfs(curTrials,:);
     [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
     curColorMat = animalsColors(animalIndices, :);
@@ -1615,7 +1619,7 @@ for type = 1:numType
                 all(~isnan(stimTable.dbDiffShamM),2); %& contains(stimTable.Animal,curAni);
     n = sum(curTrials);
     N = length(unique(stimTable.Animal(curTrials)));
-        ns = [ns; n];
+    ns = [ns; n];
     Ns = [Ns; N];
     % curCol = plotColors{type};
     curMeanNdbStim = mean(stimTable.dbDiffStimM(curTrials),1);
