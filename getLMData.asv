@@ -178,9 +178,10 @@ fprintf('Head angles avgrages for this recordings: %f,%f, %f, %f',[HeadAngleAvg(
 end
 
 fileName = [analysisFolder filesep 'LMdata.mat'];
-LMdata = table(LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...
-               'VariableNames', {'LMwake', 'LMpre', 'LMstimbin','LMpost', ...
-               'LMallMean','HeadAngleAvg','headAngleSD'});
+save(fileName,"LMwake","LMpre","LMstim","LMpost","LMallMean",'-mat')
+LMdata = table(LMwake, LMpre, LMstimbin ,LMpost, LMallMean,...
+               'VariableNames', {'LMwake', 'LMpre', 'LMstimbin','LMpost','LMallMean'});
+
 
 save(fileName,"LMdata",'-mat')
 

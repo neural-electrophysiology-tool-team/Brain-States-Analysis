@@ -23,7 +23,7 @@ uniqueAnimals = unique(stimTable.Animal);
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 % SA.setCurrentRecording('Animal=PV162,recNames=Night27');
 maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
-stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh'});  % creating new table
+stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage'});  % creating new table
 stimTable.stimStartT = zeros(height(stimTable),1);
 stimTable.stimEndT = zeros(height(stimTable),1);
 stimTable.sleepStartT = zeros(height(stimTable),1);
@@ -36,7 +36,7 @@ stimTable.ACpre = cell(height(stimTable),1);
 stimTable.ACstim = cell(height(stimTable),1);
 stimTable.ACpost = cell(height(stimTable),1);
 
-%% geting the AND AC stim sham data from all records 
+%% geting the AND AC stim sham data from all records
 
 for i = 1:height(stimTable)
 
@@ -140,35 +140,35 @@ end
 stimTable.ACcomPer = ACcomPer;
 stimTable.ACcomP2V = ACcomP2V;
 %% Getting the liz mov for all animals + add to table
-SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-stimTable.LM_DBt = cell(height(stimTable),1);
-for i = 1:height(stimTable)
-    % set te current rec:
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);
-    % run all required analysis:
-    if stimTable.LizMov(i) ==1
-        SA.getLizardMovements
-        LM = SA.getLizardMovements;
-
-        DB = SA.getDelta2BetaRatio;
-        
-
-        % calculate the number of movements to each DB bin
-        LM_DBt = zeros(size(DB.t_ms));
-        % Loop through each bin in DB and count the events in LM that fall within each bin
-        for j = 1:length(DB.t_ms)-1
-            % Count events from LM that fall within the current bin (DB(i) to DB(i+1))
-            LM_DBt(j) = sum(LM.t_mov_ms >= DB.t_ms(j)& LM.t_mov_ms < DB.t_ms(j+1));
-        end
-        % Count any events at the last bin edge
-        LM_DBt(end) = sum(LM.t_mov_ms >= DB.t_ms(end));
-
-        %put in stimTable:
-        stimTable.LM_DBt(i) = {LM_DBt};
-        disp('LM in stimTabl')
-    end
-end
+% SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+% stimTable.LM_DBt = cell(height(stimTable),1);
+% for i = 1:height(stimTable)
+%     % set te current rec:
+%     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+%     SA.setCurrentRecording(recName);
+%     % run all required analysis:
+%     if stimTable.LizMov(i) ==1
+%         SA.getLizardMovements
+%         LM = SA.getLizardMovements;
+% 
+%         DB = SA.getDelta2BetaRatio;
+% 
+% 
+%         % calculate the number of movements to each DB bin
+%         LM_DBt = zeros(size(DB.t_ms));
+%         % Loop through each bin in DB and count the events in LM that fall within each bin
+%         for j = 1:length(DB.t_ms)-1
+%             % Count events from LM that fall within the current bin (DB(i) to DB(i+1))
+%             LM_DBt(j) = sum(LM.t_mov_ms >= DB.t_ms(j)& LM.t_mov_ms < DB.t_ms(j+1));
+%         end
+%         % Count any events at the last bin edge
+%         LM_DBt(end) = sum(LM.t_mov_ms >= DB.t_ms(end));
+% 
+%         %put in stimTable:
+%         stimTable.LM_DBt(i) = {LM_DBt};
+%         disp('LM in stimTabl')
+%     end
+% end
 
 %% get the d/b during sws:
 dbSWMeans = zeros([height(stimTable),3]);
@@ -1689,19 +1689,19 @@ end
 load([analysisFolder filesep 'LMdata.mat'])
 
 %% check the correlation of mevement with th D/B
-i = 19;
-recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-SA.setCurrentRecording(recName);
-LM_DBt= stimTable.LM_DBt{i};
-DB = SA.getDelta2BetaRatio;
-
-%%
-figure;
-yyaxis left
-plot(DB.bufferedDelta2BetaRatio)
-hold on;
-yyaxis right
-plot(LM_DBt,'k')
+% i = 19;
+% recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+% SA.setCurrentRecording(recName);
+% LM_DBt= stimTable.LM_DBt{i};
+% DB = SA.getDelta2BetaRatio;
+% 
+% %%
+% figure;
+% yyaxis left
+% plot(DB.bufferedDelta2BetaRatio)
+% hold on;
+% yyaxis right
+% plot(LM_DBt,'k')
 %% plot the full movement data for a night
 
 % for one night:
@@ -2342,8 +2342,11 @@ fileName=[analysisFolder filesep 'headAnglesPV158N34'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% prepare head angle data for plots:
-load([analysisFolder filesep 'HeadAngleAvg.mat'])
-load([analysisFolder filesep 'HeadAngleSD.mat'])
+% load([analysisFolder filesep 'HeadAngleAvg.mat'])
+% load([analysisFolder filesep 'HeadAngleSD.mat'])
+load([analysisFolder filesep 'LMData.mat'])
+HeadAngleAvg = LMData.HeadAngleAvg;
+HeadAngleSD = LMData.HeadAngleSD;
 
 %% plot Head Angle - RED NIGHTS ONLY"
 headAngDiff = diff(HeadAngleAvg,[],2);

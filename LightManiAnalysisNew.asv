@@ -23,7 +23,7 @@ uniqueAnimals = unique(stimTable.Animal);
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 % SA.setCurrentRecording('Animal=PV162,recNames=Night27');
 maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
-stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh'});  % creating new table
+stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage'});  % creating new table
 stimTable.stimStartT = zeros(height(stimTable),1);
 stimTable.stimEndT = zeros(height(stimTable),1);
 stimTable.sleepStartT = zeros(height(stimTable),1);
@@ -36,7 +36,7 @@ stimTable.ACpre = cell(height(stimTable),1);
 stimTable.ACstim = cell(height(stimTable),1);
 stimTable.ACpost = cell(height(stimTable),1);
 
-%% geting the AND AC stim sham data from all records 
+%% geting the AND AC stim sham data from all records
 
 for i = 1:height(stimTable)
 
@@ -67,8 +67,8 @@ for i = 1:height(stimTable)
     % get and save the stim avg
     s = getStimSham(SA,stimTable.StimTrighCh(i),1);
     disp('got Stim for this rec')
-    stimTable.StimAvg(i) = {mean(s.StimDB,1)};
-    stimTable.StimAvgSham(i) = {mean(s.StimDBSham,1)};
+    stimTable.StimAvg(i) = {mean(s.StimDB,1,"omitnan")};
+    stimTable.StimAvgSham(i) = {mean(s.StimDBSham,1,"omitnan")};
     stimTable.times(i) = {s.ts};
     stimTable.stimDuration(i) = s.stimDur;
     disp('stimsham in table')
@@ -140,35 +140,35 @@ end
 stimTable.ACcomPer = ACcomPer;
 stimTable.ACcomP2V = ACcomP2V;
 %% Getting the liz mov for all animals + add to table
-SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-stimTable.LM_DBt = cell(height(stimTable),1);
-for i = 1:height(stimTable)
-    % set te current rec:
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);
-    % run all required analysis:
-    if stimTable.LizMov(i) ==1
-        SA.getLizardMovements
-        LM = SA.getLizardMovements;
-
-        DB = SA.getDelta2BetaRatio;
-        
-
-        % calculate the number of movements to each DB bin
-        LM_DBt = zeros(size(DB.t_ms));
-        % Loop through each bin in DB and count the events in LM that fall within each bin
-        for j = 1:length(DB.t_ms)-1
-            % Count events from LM that fall within the current bin (DB(i) to DB(i+1))
-            LM_DBt(j) = sum(LM.t_mov_ms >= DB.t_ms(j)& LM.t_mov_ms < DB.t_ms(j+1));
-        end
-        % Count any events at the last bin edge
-        LM_DBt(end) = sum(LM.t_mov_ms >= DB.t_ms(end));
-
-        %put in stimTable:
-        stimTable.LM_DBt(i) = {LM_DBt};
-        disp('LM in stimTabl')
-    end
-end
+% SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+% stimTable.LM_DBt = cell(height(stimTable),1);
+% for i = 1:height(stimTable)
+%     % set te current rec:
+%     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+%     SA.setCurrentRecording(recName);
+%     % run all required analysis:
+%     if stimTable.LizMov(i) ==1
+%         SA.getLizardMovements
+%         LM = SA.getLizardMovements;
+% 
+%         DB = SA.getDelta2BetaRatio;
+% 
+% 
+%         % calculate the number of movements to each DB bin
+%         LM_DBt = zeros(size(DB.t_ms));
+%         % Loop through each bin in DB and count the events in LM that fall within each bin
+%         for j = 1:length(DB.t_ms)-1
+%             % Count events from LM that fall within the current bin (DB(i) to DB(i+1))
+%             LM_DBt(j) = sum(LM.t_mov_ms >= DB.t_ms(j)& LM.t_mov_ms < DB.t_ms(j+1));
+%         end
+%         % Count any events at the last bin edge
+%         LM_DBt(end) = sum(LM.t_mov_ms >= DB.t_ms(end));
+% 
+%         %put in stimTable:
+%         stimTable.LM_DBt(i) = {LM_DBt};
+%         disp('LM in stimTabl')
+%     end
+% end
 
 %% get the d/b during sws:
 dbSWMeans = zeros([height(stimTable),3]);
@@ -1076,7 +1076,7 @@ for type = 1:numType
     % curName = stimType(type);
     curTrials = contains(stimTable.Remarks,curType) &...
                 ~contains(stimTable.Remarks,"Ex") &...
-                all(~isnan(stimTable.dbSWMeans), 2);
+                all(~isnan(stimTable.dbSWMeans(:,1:2)), 2);
     ns =[ns; sum(curTrials)];
     Ns = [Ns; numel(unique(stimTable.Animal(curTrials)))];
     curData = stimTable.dbSWMeans(curTrials,2)-stimTable.dbSWMeans(curTrials,1);
@@ -1419,6 +1419,8 @@ stimP2V = [];
 groupNum = [];
 colorMat = [];
 means = [];
+Ns = [];
+ns = [];
 
 stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
@@ -1436,6 +1438,8 @@ for type = 1:numType
                 ~contains(stimTable.Remarks,"Ex");
     n = sum(curTrials);
     N = numel(unique(stimTable.Animal(curTrials)));
+    ns = [ns;n];
+    Ns = [Ns; N];
     curData = P2Vfs(curTrials,:);
     [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
     curColorMat = animalsColors(animalIndices, :);
@@ -1615,7 +1619,7 @@ for type = 1:numType
                 all(~isnan(stimTable.dbDiffShamM),2); %& contains(stimTable.Animal,curAni);
     n = sum(curTrials);
     N = length(unique(stimTable.Animal(curTrials)));
-        ns = [ns; n];
+    ns = [ns; n];
     Ns = [Ns; N];
     % curCol = plotColors{type};
     curMeanNdbStim = mean(stimTable.dbDiffStimM(curTrials),1);
@@ -1675,28 +1679,6 @@ if p < 0.05
     c = multcompare(stats, 'CType', 'dunn-sidak');
 end 
 
-%% add  white night - regular sleep stim sham.
-% 1. go over all white nights
-type = 4;
-stimWaveL = ["47","532","635","LED"];
-curType = stimWaveL(type);
-curTrials = contains(stimTable.Remarks,curType) &...
-    ~contains(stimTable.Remarks,'Ex') & ...
-    all(~isnan(stimTable.dbDiffStimM),2) & ...
-    all(~isnan(stimTable.dbDiffShamM),2);
-trials = stimTable(curTrials,:);
-for i = 1:length(trials)
-    % 2. get the slow oscilations timing for each
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);    
-    SO = 
-
-    % 3. calculate the differences pre stim timings
-% mean for each night
-end
-% plot
-
-
 
 % clearvars -except stimTable SA analysisFolde
 %% Lizard Movement Data analysis:
@@ -1707,19 +1689,19 @@ end
 load([analysisFolder filesep 'LMdata.mat'])
 
 %% check the correlation of mevement with th D/B
-i = 19;
-recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-SA.setCurrentRecording(recName);
-LM_DBt= stimTable.LM_DBt{i};
-DB = SA.getDelta2BetaRatio;
-
-%%
-figure;
-yyaxis left
-plot(DB.bufferedDelta2BetaRatio)
-hold on;
-yyaxis right
-plot(LM_DBt,'k')
+% i = 19;
+% recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+% SA.setCurrentRecording(recName);
+% LM_DBt= stimTable.LM_DBt{i};
+% DB = SA.getDelta2BetaRatio;
+% 
+% %%
+% figure;
+% yyaxis left
+% plot(DB.bufferedDelta2BetaRatio)
+% hold on;
+% yyaxis right
+% plot(LM_DBt,'k')
 %% plot the full movement data for a night
 
 % for one night:
@@ -1792,7 +1774,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
-    ~contains(stimTable.Remarks,'Ex') & ...
+    ~contains(stimTable.Remarks,'Ex')  & ...
      ~any(isempty(stimTable.LM_DBt), 2) &...
      ~cellfun(@isempty, stimTable.LM_DBt);
 
@@ -2360,9 +2342,9 @@ fileName=[analysisFolder filesep 'headAnglesPV158N34'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% prepare head angle data for plots:
-load([analysisFolder filesep 'HeadAngleAvg.mat'])
-load([analysisFolder filesep 'HeadAngleSD.mat'])
-
+% load([analysisFolder filesep 'HeadAngleAvg.mat'])
+% load([analysisFolder filesep 'HeadAngleSD.mat'])
+load([analysisFolder filesep 'L.mat'])
 %% plot Head Angle - RED NIGHTS ONLY"
 headAngDiff = diff(HeadAngleAvg,[],2);
 % set the zero to 90 Deg, according to accelerometer data ( this is the z
