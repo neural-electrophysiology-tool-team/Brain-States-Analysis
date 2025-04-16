@@ -1,5 +1,6 @@
 %% fig3E
 load([analysisFolder filesep 'LMdata.mat'])
+LMData = LMdata;
 %% plot head movements - All nights!
 
 stimType = ["Blue","Green","Red","LED"];

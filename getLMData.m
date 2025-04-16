@@ -1,9 +1,6 @@
-function LMdata = getLMData(SA, stimTable,analysisFolder,reCalc)
+function LMdata = getLMData(SA, stimTable,analysisFolder)
 
-%reCalc = logical (0/1) to re-calculate or not the LM data
-if nargins < 4
-    reCalc = 0;
-end
+
 
 % Movement during stimulation - All Nights:
 % get data:
@@ -22,35 +19,23 @@ binSize = 10;
 HeadAngleAvg = zeros(height(stimTable),4);
 headAngleSD = zeros(height(stimTable),4);
 
-if reCalc
-
-% Headstage calibration data:
-% load / change accelerometer calibration values in the correct format: 
 cali_result = load(['/media/sil3/Data/accelerometer_calibrations/' ...
     'headtagse_cali_recs/calibration_results.mat']).cali_result;
-
-
-    for i = 1:height(stimTable)
-        % get the Lizard movement data
-        if ~stimTable.LizMov(i)
-            continue
-        end
-        curHS = stimTable.Headstage(i);
-        headstageAmpCalib = cali_result.(curHS);
-        cur_sensativity = headstageAmpCalib.sensetivity;
-        cur_zeroGbias = headstageAmpCalib.zeroGbais;
-
-        SA.getLizardMovements('sensitivity', cur_sensativity(1,:)', 'zeroGBias', ...
-            cur_zeroGbias(1,:)','overwrite',1)
-    end
-end
 
 for i = 1:height(stimTable)
     %set the recording:
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
     SA.setCurrentRecording(recName);
     DB = SA.getDelta2BetaRatio;
-        LM = SA.getLizardMovements;
+    % get the Lizard movement data
+    curHS = stimTable.Headstage(i,:);
+    headstageAmpCali = cali_result.(curHS);
+    cur_sensativity = headstageAmpCali.sensetivity;
+    cur_zeroGbias = headstageAmpCali.zeroGbais;
+
+    SA.getLizardMovements('sensitivity', cur_sensativity(1,:)', 'zeroGBias', ...
+        cur_zeroGbias(1,:)')
+    LM = SA.getLizardMovements;
 
     startSleepT = stimTable.sleepStartT(i);
     endSleepT = stimTable.sleepEndT(i);
@@ -132,7 +117,11 @@ for i = 1:height(stimTable)
     end
     
     % calculate the angles from the LM output:
-    [angleF, angleF_t] = getHeadLifts(LM.angles,LM.t_static_ms,100,5);
+    pitchAngles = LM.angles(2,:);
+    if i>9
+        pitchAngles = -pitchAngles;
+    end
+    [angleF, angleF_t] = getHeadLifts(pitchAngles,LM.t_static_ms,100,5);
 
     % get the angles avgs for each part:
     % check wake times: if it started the sleep before 1 hr after the
@@ -158,20 +147,17 @@ for i = 1:height(stimTable)
         HeadAngleAvg(i,j) = meanCurAng;
         headAngleSD(i,j) = curSD;
     end
-    disp(headAngleSD(i,:))
-    
-    
-    isplot = 1;
+       isplot = 1;
     if isplot
         figure;
         plot(angleF_t/(1000*60*60), angleF,'k');
         xlabel('Time (hours)'); ylabel('Head Angle')
         xline(stimTable.sleepStartT(i)/(1000*60*60),'k')
-        xline((stimTable.sleepStartT(i)+p)/(1000*60*60),'g')
         xline(stimTable.stimStartT(i)/(1000*60*60),'r')
         xline(stimTable.stimEndT(i)/(1000*60*60),'Color','r');
         xline(stimTable.sleepEndT(i)/(1000*60*60),'b')
     end
+    
 
 fprintf('Head angles avgrages for this recordings: %f,%f, %f, %f',[HeadAngleAvg(i,:)])
 

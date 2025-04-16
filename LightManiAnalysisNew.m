@@ -1581,7 +1581,7 @@ annotation('textbox', [0.15, 0.8, 0.3, 0.2], 'String', ...
     sprintf('Wilcoxon test p =%.3f',pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
 
-set(gcf,'PaperPositionMode','auto')
+set(gcf,'PaperPosition',[1 4 1.2 1.6])
 saveas (gcf, [analysisFolder filesep 'DBdiffStimShamRedNights.pdf']);
 
 % clearvars -except stimTable SA analysisFolder
@@ -1757,9 +1757,9 @@ plot(1, curLMpost, '.', 'Color', 'black', 'MarkerSize', 20);
 xticks(1); xticklabels('Sleep After');
 
 % Link y-axes and set limits
-linkaxes([a1, a2, a3, a4], 'y'); ylim([0 3.5]);
+linkaxes([a1, a2, a3, a4], 'y'); ylim([0 4.5]);
 
-% Add a shared title
+% Add 4 shared title
 sgtitle('Mean movement during stimulation, PV161, Night18');
 
 
@@ -1774,9 +1774,9 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
-    ~contains(stimTable.Remarks,'Ex') & ...
-     ~any(isempty(stimTable.LM_DBt), 2) &...
-     ~cellfun(@isempty, stimTable.LM_DBt);
+    ~contains(stimTable.Remarks,'Ex');% & ...
+     % ~any(isempty(stimTable.LM_DBt), 2) &...
+     % ~cellfun(@isempty, stimTable.LM_DBt);
 
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
@@ -2311,7 +2311,8 @@ i = 17;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 LM = SA.getLizardMovements;%('overwrite',1);
-[angleF, angleF_t] = getHeadLifts(LM.angles,LM.t_static_ms,100,5);
+pitchAngles = -LM.angles(2,:);
+[angleF, angleF_t] = getHeadLifts(pitchAngles,LM.t_static_ms,100,5);
 
 wakeEnd = 1000*60*60*1;
 if wakeEnd>stimTable.sleepStartT(i)
@@ -2327,13 +2328,13 @@ numParts = numel(parts);
 
 % plot one liner:
 f = figure;
-plot(angleF_t/(1000*60*60), angleF-90,'k');
+plot(angleF_t/(1000*60*60), angleF,'k');
 xlabel('Time (hours)'); ylabel('Head Angle')
 xline(stimTable.sleepStartT(i)/(1000*60*60),'b')
 xline(stimTable.stimStartT(i)/(1000*60*60),'r')
 xline(stimTable.stimEndT(i)/(1000*60*60),'Color','r');
 xline(stimTable.sleepEndT(i)/(1000*60*60),'b')
-yline(0,'--','color',[0.5 0.5 0.5])
+yline(0,'--','color',[0.5 0.5 0.5]); ylim([-30 70])
 legend({'';'Start Sleep';'Start Stimulations';'End Stimulations';'End Sleep'})
 
 %save figure:
@@ -2344,24 +2345,24 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 %% prepare head angle data for plots:
 % load([analysisFolder filesep 'HeadAngleAvg.mat'])
 % load([analysisFolder filesep 'HeadAngleSD.mat'])
-load([analysisFolder filesep 'LMData.mat'])
+% load([analysisFolder filesep 'LMData.mat'])
 HeadAngleAvg = LMData.HeadAngleAvg;
-HeadAngleSD = LMData.HeadAngleSD;
+headAngleSD = LMData.headAngleSD;
 
 %% plot Head Angle - RED NIGHTS ONLY"
-headAngDiff = diff(HeadAngleAvg,[],2);
+% headAngDiff = diff(HeadAngleAvg,[],2);
 % set the zero to 90 Deg, according to accelerometer data ( this is the z
 % axis, when it is 90 the accelerometer is penpendicular to the ground)
-HeadAngleAvgP = HeadAngleAvg -90;
+% HeadAngleAvgP = HeadAngleAvg -90;
 
 
 wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ...
-    & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); %& contains(stimTable.Animal,curAni);
+curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ;%...
+    % & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); %& contains(stimTable.Animal,curAni);
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 groupNames = {'Pre', 'During', 'After'};
-curHeadAvg = HeadAngleAvgP(curTrials,1:3);
+curHeadAvg = HeadAngleAvg(curTrials,1:3);
 
 % STATISTICAL TEST:
 
@@ -2433,21 +2434,16 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 % savefigure
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'HeadliftsREDNights.pdf']);
-%% plot Head Angle - RED NIGHTS ONLY"
-headAngDiff = diff(HeadAngleAvg,[],2);
-% set the zero to 90 Deg, according to accelerometer data ( this is the z
-% axis, when it is 90 the accelerometer is penpendicular to the ground)
-HeadAngleAvgP = HeadAngleAvg -90;
+%% plot Head Angle SD - RED NIGHTS ONLY"
 
 
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ...
-    & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); %& contains(stimTable.Animal,curAni);
+      & headAngleSD(:,1)>0.03; %& contains(stimTable.Animal,curAni);
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 groupNames = {'Pre', 'During', 'After'};
-curHeadAvg = HeadAngleAvgP(curTrials,1:3);
-curHeadSD = headAngleSD(curTrials,1:3);
+curHeadAvg = HeadAngleAvg(curTrials,1:3);
 % STATISTICAL TEST:
 
 [p, tbl, stats] = friedman(curHeadAvg, 1,'off'); % Here, 1 indicates within-subjects design
@@ -2518,8 +2514,10 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'HeadliftsREDNights.pdf']);
 
-%% plot head angles SD (run with previous):
+%% plot head angles SD - run with previous:
 figure;
+curHeadSD = headAngleSD(curTrials,1:3);
+
 x1 = 1:width(curHeadSD);
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
 curColorMat = animalsColors(animalIndices, :); 
@@ -2565,9 +2563,9 @@ saveas (gcf, [analysisFolder filesep 'HeadLiftsRedNightsSD.pdf']);
 
 %% plot Head Angle - all nights, 4 subplots:
 
-headAngDiff = diff(HeadAngleAvg,[],2);
+% headAngDiff = diff(HeadAngleAvg,[],2);
 % set the zero to 90 Deg, according to accelerometer data ( this is the z
-HeadAngleAvgP = HeadAngleAvg -90;
+% HeadAngleAvgP = HeadAngleAvg -90;
 
 animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
@@ -2592,7 +2590,7 @@ for type = 1:numType
     N = length(unique(stimTable.Animal(curTrials)));
     [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
     curColorMat = animalsColors(animalIndices, :); 
-    curHeadAvg = HeadAngleAvgP(curTrials,:);
+    curHeadAvg = HeadAngleAvg(curTrials,:);
     curHeadAvgmean = mean(curHeadAvg,1,'omitnan');
 
     %statistics:

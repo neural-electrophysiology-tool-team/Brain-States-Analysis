@@ -38,11 +38,11 @@ recName = 'Animal=PV159,recNames=Night4';
         cur_sensativity = headstageAmpCalib.sensetivity;
         cur_zeroGbias = headstageAmpCalib.zeroGbais;
 
-        % SA.getLizardMovements('sensitivity', cur_sensativity(1,:)', 'zeroGBias', ...
-        %     cur_zeroGbias(1,:)','overwrite',1)
-        LM = SA.getLizardMovements;
+        SA.getLizardMovements('sensitivity', cur_sensativity(1,:)', 'zeroGBias', ...
+            cur_zeroGbias(1,:)','overwrite',1)
+        LM = SA.getlizard
         pitch = -LM.angles(2,:);
-    [angleF, angleF_t] = getHeadLifts(pitch,LM.t_static_ms,100,5);
+    [angleF, angleF_t] = getHeadLifts(LM.angles,LM.t_static_ms,100,5);
 
     %get sleep times:
     SA.getDelta2BetaRatio;
@@ -52,7 +52,7 @@ recName = 'Animal=PV159,recNames=Night4';
     curSleepEndT = AC.tEndSleep;
 
     fHA = figure;
-    plot(angleF_t/(1000*60*60), angleF,'k');
+    plot(angleF_t/(1000*60*60), angleF-90,'k');
     xlabel('Time (hours)'); ylabel('Head Angle')
     xline(curSleepStartT/(1000*60*60),'k')
     xline((curSleepStartT+p)/(1000*60*60),'g')

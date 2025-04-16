@@ -2,9 +2,9 @@
 function [angleF, angleF_t] = getHeadLifts(angles,angle_t,newFS,lowpasspass)
 
     % Input data
-    anglesX = angles(1,:); % Head angle X-axis
-    anglesY = angles(2,:); % Head angle Y-axis
-    anglesZ = angles(3,:); % Head angle Z-axis
+    % anglesX = angles(1,:); % Head angle X-axis
+    % anglesY = angles(2,:); % Head angle Y-axis
+    % anglesZ = angles(3,:); % Head angle Z-axis
     % timeParts = parts; % Define start and end times for each part in a cell. number of parts ins number of cells., in m
   
     %interpulate
@@ -18,8 +18,8 @@ function [angleF, angleF_t] = getHeadLifts(angles,angle_t,newFS,lowpasspass)
     angle_tL = linspace(angle_t(1),angle_t(end),numSamples);
 
     [x,uniqueIndx] = unique(angle_t);
-    v = anglesZ(uniqueIndx);
-    anglesZL = interp1(x,v,angle_tL);
+    v = angles(uniqueIndx);
+    anglesL = interp1(x,v,angle_tL);
 
     % Parameters - low pass filter
     if nargin>3
@@ -34,10 +34,10 @@ function [angleF, angleF_t] = getHeadLifts(angles,angle_t,newFS,lowpasspass)
         'HalfPowerFrequency', lowPassFreq, 'SampleRate', samplesPerS);
 
     % Apply the filter
-    anglesZLF = filtfilt(d, anglesZL);
+    anglesLF = filtfilt(d, anglesL);
 
     % Convert filtered data from radians to degrees
-    angleF =  anglesZLF* (180 / pi);
+    angleF =  anglesLF* (180 / pi);
     angleF_t = angle_tL;
 
 end    

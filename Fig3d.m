@@ -1,13 +1,16 @@
 % head angles : diffs:
 
 %% prepare head angle data for plots:
-load([analysisFolder filesep 'HeadAngleAvg.mat'])
-load([analysisFolder filesep 'HeadAngleSD.mat'])
-
-headAngDiff = diff(HeadAngleAvg,[],2);
+% load([analysisFolder filesep 'HeadAngleAvg.mat'])
+% load([analysisFolder filesep 'HeadAngleSD.mat'])
+load([analysisFolder filesep 'LMdata.mat'])
+LMData = LMdata;
+headAngleSD = LMData.headAngleSD;
+HeadAngleAvg = LMData.HeadAngleAvg;
+% headAngDiff = diff(HeadAngleAvg,[],2);
 % set the zero to 90 Deg, according to accelerometer data ( this is the z
 % axis, when it is 90 the accelerometer is penpendicular to the ground)
-HeadAngleAvgP = HeadAngleAvg -90;
+% HeadAngleAvgP = HeadAngleAvg -90;
 %% plot SDs
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
@@ -31,8 +34,8 @@ for type = 1:numType
     %create data subset:
     curName = stimType(type);
     curType = stimWaveL(type);
-    curTrials = contains(stimTable.Remarks,curType)& ~contains(stimTable.Remarks,'Ex' )...
-            & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); 
+    curTrials = contains(stimTable.Remarks,curType)& ~contains(stimTable.Remarks,'Ex' );%...
+            % & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); 
     n = sum(curTrials);
     N = length(unique(stimTable.Animal(curTrials)));
     [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
