@@ -76,19 +76,25 @@ for type = 1:numType
     % [p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
     [p_wake_during, ~, stats_wake_during] = signrank(wakeAng, duringAng);
 
+    raw_pvals = [p_wake_pre,p_pre_during,p_wake_during];
+    num_comparisons = 3;
     % Display results with Bonferroni correction
-    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-    fprintf('Wake vs Before: p-value = %.4f (Significant if < %.4f)\n', p_wake_pre, alpha);
-    fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_pre_during, alpha);
+    % fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    % fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
     % fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-    fprintf('Wake vs During: p-value = %.4f (Significant if < %.4f)\n', p_wake_during, alpha);
-
+    % fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Wake vs pre: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('pre vs During: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('Wake vs During: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
     %save statistics:
     statsHeadangSd.(curName).alpha = alpha;
     statsHeadangSd.(curName).pAnova = p;
     statsHeadangSd.(curName).p_wake_pre = p_wake_pre;
     statsHeadangSd.(curName).p_wake_during = p_wake_during;
     statsHeadangSd.(curName).p_pre_during = p_pre_during;
+    statsHeadangSd.(curName).corrected_pvals_bonferroni = corrected_pvals_bonferroni;
     % statsHeadangSd.(curName).p_during_after = p_during_after;
 
     %plot the data
@@ -139,114 +145,156 @@ fileName=[analysisFolder filesep 'headAngleSDalltypesDiffs'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% diffs: 
-diff32 = HeadAngleAvgP(:,3)-HeadAngleAvgP(:,2);
-
-
-stimType = ["Blue","Green","Red","LED"];
-stimWaveL = ["47","532","635","LED"];
-numType = length(stimType);
-
-diffData1 = [];
-groupNum = [];
-colorMat = [];
-ns = [];
-Ns= [];
-
-for type = 1:numType
-
-    %create data subset:
-    curName = stimType(type);
-    curType = stimWaveL(type);
-    curTrials = contains(stimTable.Remarks,curType)& ~contains(stimTable.Remarks,'Ex' )...
-            & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); 
-    curData = diff32(curTrials);
-    diffData1 = [diffData1; curData];
-    groupNum = [groupNum; repmat(type,length(curData),1)];
-    ns =[ns; length(curData)];
-    Ns = [Ns;length(unique(stimTable.Animal(curTrials)))];
-
-    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-    curColorMat = animalsColors(animalIndices, :); 
-    colorMat = [colorMat; curColorMat];
-end
-
-% statistics: 
-% 1. kruskal wallas:
-[p, tbl, stats] = kruskalwallis(diffData1,groupNum,'off');
-
-if p < 0.05
-    c = multcompare(stats, 'CType', 'dunn-sidak');
-end
-
-%plot the data
-fHA=figure;
-swarmchart(groupNum,diffData1,10,colorMat,"filled")
-xticks(1:4); xticklabels(stimType);
-ylabel('Head Angle diff ')
-title('Head angle diff - (stim-pre)')
-
-% savefigure
-set(fHA,'PaperPosition',[1 1 4 2.5]);
-fileName=[analysisFolder filesep 'headAngDiffStim_Pre'];
-print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)],'-bestfit');
-
-%% diffs - to wake:
-
-diff31 = HeadAngleAvgP(:,3)-HeadAngleAvgP(:,1);
-diff21 = HeadAngleAvgP(:,2)-HeadAngleAvgP(:,1);
-
-stimType = ["Blue","Green","Red","LED"];
-stimWaveL = ["47","532","635","LED"];
-numType = length(stimType);
+% diff32 = HeadAngleAvgP(:,3)-HeadAngleAvgP(:,2);
 % 
-diffData2 = [];
+% 
+% stimType = ["Blue","Green","Red","LED"];
+% stimWaveL = ["47","532","635","LED"];
+% numType = length(stimType);
+% 
+% diffData1 = [];
 % groupNum = [];
 % colorMat = [];
 % ns = [];
 % Ns= [];
-figure;
-for type = 1:numType
-
-    %create data subset:
-    curName = stimType(type);
-    curType = stimWaveL(type);
-    curTrials = contains(stimTable.Remarks,curType)& ~contains(stimTable.Remarks,'Ex' )...
-            & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); 
-    curData = [diff21(curTrials) , diff31(curTrials)];
-    diffData2 = [diffData2; curData];
-    % groupNum = [groupNum; repmat([type*2-1, type*2],length(curData),1)];
-    ns =[ns; length(curData)];
-    Ns = [Ns;length(unique(stimTable.Animal(curTrials)))];
-
-    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-    curColorMat = animalsColors(animalIndices, :); 
-    % colorMat = [colorMat; curColorMat];
-    hold on
-    for i = 1:length(curData)
-        plot([type*2-1, type*2],curData(i,:),'Color',curColorMat(i,:), 'Marker','.','LineWidth',0.5)
-    end
-    plot([type*2-1, type*2],mean(curData),'Color','k', 'Marker','.','LineWidth',1)
-    % yline(0,'--','Color',[0.4 0.4 0.4])
-
-
-% wilcoxon:
-p = signrank(curData(:,1), curData(:,2));
-fprintf('%s: p-value = %.5f\n',stimType(type), p);
-
-
-end
-ylabel('Normelized head angle (to wake)')
-xlim([0.7 8.2])
-    xticks(1:8);xticklabels(repmat(["Pre","Stim"],1,numType))
-
+% 
+% for type = 1:numType
+% 
+%     %create data subset:
+%     curName = stimType(type);
+%     curType = stimWaveL(type);
+%     curTrials = contains(stimTable.Remarks,curType)& ~contains(stimTable.Remarks,'Ex' )...
+%             & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); 
+%     curData = diff32(curTrials);
+%     diffData1 = [diffData1; curData];
+%     groupNum = [groupNum; repmat(type,length(curData),1)];
+%     ns =[ns; length(curData)];
+%     Ns = [Ns;length(unique(stimTable.Animal(curTrials)))];
+% 
+%     [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+%     curColorMat = animalsColors(animalIndices, :); 
+%     colorMat = [colorMat; curColorMat];
+% end
+% 
+% % statistics: 
+% % 1. kruskal wallas:
+% [p, tbl, stats] = kruskalwallis(diffData1,groupNum,'off');
+% 
+% %2. mann - whiteny cross comparison post hoc:
+% if p < 0.05
+%   % Convert group to cell array of strings if needed
+%   if isstring(groupNum)
+%       groupNum = cellstr(groupNum);
+%   end
+% 
+%   % Get unique group names
+%   [groupNames, ~, groupIdx] = unique(groupNum);
+%   numGroups = numel(groupNames);
+%   data = diffData1;
+%   % Initialize
+%   comparisons = {};
+%   raw_pvals = [];
+%   idx = 1;
+% 
+%   % Loop through all group pairs
+%   for i = 1:numGroups-1
+%       for j = i+1:numGroups
+%           % Extract data for group i and j
+%           data_i = data(groupIdx == i);
+%           data_j = data(groupIdx == j);
+% 
+%           % Wilcoxon rank-sum (Mann-Whitney U)
+%           [p, ~] = ranksum(data_i, data_j);
+% 
+%           % Store results
+%           comparisons{idx,1} = [groupNames{i} ' vs ' groupNames{j}];
+%           raw_pvals(idx,1) = p;
+%           idx = idx + 1;
+%       end
+%   end
+% 
+%   % Bonferroni correction
+%   corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+% 
+%   % Display results
+%   fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+%   for i = 1:length(raw_pvals)
+%       fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+%           comparisons{i}, raw_pvals(i), corrected_pvals(i));
+%   end
+% 
+% end
+% 
 % %plot the data
 % fHA=figure;
-% swarmchart(groupNum,diffData2,10,colorMat,"filled")
-% % xticks(1:4); xticklabels(stimType);
+% swarmchart(groupNum,diffData1,10,colorMat,"filled")
+% xticks(1:4); xticklabels(stimType);
 % ylabel('Head Angle diff ')
 % title('Head angle diff - (stim-pre)')
 % 
-% savefigure
-set(fHA,'PaperPosition',[1 1 4 2.5]);
-fileName=[analysisFolder filesep 'headAngDiffStim_Pre_toWAKE'];
-print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+% % savefigure
+% set(fHA,'PaperPosition',[1 1 4 2.5]);
+% fileName=[analysisFolder filesep 'headAngDiffStim_Pre'];
+% print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)],'-bestfit');
+
+%% diffs - to wake:
+% 
+% diff31 = HeadAngleAvgP(:,3)-HeadAngleAvgP(:,1);
+% diff21 = HeadAngleAvgP(:,2)-HeadAngleAvgP(:,1);
+% 
+% stimType = ["Blue","Green","Red","LED"];
+% stimWaveL = ["47","532","635","LED"];
+% numType = length(stimType);
+% % 
+% diffData2 = [];
+% % groupNum = [];
+% % colorMat = [];
+% % ns = [];
+% % Ns= [];
+% figure;
+% for type = 1:numType
+% 
+%     %create data subset:
+%     curName = stimType(type);
+%     curType = stimWaveL(type);
+%     curTrials = contains(stimTable.Remarks,curType)& ~contains(stimTable.Remarks,'Ex' )...
+%             & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); 
+%     curData = [diff21(curTrials) , diff31(curTrials)];
+%     diffData2 = [diffData2; curData];
+%     % groupNum = [groupNum; repmat([type*2-1, type*2],length(curData),1)];
+%     ns =[ns; length(curData)];
+%     Ns = [Ns;length(unique(stimTable.Animal(curTrials)))];
+% 
+%     [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+%     curColorMat = animalsColors(animalIndices, :); 
+%     % colorMat = [colorMat; curColorMat];
+%     hold on
+%     for i = 1:length(curData)
+%         plot([type*2-1, type*2],curData(i,:),'Color',curColorMat(i,:), 'Marker','.','LineWidth',0.5)
+%     end
+%     plot([type*2-1, type*2],mean(curData),'Color','k', 'Marker','.','LineWidth',1)
+%     % yline(0,'--','Color',[0.4 0.4 0.4])
+% 
+% 
+% % wilcoxon:
+% p = signrank(curData(:,1), curData(:,2));
+% fprintf('%s: p-value = %.5f\n',stimType(type), p);
+% 
+% 
+% end
+% ylabel('Normelized head angle (to wake)')
+% xlim([0.7 8.2])
+%     xticks(1:8);xticklabels(repmat(["Pre","Stim"],1,numType))
+% 
+% % %plot the data
+% % fHA=figure;
+% % swarmchart(groupNum,diffData2,10,colorMat,"filled")
+% % % xticks(1:4); xticklabels(stimType);
+% % ylabel('Head Angle diff ')
+% % title('Head angle diff - (stim-pre)')
+% % 
+% % savefigure
+% set(fHA,'PaperPosition',[1 1 4 2.5]);
+% fileName=[analysisFolder filesep 'headAngDiffStim_Pre_toWAKE'];
+% print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+% % 

@@ -834,36 +834,47 @@ annotation('textbox', [0.1, 0.8, 0.2, 0.1], 'String', ...
 
 
 if pKruskal < 0.05
-    disp('Significant differences found in Kruskal-Wallis test. Proceeding with pairwise comparisons...');
-    pMannWhitneyAll = [];
-    % Pairwise comparisons with Mann-Whitney U test
-    pairwiseComparisons = combnk(1:3, 2); % All pairwise combinations
-    numComparisons = height(pairwiseComparisons);
-    alpha = 0.05;
-    correctedAlpha = alpha / numComparisons;
-
-    for i = 1:size(pairwiseComparisons, 1)
-        group1 = dbStimData{pairwiseComparisons(i, 1)};
-        group2 = dbStimData{pairwiseComparisons(i, 2)};
-        
-        % Mann-Whitney U test (rank-sum test)
-        pMannWhitney = ranksum(group1, group2);
-        fprintf('Mann-Whitney U test (%s vs %s): p-value = %.4f\n', ...
-                groupNames{pairwiseComparisons(i, 1)}, ...
-                groupNames{pairwiseComparisons(i, 2)}, ...
-                pMannWhitney);
-        pMannWhitneyAll = [pMannWhitneyAll, pMannWhitney]; %for later in the caption
-
-        annotation('textbox', [0.1+0.2*i, 0.8, 0.2, 0.1], 'String', ...
-            sprintf('MW (%s vs %s): p = %.4f\n', ...
-            groupNames{pairwiseComparisons(i, 1)}, ...
-            groupNames{pairwiseComparisons(i, 2)}, ...
-            pMannWhitney), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-            'right', 'VerticalAlignment', 'middle');
-
+    if isstring(groupLabels)
+        groupLabels = cellstr(groupLabels);
     end
-else
-    disp('No significant differences found in Kruskal-Wallis test.');
+
+    % Get unique group names
+    [groupNames, ~, groupIdx] = unique(groupLabels);
+    numGroups = numel(groupNames);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = allData(groupIdx == i);
+            data_j = allData(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [groupNames{i} ' vs ' groupNames{j}];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
+
+
 end
 
 
@@ -878,7 +889,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 type = 'Red';
 wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') & ~any(isnan(stimTable.dbSWMeans),2); %& contains(stimTable.Animal,curAni);
+curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ...
+    & ~any(isnan(stimTable.dbSWMeans),2); %& contains(stimTable.Animal,curAni);
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 groupNames = {'Pre', 'During', 'After'};
@@ -907,12 +919,18 @@ alpha = 0.05 / 3;
 [p_before_during, ~, stats_before_during] = signrank(before, during);
 [p_during_after, ~, stats_during_after] = signrank(during, after);
 [p_after_before, ~, stats_after_before] = signrank(after, before);
-
+raw_pvals = [p_before_during,p_during_after,p_after_before];
+num_comparisons = 3;
 % Display results with Bonferroni correction
+% fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+% fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+% fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
 fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
 
 %plot
 fdb = figure;
@@ -1094,7 +1112,49 @@ end
 [p, tbl, statsDBdiff] = kruskalwallis(DBdiff,groupNum,'off');
 
 if p < 0.05
-    cDBdiff = multcompare(statsDBdiff, 'CType', 'dunn-sidak');
+    % cDBdiff = multcompare(statsDBdiff, 'CType', 'dunn-sidak');
+
+    if isstring(groupNum)
+        groupNum = cellstr(groupNum);
+    end
+
+    % Get unique group names
+    [groupNames, ~, groupIdx] = unique(groupNum);
+    numGroups = numel(groupNames);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = DBdiff(groupIdx == i);
+            data_j = DBdiff(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [num2str(groupNames(i)) ' vs ' num2str(groupNames(j))];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
+
+
 end
 
 
@@ -1199,12 +1259,18 @@ alpha = 0.05 / 3;
 [p_during_after, ~, stats_during_after] = signrank(during, after);
 [p_after_before, ~, stats_after_before] = signrank(after, before);
 
+raw_pvals = [p_before_during,p_during_after,p_after_before];
+num_comparisons = 3;
 % Display results with Bonferroni correction
+% fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+% fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+% fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
 fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
-
+fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
 %plot
 figure;
 x = 1:3;
@@ -1305,18 +1371,27 @@ for type = 1:numType
     [p_during_post, ~, stats_during_after] = signrank(duringAC, afterAC);
     [p_pre_post, ~, stats_wake_during] = signrank(beforeAC, afterAC);
 
+    raw_pvals = [p_pre_during,p_during_post,p_pre_post];
+    num_comparisons = 3;
     % Display results with Bonferroni correction
+    % fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    % fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+    % fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+    % fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
     fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-    fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_pre_during, alpha);
-    fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_post, alpha);
-    fprintf('Pre vs. Post: p-value = %.4f (Significant if < %.4f)\n', p_pre_post, alpha);
-
+    fprintf('Before vs During:: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+    
+    
     %save statistics:
     statsAC.(curName).alpha = alpha;
     statsAC.(curName).pAnova = p;
     statsAC.(curName).p_pre_post = p_pre_post;
     statsAC.(curName).p_pre_during = p_pre_during;
     statsAC.(curName).p_during_post = p_during_post;
+    statsAC.(curName).corrected_pvals_bonferroni = corrected_pvals_bonferroni;
 
 
     if n>0
@@ -1473,13 +1548,53 @@ ylabel('P2V in 156s in Stim')
 set(gcf,'PaperPosition',[1 1 3.5 3]);
 fileName=[analysisFolder filesep 'P2V156n'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-
+%
 
 [p, tbl, statsP2Vfs] = kruskalwallis(stimP2V,groupNum,'off');
 
 if p < 0.05
-    figure;
-    cP2Vfs = multcompare(statsP2Vfs, 'CType', 'dunn-sidak');
+    % figure;
+    % cP2Vfs = multcompare(statsP2Vfs, 'CType', 'dunn-sidak');
+    % Convert group to cell array of strings if needed
+    if isstring(groupNum)
+        groupNum = cellstr(groupNum);
+    end
+
+    % Get unique group names
+    [groupNames, ~, groupIdx] = unique(groupNum);
+    numGroups = numel(groupNames);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = stimP2V(groupIdx == i);
+            data_j = stimP2V(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [num2str(groupNames(i)) ' vs ' num2str(groupNames(j))];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
 end
 
 
@@ -1673,10 +1788,50 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 % end
 % statistics:
 % 1. kruskal wallas:
-[p, tbl, stats] = kruskalwallis(diffData,groupNames);
+[p, tbl, stats] = kruskalwallis(diffData,groupNames,'off');
 
 if p < 0.05
-    c = multcompare(stats, 'CType', 'dunn-sidak');
+    if isstring(groupNames)
+        groupNames = cellstr(groupNames);
+    end
+
+    % Get unique group names
+    [groupName, ~, groupIdx] = unique(groupNames);
+    numGroups = numel(groupName);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = diffData(groupIdx == i);
+            data_j = diffData(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [num2str(groupName(i)) ' vs ' num2str(groupName(j))];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
+
+    % c = multcompare(stats, 'CType', 'dunn-sidak');
 end 
 
 
@@ -1705,6 +1860,7 @@ load([analysisFolder filesep 'LMdata.mat'])
 %% plot the full movement data for a night
 
 % for one night:
+
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
@@ -1767,7 +1923,7 @@ sgtitle('Mean movement during stimulation, PV161, Night18');
 % set(gcf,'PaperPosition',)
 % saveas (gcf, [analysisFolder filesep 'lizMovWholeNightPV161N18new.pdf']);
 set(gcf,'PaperPositionMode','auto');
-fileName=[analysisFolder filesep 'lizMovWholeNightPV161N18new'];
+fileName=[analysisFolder filesep 'lizMovWholeNightPV161N18'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% plot head movements - Red nights!
@@ -1805,15 +1961,18 @@ alpha = 0.05 / 3;
 [p_pre_during, ~, stats_pre_during] = signrank(LMstimbintrialM,LMpre);
 % [p_during_after, ~, stats_during_after] = signrank(LMstimbintrialM, LMpost);
 % [p_pre_after, ~, stats_pre_after] = signrank(LMpre, LMpost);
-
-% Display results with Bonferroni correction
-fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-fprintf('Wake vs Pre: p-value = %.5f (Significant if < %.4f)\n', p_wake_pre, alpha);
-fprintf('Wake vs During: p-value = %.5f (Significant if < %.4f)\n', p_wake_during, alpha);
-% fprintf('Wake vs Post: p-value = %.5f (Significant if < %.4f)\n', p_wake_after, alpha);
-fprintf('During vs Pre: p-value = %.5f (Significant if < %.4f)\n', p_pre_during, alpha);
-% fprintf('During vs Post: p-value = %.5f (Significant if < %.4f)\n', p_during_after, alpha);
-% fprintf('Pre vs Post: p-value = %.5f (Significant if < %.4f)\n', p_pre_after, alpha);
+    raw_pvals = [p_wake_pre,p_pre_during,p_wake_during];
+    num_comparisons = 3;
+    % Display results with Bonferroni correction
+    % fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    % fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+    % fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+    % fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Wake vs pre: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('pre vs During: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('Wake vs During: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
 
 fileName = [analysisFolder filesep 'postHocPvalLMRedNights.mat'];
 save(fileName, 'alpha','p_wake_pre','p_wake_during','p_pre_during')
@@ -2434,7 +2593,7 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 % savefigure
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'HeadliftsREDNights.pdf']);
-%% plot Head Angle SD - RED NIGHTS ONLY"
+%% plot Head Angle avg - RED NIGHTS ONLY"
 
 
 wavelength = '635';
@@ -2514,8 +2673,15 @@ annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'HeadliftsREDNights.pdf']);
 
-%% plot head angles SD - run with previous:
+%% plot head angles SD - RED nights - fig 2D
 figure;
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ...
+      & headAngleSD(:,1)>0.03; %& contains(stimTable.Animal,curAni);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+groupNames = {'Pre', 'During', 'After'};
+curHeadAvg = HeadAngleAvg(curTrials,1:3);
 curHeadSD = headAngleSD(curTrials,1:3);
 
 x1 = 1:width(curHeadSD);
@@ -2549,13 +2715,18 @@ alpha = 0.05 / 3;
 % [p_during_after, ~, stats_during_after] = signrank(duringAng, afterAng);
 [p_wake_during, ~, stats_wake_during] = signrank(wakeSD, duringSD);
 
-% Display results with Bonferroni correction
-fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-fprintf('Wake vs Before: p-value = %.4f (Significant if < %.4f)\n', p_wake_before, alpha);
-fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-fprintf('Wake vs During: p-value = %.4f (Significant if < %.4f)\n', p_wake_during, alpha);
-
+    raw_pvals = [p_wake_before,p_before_during,p_wake_during];
+    num_comparisons = 3;
+    % Display results with Bonferroni correction
+    % fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    % fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
+    % fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
+    % fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Wake vs pre: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('pre vs During: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('Wake vs During: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
 % savefigure
 set(gcf,'PaperPosition',[1 4 2.2 1.6])
 saveas (gcf, [analysisFolder filesep 'HeadLiftsRedNightsSD.pdf']);
