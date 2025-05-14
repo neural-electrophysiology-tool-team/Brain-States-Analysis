@@ -2113,8 +2113,8 @@ mPhasePost.movs = zeros(height(stimTable),1);
 mPhasePost.DBs = zeros(height(stimTable),1);
 
 %% create data set for all nights:
-for i = 33:height(stimTable)
-% i = 33;
+for i = 34:height(stimTable)
+% i = 25;
     if stimTable.LizMov(i) ~= 1
         disp('run Lizard movement on this recording. Moving to next rec.');
         mPhasePre.movs(i) = NaN;
@@ -2186,7 +2186,7 @@ pVal = mPhasePost.movs ~= 0 & contains(stimTable.Remarks,wavelength)...
 fMOVdbred=figure;
 h1=subplot(1,3,1,polaraxes);hold on;
 title('Pre Stimulations')
-Rlim=0.5;
+Rlim=0.35;
 
 hP={};
 for i=1:numel(uniqueAnimals)
@@ -2211,8 +2211,9 @@ l1.Position=[0.7386    0.8238    0.2125    0.1190];
 %figure 2 : during stim:
 h2=subplot(1,3,2,polaraxes);hold on;% Stimulation time
 title('During Stimulations')
+
 Rlim=0.5;
-relativeStimMean = circ_mean(relativePhaseStim(p));
+
 hP={};
 for i=1:numel(uniqueAnimals)
     p=find(pVal & strcmp(stimTable.Animal,uniqueAnimals(i)));
@@ -2220,7 +2221,6 @@ for i=1:numel(uniqueAnimals)
 end
 hold on;
 hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
-hP3=polarplot([relativeStimMean relativeStimMean],[0,Rlim],'color','k','LineWidth',3);
 
 hRose=polarhistogram(h2,relativePhaseStim(pVal),12,'Normalization','probability');
 hRose.FaceColor=[0.7 0.7 0.7];
@@ -2233,6 +2233,7 @@ h2.RTick=[0.1:0.1:0.4];
 %figure 3 : post stim:
 h3=subplot(1,3,3,polaraxes);hold on;% Stimulation time
 title('Post Stimulations')
+
 Rlim=0.5;
 
 hP={};
