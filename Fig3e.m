@@ -85,9 +85,9 @@ xticks(1:4), xticklabels(stimType); xlim([0.7 4.3]); %ylim([0 10]);
 yline(0,'--','Color',[0.4 0.4 0.4])
 [pKW, tbl, stats] = kruskalwallis(diffStimPre,groupNum,'off');
 
-if pKW < 0.05
-    c = multcompare(stats, 'CType', 'dunn-sidak');
-end
+% if pKW < 0.05
+%     c = multcompare(stats, 'CType', 'dunn-sidak','off');
+% end
 
 psFromZero = zeros(1,numType);
 for i= 1:numType

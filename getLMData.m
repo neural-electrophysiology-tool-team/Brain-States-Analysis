@@ -1,4 +1,4 @@
-function LMdata = getLMData(SA, stimTable,analysisFolder)
+% function LMdata = getLMData(SA, stimTable,analysisFolder)
 
 
 
@@ -10,6 +10,7 @@ LMstim = cell(height(stimTable),1);
 LMstimbin = cell(height(stimTable),1);
 LMpost = zeros(height(stimTable),1);
 LMallMean = zeros(height(stimTable),1);
+LM_DBts = cell(height(stimTable),1);
 
 stimlength = 150;
 post =150*1000;
@@ -21,8 +22,9 @@ headAngleSD = zeros(height(stimTable),4);
 
 cali_result = load(['/media/sil3/Data/accelerometer_calibrations/' ...
     'headtagse_cali_recs/calibration_results.mat']).cali_result;
+%%
 
-for i = 1:height(stimTable)
+for i = 45:height(stimTable)
     %set the recording:
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
     SA.setCurrentRecording(recName);
@@ -33,8 +35,8 @@ for i = 1:height(stimTable)
     cur_sensativity = headstageAmpCali.sensetivity;
     cur_zeroGbias = headstageAmpCali.zeroGbais;
 
-    SA.getLizardMovements('sensitivity', cur_sensativity(1,:)', 'zeroGBias', ...
-        cur_zeroGbias(1,:)')
+    % SA.getLizardMovements('sensitivity', cur_sensativity(1,:)', 'zeroGBias', ...
+    %     cur_zeroGbias(1,:)')
     LM = SA.getLizardMovements;
 
     startSleepT = stimTable.sleepStartT(i);
@@ -59,10 +61,12 @@ for i = 1:height(stimTable)
         end
         % Count any events at the last bin edge
         LM_DBt(end) = sum(LM.t_mov_ms >= DB.t_ms(end));
+        LM_DBts(i) = {LM_DBt};
    
     
-        LMallMean(i) = mean(LM_DBt(LM_DBt<450)); %general mean movement for all night- fo rnorm
-
+        LMallMean(i) = mean(LM_DBt); %general mean movement for all night- fo rnorm
+        disp(LMallMean(i))
+        disp(mean(LM_DBt(LM_DBt<450)))
     % deivided by the general mean of the recording:
     % timeBin = DB.parDBRatio.movWin-DB.parDBRatio.movOLWin;
     win = 60*60*1000; %ms
@@ -72,10 +76,10 @@ for i = 1:height(stimTable)
     else
         wakind = find(DB.t_ms> p & DB.t_ms < startSleepT);
     end
-    LMwake(i) = mean(LM_DBt(wakind))/LMallMean(i);
+    LMwake(i) = mean(LM_DBt(wakind));
 
     befind = find(DB.t_ms>stimStartT-p-win & DB.t_ms<stimStartT-p); % 1 hour before stimulation
-    LMpre(i) = mean(LM_DBt(befind))/LMallMean(i);
+    LMpre(i) = mean(LM_DBt(befind));
 
     if stimEndT +p + win < endSleepT
         postind = find(DB.t_ms>stimEndT+p & DB.t_ms<stimEndT+p+win);
@@ -83,7 +87,7 @@ for i = 1:height(stimTable)
         postind = find(DB.t_ms>stimEndT+p & DB.t_ms<endSleepT);
     end
 
-    LMpost(i) = mean(LM_DBt(postind))/LMallMean(i);
+    LMpost(i) = mean(LM_DBt(postind));
 
     stimLM = zeros(numel(firstTrig),stimlength);
     stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
@@ -97,12 +101,13 @@ for i = 1:height(stimTable)
         curstimLM = LM_DBt(pTmp);
         stimLM(i,:) = curstimLM;
 
+        %% 
         % Reshape the array to 15x10
         curReshLM = reshape(curstimLM, binSize,stimlength/binSize);
 
         % Sum along the rows (dim=1) to get a 1x15 array
         curStimLMBin = sum(curReshLM, 1);
-        stimLMbin(j,:) = curStimLMBin/(binSize*LMallMean(i)); %normelized to sec - to bin size.
+        stimLMbin(j,:) = curStimLMBin/(binSize); %normelized to sec - to bin size.
 
     end
     LMstim(i) = {mean(stimLM,1)};
@@ -147,7 +152,7 @@ for i = 1:height(stimTable)
         HeadAngleAvg(i,j) = meanCurAng;
         headAngleSD(i,j) = curSD;
     end
-       isplot = 1;
+       isplot = 0;
     if isplot
         figure;
         plot(angleF_t/(1000*60*60), angleF,'k');
@@ -164,10 +169,66 @@ fprintf('Head angles avgrages for this recordings: %f,%f, %f, %f',[HeadAngleAvg(
 end
 
 fileName = [analysisFolder filesep 'LMdata.mat'];
-LMdata = table(LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...
-               'VariableNames', {'LMwake', 'LMpre', 'LMstimbin','LMpost', ...
+LMdata = table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...
+               'VariableNames', {'LM_DBts','LMwake', 'LMpre', 'LMstimbin','LMpost', ...
                'LMallMean','HeadAngleAvg','headAngleSD'});
 
 save(fileName,"LMdata",'-mat')
+
+% end
+
+%% recalculate stim:
+stimlength = 150;
+post =150*1000;
+binSize = 10;
+LMstimbin = cell(height(stimTable),1);
+LMstimbinN = cell(height(stimTable),1);
+for i = 1:height(stimTable)
+    %set the recording:
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    DB = SA.getDelta2BetaRatio;
+
+    startSleepT = stimTable.sleepStartT(i);
+    endSleepT = stimTable.sleepEndT(i);
+
+    % stimulations timings:
+    stimStartT = stimTable.stimStartT(i);
+    stimEndT = stimTable.stimEndT(i);
+    t_ch = stimTable.StimTrighCh(i);
+    T=SA.getDigitalTriggers;
+    stims = T.tTrig{t_ch};
+    firstTrig=stims(1:8:end-2);
+
+    %
+    LM_DBt = LMData.LM_DBts{i};
+    
+    
+    
+    stimLM = zeros(numel(firstTrig),stimlength);
+    stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
+    stimLMbinN = zeros(numel(firstTrig),stimlength/binSize);
+    % Add the last bin edge
+    for j=1:numel(firstTrig)
+        pTmp=find(DB.t_ms>(firstTrig(j)) & DB.t_ms<=(firstTrig(j)+post));
+        %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+        if length(pTmp) ~=stimlength
+            pTmp = pTmp(1:stimlength);
+        end
+        curstimLM = LM_DBt(pTmp);
+        stimLM(i,:) = curstimLM;
+
+        %
+        % Reshape the array to 15x10
+        curReshLM = reshape(curstimLM, binSize,stimlength/binSize);
+
+        % Sum along the rows (dim=1) to get a 1x15 array
+        curStimLMBin = sum(curReshLM, 1);
+        stimLMbin(j,:) = curStimLMBin/(binSize); %normelized to sec - to bin size.
+        stimLMbinN(j,:) = mean(curReshLM,1);
+    end
+    LMstim(i) = {mean(stimLM,1)};
+    LMstimbinN(i) = {mean(stimLMbin,1)};
+    LMstimbin(i) = {mean(stimLMbin,1)};
 
 end

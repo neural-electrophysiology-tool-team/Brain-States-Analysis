@@ -4,7 +4,7 @@
 SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 load([analysisFolder filesep 'stimTable.mat'])
-load([analysisFolder filesep 'LMdata.mat'])
+% load([analysisFolder filesep 'LMdata.mat'])
 animalsColors = [
     255/255, 142/255, 71/255;% HEX:  FF8E47 - orange  - PV126
     28/255, 144/255, 217/255;  % HEX: 1C90D9 - blue - PV149
@@ -1494,6 +1494,7 @@ stimP2V = [];
 groupNum = [];
 colorMat = [];
 means = [];
+SDs = [];
 Ns = [];
 ns = [];
 
@@ -1520,6 +1521,7 @@ for type = 1:numType
     curColorMat = animalsColors(animalIndices, :);
     stimP2V = [stimP2V; curData(:,2)];
     means = [means, mean(curData(:,2))];
+    SDs = [SDs,std(curData(:,2))];
     groupNum = [groupNum; repmat(type,height(curData),1)];
     colorMat = [colorMat; curColorMat];
     
@@ -1913,7 +1915,7 @@ plot(1, curLMpost, '.', 'Color', 'black', 'MarkerSize', 20);
 xticks(1); xticklabels('Sleep After');
 
 % Link y-axes and set limits
-linkaxes([a1, a2, a3, a4], 'y'); ylim([0 4.5]);
+linkaxes([a1, a2, a3, a4], 'y'); ylim([0 6.5]);
 
 % Add 4 shared title
 sgtitle('Mean movement during stimulation, PV161, Night18');
@@ -1991,7 +1993,7 @@ end
 plot(x, mean(LMplotData),'Color','k','Marker','.')
 xticks(x), xticklabels(Groups); xlim([0.7 3.3]);
 ylabel('Mov/S')
-ylim([0 6]);
+ylim([0 30]);
 
 % annotation('textbox', [0.4, 0.85, 0.03, 0.1], 'String', ...
 %     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
