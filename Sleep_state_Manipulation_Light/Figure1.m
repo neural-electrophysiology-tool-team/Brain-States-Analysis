@@ -36,7 +36,7 @@ pre=20000;
 post=130000;
 ch = 17;
 
-%% plot trace from before stimulation:
+%% Figure 1A: plot trace from before stimulation:
 p = 90*60*1000;
 win = 180*1000;
 tStart = firstTrig(1)-p+(870*1000);
@@ -63,13 +63,12 @@ ax.YAxis(2).Color = 'blue';
 ax.YAxis(1).Limits = [-500 500]; % Get left y-axis limits
 ax.YAxis(2).Limits = [-800, 800];
 
-% saveas (gcf, [analysisFolder filesep sprintf('singleTrialRasterPV161N13t%i.pdf',j)]);
+%save figure:
 set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'cleanTraces'];
 print(fileName,'-dpdf','-r300');
-% saveas(f,fileName)
 
-%% plot plot trace + raster:
+%% Figure 1C+E: plot trace + raster:
 
  % for j=16:numel(firstTrig)
     j = 16;
