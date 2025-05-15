@@ -44,7 +44,7 @@ function [spikeRate, spikeRate_t] = getSpikeRate(data, units, tStart, win, meanW
     tEnd = tStart + win;
 
     % Generate time windows
-    spikeRate_t = tStart:OL:(tEnd - meanWin);
+    spikeRate_t = tStart+(meanWin/2):OL:(tEnd - meanWin/2);
     numWindows = length(spikeRate_t);
     numUnits = length(units);
 

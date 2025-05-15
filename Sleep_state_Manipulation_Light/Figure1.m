@@ -135,3 +135,17 @@ hold off;
 set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'singleTrialRasterPV161N18t16'];
 print(fileName,'-depsc','-vector');
+
+clearvars -except stimTable SA animalsColors uniqueAnimals analysisFolder
+
+%% Figure 1D
+
+
+%% Figure 1 F, G
+
+% spike rates for each recording: 
+
+meanWin = 1000;
+win = pre+post;
+OL = 100;
+load([curPhyFoler filesep 'spikeRateAll.mat'],"spikeRateAll","spikeRateT")

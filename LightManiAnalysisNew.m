@@ -421,7 +421,7 @@ print(fileName,'-depsc','-vector');
 meanWin = 1000;
 win = pre+post;
 OL = 100;
-load([curPhyFoler filesep 'spikeRateAll.mat'],"spikeRateAll","spikeRateT")
+load([curPhyFoler filesep 'spikeRateAll.mat'],"spikeRateAll","spikeRateT") % spike rate of the same rec
 
 %% spikerate for the rec - in you run the previous block don't run this
 spikeRateT = meanWin/2:OL:win-meanWin/2; %time in ms
@@ -433,7 +433,7 @@ for j = 1:numel(firstTrig)
 end
 % save([curPhyFoler filesep 'spikeRateGoodunits.mat'],"spikeRateGM","spikeRateT",'-mat')
 % load([curPhyFoler filesep 'spikeRateTrigers.mat'],"spikeRateM")
-save([curPhyFoler filesep 'spikeRateAll.mat'],"spikeRateAll","spikeRateT",'-mat')
+% save([curPhyFoler filesep 'spikeRateAll.mat'],"spikeRateAll","spikeRateT",'-mat')
 
 %% plot unit avarage:  1 night
 unitMean = mean(spikeRateAll,3);
