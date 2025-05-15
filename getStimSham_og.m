@@ -3,7 +3,7 @@
 % "sham" stimulation for the nights with stimulation. It should save the
 % data in the analysis folder. 
 
-function data = getStimSham(SA, t_ch, overwrite)
+function data = getStimSham_og(SA, t_ch, overwrite)
 % SA is an instance of sleep analysis class,with a record currently
 % selected
 if nargin ==2

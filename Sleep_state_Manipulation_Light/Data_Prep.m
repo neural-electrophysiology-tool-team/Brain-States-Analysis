@@ -1,12 +1,11 @@
 %% Preparation of data table
-%
 
 %% creating the StimTable:
 
 %% get data from original table - night +light recs and put in a new table
 % this part goes over all the records in SA.
 %  for every recoerd that is tagged (1/2/3..) 
-SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWakeTest.xlsx');
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
 stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage'});  % creating new table
 stimTable.stimStartT = zeros(height(stimTable),1);
@@ -190,6 +189,6 @@ stimTable.betaSWMeans = betaSWMeans;
 
 %% save stimTable
 clearvars -except SA analysisFolder stimTable
-save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
+% save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
 %%

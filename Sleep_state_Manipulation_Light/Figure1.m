@@ -14,4 +14,141 @@ animalsColors = [
     97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
 ];
 uniqueAnimals = unique(stimTable.Animal);
-%%
+%% Figure 1 A, C, E
+%% look at single traces from one night:
+
+i = 22;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+% recName2 = 'Animal=PV157,recNames=Night37';
+SA.setCurrentRecording(recName);
+DB = SA.getDelta2BetaRatio;
+% SA.getDelta2BetaRatio
+% SA.plotDelta2BetaRatio
+
+% stimulations timings:
+t_ch = stimTable.StimTrighCh(i);
+T=SA.getDigitalTriggers;
+stims = T.tTrig{t_ch};
+stimStartT = stims(1);
+stimEndT = stims(end);
+firstTrig=stims(1:8:end-2);
+endStim=stims(8:8:end)+400;
+trial = reshape(stims,[8,length(stims)/8])';
+
+pre=20000;
+post=130000;
+ch = 17;
+
+%% plot trace from before stimulation:
+p = 90*60*1000;
+win = 180*1000;
+tStart = firstTrig(1)-p+(870*1000);
+
+pTmpC = find(DB.t_ms>(tStart) & DB.t_ms<(tStart+win));
+dbTmpC = DB.bufferedDelta2BetaRatio(pTmpC);
+[lfpC,lfp_tC] = SA.currentDataObj.getData(ch,tStart,win);
+% plot:
+f = figure;
+set(f, 'Position', [100, 100, 600, 100]);
+hold on
+yyaxis left
+plot(lfp_tC/1000,squeeze(lfpC),'k'); hold on;
+ylabel('microvolts')
+yyaxis right
+plot(dbTmpC,'Color','b','LineWidth',2)
+ylabel('\delta/\beta ')
+hold off
+xlabel('Time[s]')
+
+ax = gca;
+ax.YAxis(1).Color = 'k';
+ax.YAxis(2).Color = 'blue';
+ax.YAxis(1).Limits = [-500 500]; % Get left y-axis limits
+ax.YAxis(2).Limits = [-800, 800];
+
+% saveas (gcf, [analysisFolder filesep sprintf('singleTrialRasterPV161N13t%i.pdf',j)]);
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'cleanTraces'];
+print(fileName,'-dpdf','-r300');
+% saveas(f,fileName)
+
+%% plot plot trace + raster:
+
+ % for j=16:numel(firstTrig)
+    j = 16;
+    pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
+    %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+    dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
+    [lfp,lfp_t] = SA.currentDataObj.getData(ch,firstTrig(j)-pre,pre+post);
+    
+    % add a raster plot according to stimulation
+    % Load spike times and cluster IDs (adjust file names as needed)
+    curPhyFoler = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort4'];
+    spikes=load([curPhyFoler filesep 'spike_data.mat']);
+
+    % spikeTimes = readNPY([curPhyFoler filesep 'spike_times.npy'] ); % spike times in samples.
+    spikeTimes_ms = spikes.spike_times/ (SA.currentDataObj.samplingFrequency(ch)/1000); %spike times in ms.
+    spikeClusters = spikes.spike_clusters; % cluster ID per spike
+    cluster_info = readtable([curPhyFoler filesep 'cluster_info.tsv'], 'FileType', 'text', 'Delimiter', '\t');
+
+    % Parameters for the plot
+    allClusters  = cluster_info.cluster_id(find(contains(cluster_info.group,'good')|contains(cluster_info.group,'mua')));
+    goodClusters = cluster_info.cluster_id(find(contains(cluster_info.group,'good')));
+    % uniqueClusters = unique(spikeClusters); % all neuron/unit ID
+    nClusters = length(allClusters);
+    nClustersg = length(goodClusters);
+% plot trace + raster:
+    f = figure;
+    h1 = subplot(2,1,1);
+    % set(f, 'Position', [100, 100, 1200, 400]);
+    % yyaxis left
+    plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
+    curstims = trial(j,:) -trial(j,1) +pre ;
+    xline(curstims/1000,'r','LineWidth',1.5)
+    % yyaxis right
+    plot(dbTmp,'Color','b','LineWidth',2)
+    sgtitle(sprintf('Trial num: %i',j));
+    hold off;
+
+
+    % Plot RASTER!! spikes for each cluster, for each trig time!
+    h2 = subplot(2,1,2);
+    hold on;
+    for l = 1:nClusters
+        clusterID = allClusters(l);
+        
+        clusterSpikeTimes = spikeTimes_ms(spikeClusters == clusterID); % times for this unit
+        curClusterSpikeT_ms=clusterSpikeTimes(clusterSpikeTimes>(firstTrig(j)-pre) & clusterSpikeTimes<(firstTrig(j)+post));
+        TClusterSpikeT_ms = (curClusterSpikeT_ms-(firstTrig(j)-pre));
+        % Plot each spike as a tick at y = cluster number
+        for k = 1:length(TClusterSpikeT_ms)
+            line([TClusterSpikeT_ms(k), TClusterSpikeT_ms(k)], [l - 0.4, l + 0.4], 'Color', 'k'); % tick mark
+        end
+        
+    end
+    curstims = trial(j,:) -trial(j,1) +pre ;
+   
+    xline(curstims,'r','LineWidth',1.5)
+    box on
+    % Convert x-axis labels from ms to s by setting the x-axis ticks and labels
+    xticks = get(gca, 'XTick');          % Get current x-axis tick values in ms
+    set(gca, 'XTick', xticks);           % Set the same ticks
+    set(gca, 'XTickLabel', xticks / 1000); % Display tick labels in seconds
+    xlabel('Time (s)');
+    % xlabel('Time (ms)');
+    ylabel('Neuron/Unit');
+    ylim([0.4,nClusters+0.5])
+    title('Raster Plot');
+    hold off;
+
+    % saveas(gcf, [SA.currentPlotFolder filesep sprintf('DBRaterLFPT%i.pdf',j)])
+    % waitforbuttonpress;
+
+% end
+
+
+% saveas (gcf, [analysisFolder filesep sprintf('singleTrialRasterPV161N13t%i.pdf',j)]);
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'singleTrialRasterPV161N18t16'];
+print(fileName,'-depsc','-vector');
+% saveas(f,fileName)
