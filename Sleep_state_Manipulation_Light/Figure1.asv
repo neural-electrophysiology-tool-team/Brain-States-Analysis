@@ -29,7 +29,7 @@ stims = T.tTrig{t_ch}; %all stim timings
 stimStartT = stims(1);
 stimEndT = stims(end);
 firstTrig=stims(1:8:end-2);
-endStim=stims(8:8:end)+200;
+endStim=stims(8:8:end)+400;
 trial = reshape(stims,[8,length(stims)/8])';
 
 pre=20000;
