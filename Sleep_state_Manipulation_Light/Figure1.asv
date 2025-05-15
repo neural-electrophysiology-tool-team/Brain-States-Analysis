@@ -131,7 +131,14 @@ hold off;
     title('Raster Plot');
     hold off;
 
-% save figure:
+    % saveas(gcf, [SA.currentPlotFolder filesep sprintf('DBRaterLFPT%i.pdf',j)])
+    % waitforbuttonpress;
+
+% end
+
+
+% saveas (gcf, [analysisFolder filesep sprintf('singleTrialRasterPV161N13t%i.pdf',j)]);
 set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'singleTrialRasterPV161N18t16'];
 print(fileName,'-depsc','-vector');
+% saveas(f,fileName)
