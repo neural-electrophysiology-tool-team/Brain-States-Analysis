@@ -36,7 +36,7 @@ pre=20000;
 post=130000;
 ch = 17;
 
-%% Fiplot trace from before stimulation:
+%% Figure 1A: plot trace from before stimulation:
 p = 90*60*1000;
 win = 180*1000;
 tStart = firstTrig(1)-p+(870*1000);
@@ -68,46 +68,40 @@ set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'cleanTraces'];
 print(fileName,'-dpdf','-r300');
 
-%% plot plot trace + raster:
+%% Figure 1C+E: plot trace + raster:
 
- % for j=16:numel(firstTrig)
-    j = 16;
-    pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
-    %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
-    dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
-    [lfp,lfp_t] = SA.currentDataObj.getData(ch,firstTrig(j)-pre,pre+post);
+j = 16; %trial number example:
+pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
+dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
+[lfp,lfp_t] = SA.currentDataObj.getData(ch,firstTrig(j)-pre,pre+post);
     
-    % add a raster plot according to stimulation
-    % Load spike times and cluster IDs (adjust file names as needed)
-    curPhyFoler = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort4'];
-    spikes=load([curPhyFoler filesep 'spike_data.mat']);
+% add a raster plot according to stimulation
+% Load spike times and cluster IDs (adjust file names as needed)
+curPhyFoler = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort4'];
+spikes=load([curPhyFoler filesep 'spike_data.mat']);
 
-    % spikeTimes = readNPY([curPhyFoler filesep 'spike_times.npy'] ); % spike times in samples.
-    spikeTimes_ms = spikes.spike_times/ (SA.currentDataObj.samplingFrequency(ch)/1000); %spike times in ms.
-    spikeClusters = spikes.spike_clusters; % cluster ID per spike
-    cluster_info = readtable([curPhyFoler filesep 'cluster_info.tsv'], 'FileType', 'text', 'Delimiter', '\t');
+spikeTimes_ms = spikes.spike_times/(SA.currentDataObj.samplingFrequency(ch)/1000); %spike times in ms. (get it from phy in samples)
+spikeClusters = spikes.spike_clusters; % cluster ID per spike
+cluster_info = readtable([curPhyFoler filesep 'cluster_info.tsv'], 'FileType', 'text', 'Delimiter', '\t');
 
-    % Parameters for the plot
-    allClusters  = cluster_info.cluster_id(find(contains(cluster_info.group,'good')|contains(cluster_info.group,'mua')));
-    goodClusters = cluster_info.cluster_id(find(contains(cluster_info.group,'good')));
-    % uniqueClusters = unique(spikeClusters); % all neuron/unit ID
-    nClusters = length(allClusters);
-    nClustersg = length(goodClusters);
+% Parameters for the plot
+allClusters  = cluster_info.cluster_id(find(contains(cluster_info.group,'good')|contains(cluster_info.group,'mua')));
+goodClusters = cluster_info.cluster_id(find(contains(cluster_info.group,'good')));
+nClusters = length(allClusters);
+nClustersg = length(goodClusters);
+
 % plot trace + raster:
-    f = figure;
-    h1 = subplot(2,1,1);
-    % set(f, 'Position', [100, 100, 1200, 400]);
-    % yyaxis left
-    plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
-    curstims = trial(j,:) -trial(j,1) +pre ;
-    xline(curstims/1000,'r','LineWidth',1.5)
-    % yyaxis right
-    plot(dbTmp,'Color','b','LineWidth',2)
-    sgtitle(sprintf('Trial num: %i',j));
-    hold off;
+f = figure;
+h1 = subplot(2,1,1);
+plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
+curstims = (trial(j,:) -trial(j,1)) +pre ;
+xline(curstims/1000,'r','LineWidth',1.5)
+plot(dbTmp,'Color','b','LineWidth',2)
+sgtitle(sprintf('Trial num: %i',j));
+hold off;
 
 
-    % Plot RASTER!! spikes for each cluster, for each trig time!
+% Plot RASTER!! spikes for each cluster, for each trig time!
     h2 = subplot(2,1,2);
     hold on;
     for l = 1:nClusters

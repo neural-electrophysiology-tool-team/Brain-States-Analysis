@@ -188,7 +188,7 @@ stimTable.deltaSWMeans = deltaSWMeans;
 stimTable.betaSWMeans = betaSWMeans;
 
 %% save stimTable
-analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 clearvars -except SA analysisFolder stimTable
 save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
 
+%%

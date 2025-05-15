@@ -1,7 +1,7 @@
 %% light manipulation analysis 08/05/2024
 % This is the new version. 
 
-SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWakeTest.xlsx');
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 load([analysisFolder filesep 'stimTable.mat'])
 % load([analysisFolder filesep 'LMdata.mat'])
