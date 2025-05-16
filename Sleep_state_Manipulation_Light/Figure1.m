@@ -135,3 +135,69 @@ hold off;
 set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'singleTrialRasterPV161N18t16'];
 print(fileName,'-depsc','-vector');
+
+%% Figure 1F
+
+% Plot Spike rates avrages for all nights:
+    % 3 subplots: 1 unit, all units same night, all units
+    % night for the single unit:
+    i = 22;
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    curPhyFoler = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort4'];
+    spikeRateFile = [curPhyFoler filesep 'spikeRateAll.mat'];
+    load(spikeRateFile,"spikeRateAll","spikeRateT","allClusters","OL");
+    % all nights, all units:
+    allnightsfilename = [analysisFolder filesep 'allNightsSpikingRate.mat'];
+    load(allnightsfilename,"AllNightsUnits","spikeRecs","xPositions")
+
+unitMean = mean(spikeRateAll,3);
+bestU = 48;
+bestUind = find(allClusters==bestU);
+% stimDiff = mean(mean(diff(trial,[],2)));
+% xPositions = (pre + (0:7)*(stimDiff))/OL;  % Example positions for lines
+
+f= figure;
+%figrue1: one unit from 1 nights/
+h1 = subplot(3,1,1);
+plot(spikeRateT/OL,unitMean(bestUind,:),'Color','k', 'LineWidth',1)
+hold on
+xline(xPositions,'r','LineWidth',1)
+ylabel('Spike/s')
+title('one unit mean across all trials')
+hold off
+
+%figure 2: all units one night: 
+h2=subplot(3,1,2);
+meanOneNight = mean(unitMean,1);
+n = height(unitMean);
+title 'Mean all units - One Night')
+plot(spikeRateT/OL,meanOneNight,'Color','k', 'LineWidth',1); hold on;
+xline(xPositions,'r','LineWidth',1)
+ylabel('Spike/s')
+hold off
+annotation('textbox', [0.8, 0.5, 0.03, 0.1], 'String', ...
+    sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+
+%figure 3: all units - all nights
+h3=subplot(3,1,3);
+title('Mean all units, all Red Nights')
+plot(spikeRateT/OL,mean(AllNightsUnits,1),'Color','k', 'LineWidth',1); hold on;
+xline(xPositions,'r','LineWidth',1)
+xlabel('Time[s]'); 
+ylabel('Spike/s')
+n= height(AllNightsUnits);
+N = numel(spikeRecs);
+annotation('textbox', [0.8, 0.2, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+% linkaxes([h1,h2,h3],'x')
+%savefigure
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'spikeRates-allnights'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% Figure 1 G:

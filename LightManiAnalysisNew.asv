@@ -1,7 +1,7 @@
 %% light manipulation analysis 08/05/2024
 % This is the new version. 
 
-SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWakeTest.xlsx');
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 load([analysisFolder filesep 'stimTable.mat'])
 % load([analysisFolder filesep 'LMdata.mat'])
@@ -416,14 +416,14 @@ set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'singleTrialRasterPV161N18t16'];
 print(fileName,'-depsc','-vector');
 % saveas(f,fileName)
-%% spike rates for each recording: 
+%% spike rates for this recording - load data 
 
 meanWin = 1000;
 win = pre+post;
 OL = 100;
 load([curPhyFoler filesep 'spikeRateAll.mat'],"spikeRateAll","spikeRateT")
 
-%% spikerate for the rec - in you run the previous block don't run this
+%% spikerate for the rec: calculate. if you run the previous block don't run this
 spikeRateT = meanWin/2:OL:win-meanWin/2; %time in ms
 spikeRateAll = zeros(numel(allClusters),length(spikeRateT),numel(firstTrig));
 for j = 1:numel(firstTrig)
@@ -435,7 +435,7 @@ end
 % load([curPhyFoler filesep 'spikeRateTrigers.mat'],"spikeRateM")
 save([curPhyFoler filesep 'spikeRateAll.mat'],"spikeRateAll","spikeRateT",'-mat')
 
-%% plot unit avarage:  1 night
+%% plot units avarage:  same night from previuos 
 unitMean = mean(spikeRateAll,3);
 
 f= figure;
@@ -476,7 +476,7 @@ ylabel('Spike/s')
 set(f,'PaperPositionMode','auto');
 fileName=[SA.currentPlotFolder filesep 'spikeRates'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-%% plot spike rate all red nights
+%% spike rate all red nights - initial 
 % select the relevant recordings:
 % the ones that have spikes and are red nights that have any reaction
 %spike rate parameters:
@@ -489,7 +489,7 @@ OL = 100;
 spikeRateT = meanWin/2:OL:win-meanWin/2; %time in ms
 
 
-%%
+%% create the spike rate for all red recs (if not allready done)
 for k = 1:length(spikeRecs)
     i= spikeRecs(k);
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -500,7 +500,7 @@ for k = 1:length(spikeRecs)
     T=SA.getDigitalTriggers;
     stims = T.tTrig{t_ch};
     firstTrig=stims(1:8:end-2);
-    endStim=stims(8:8:end)+400;
+    endStim=stims(8:8:end)+200;
     % trial = reshape(stims,[8,length(stims)/8])';
 
     % get the spikes Data
@@ -536,11 +536,11 @@ for k = 1:length(spikeRecs)
         end
         % save([curPhyFoler filesep 'spikeRateGoodunits.mat'],"spikeRateGM","spikeRateT",'-mat')
         % load([curPhyFoler filesep 'spikeRateTrigers.mat'],"spikeRateM")
-        save(spikeRateFile, "spikeRateAll","spikeRateT",'-mat')
+        save(spikeRateFile, "spikeRateAll","spikeRateT","allClusters","goodClusters",'-mat')
     end
 end
 
-%% plot all neurons from all nights traces & baseline changes - TODO
+%% get data for all neurons from all nights traces & baseline changes
 % plot the change in spike rate betweem right before stimulations and right
 % after. 
 % ITI - right before - 10 seconds before ( second 10-20)
@@ -575,7 +575,7 @@ for k = 1:length(spikeRecs)
     load(spikeRateFile,"spikeRateAll");
 
     unitM = mean(spikeRateAll,3); % avarage across trials.
-    % AllNightsUnits = [AllNightsUnits;unitM]; %add to one matrix for all units, all nights
+    AllNightsUnits = [AllNightsUnits;unitM]; %add to one matrix for all units, all nights
     
     % avarage spike rate for each unit:
     unitsBaseline = mean(mean(spikeRateAll,2),3);
@@ -585,7 +585,7 @@ for k = 1:length(spikeRecs)
         'FileType', 'text', 'Delimiter', '\t');
     allClusters  = cluster_info.cluster_id(find(contains(cluster_info.group,'good')|contains(cluster_info.group,'mua')));
     goodClusters = cluster_info.cluster_id(find(contains(cluster_info.group,'good')));
-    goodUnits = [goodUnits ;ismember(allClusters,goodClusters)];
+    goodUnits = [goodUnits ;ismember(allClusters,goodClusters)]; %indecies for the good units
 
     % caluclate the mean for the ITI and for ISI
     % normelize to seconds
@@ -606,16 +606,31 @@ for k = 1:length(spikeRecs)
 
 end
 
+% save data:
+allnightsfilename = [analysisFolder filesep 'allNightsSpikingRate.mat'];
+save(allnightsfilename, "AllNightsUnits","trial","xPositions",'-mat')
+
+ITIISImatfilename = [analysisFolder filesep 'ITIISIdata.mat'];
+save(ITIISImatfilename, "ITIsamples", "ISIsamples","ITIsamplesN","ISIsamplesN",'-mat')
+
 %% Plot Spike rates avrages for all nights:
     % 3 subplots: 1 unit, all units same night, all units
+    % night for the single unit:
+    i = 22;
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    curPhyFoler = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort4'];
     spikeRateFile = [curPhyFoler filesep 'spikeRateAll.mat'];
-    load(spikeRateFile,"spikeRateAll");
+    load(spikeRateFile,"spikeRateAll","spikeRateT","allClusters");
+    % all nights, all units:
+    allnightsfilename = [analysisFolder filesep 'allNightsSpikingRate.mat'];
+    load(allnightsfilename,"AllNightsUnits","stimDiff","xPositions")
 
 unitMean = mean(spikeRateAll,3);
 bestU = 48;
 bestUind = find(allClusters==bestU);
 stimDiff = mean(mean(diff(trial,[],2)));
-xPositions = (pre + (0:7)*(stimDiff))/OL;  % Example positions for lines
+% xPositions = (pre + (0:7)*(stimDiff))/OL;  % Example positions for lines
 
 f= figure;
 %figrue1: one unit from 1 nights/
