@@ -15,6 +15,103 @@ animalsColors = [
 ];
 uniqueAnimals = unique(stimTable.Animal);
 
+%% Figure 3B - AC all colors
+% plot AC period time changes - According to color and animal
+
+% animals = unique(stimTable.Animal);
+stimType = ["Blue","Green","Red","LED"];
+stimWaveL = ["47","532","635","LED"];
+% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
+% numAnimal = length(animals);
+numType = length(stimType);
+stimData = [];
+groupNum=[];
+colorMat = [];
+Ns = [];
+ns = [];
+x=1:3;
+%plot Period Times:
+f=figure;
+set(f, 'Position', [100, 100, 800, 400]);
+hold on
+for type = 1:numType
+    %plot the data
+    subplot(1,4,type)
+    curType = stimWaveL(type);
+    curName = stimType(type);
+    curTrials = contains(stimTable.Remarks,curType) & ...
+                ~contains(stimTable.Remarks,'Ex') &...
+                all(~isnan(stimTable.ACcomPer),2) &...
+                all(stimTable.ACcomP2V > 0.15,2);
+    n = sum(curTrials);
+    N = numel(unique(stimTable.Animal(curTrials)));
+    ns = [ns; n];
+    Ns = [Ns; N];
+    % curCol = plotColors{type};
+    curData = stimTable.ACcomPer(curTrials,:);
+    curMean = mean(curData,1,'omitnan');
+    stimData = [stimData; curData(:,2)];
+    groupNum = [groupNum; repmat(type, length(curData), 1)];
+
+%statistics:
+
+    [p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
+    fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+    % % p-valure is very low, post hoc:
+    if p<0.05
+        % data for the four groups
+        beforeAC = curData(:,1);
+        duringAC = curData(:,2);
+        afterAC = curData(:,3);
+
+        % Pairwise Wilcoxon signed-rank tests
+        [p_pre_during, ~, stats_before_during] = signrank(beforeAC, duringAC);
+        [p_during_post, ~, stats_during_after] = signrank(duringAC, afterAC);
+        [p_pre_post, ~, stats_wake_during] = signrank(beforeAC, afterAC);
+
+        raw_pvals = [p_pre_during,p_during_post,p_pre_post];
+        num_comparisons = 3;
+        corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+
+        % Display results with Bonferroni correction
+        fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+        fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+        fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+        fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+    
+        %save statistics:
+        statsAC.(curName).pAnova = p;
+        statsAC.(curName).corrected_pvals_bonferroni = corrected_pvals_bonferroni;
+    end
+    
+    if n>0
+        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+        curColorMat = animalsColors(animalIndices, :);
+        colorMat = [colorMat; curColorMat];
+        hold on;
+        for j = 1:height(curData)
+            plot(x,curData(j,:)/1000,'Color',curColorMat(j,:),'Marker','.')
+        end
+        plot(x,curMean/1000,'Color','k','LineWidth',2,'Marker','.')
+        yline(156,'--', 'Color',[0.4 0.4 0.4])
+
+    end
+    if type==1
+        ylabel('Time[s]')
+    end
+    ylim([40 250])
+    xticks(1:3); xlim([0.8 3.2])
+    xticklabels({'Pre','During','Post'})
+  
+end
+
+% savefigure
+set(gcf,'PaperPosition',[1 1 4.3 1.2]);
+fileName=[analysisFolder filesep 'ACperiodstimAll'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+save([analysisFolder filesep 'statsACperiodstimAll.mat'], "statsAC")
+
+
 %% Figure 3D - D/B decrease
 
 stimType = ["Blue","Green","Red","WhiteEx"];
@@ -113,10 +210,3 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %%
-ns= [];
-for type = 1:numType
-    curType = stimWaveL(type);
-    curTrials = contains(stimTable.Remarks,curType) &...
-                ~contains(stimTable.Remarks,"Ex");
-    ns =[ns; sum(curTrials)];
-end

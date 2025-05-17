@@ -1252,11 +1252,11 @@ saveas (gcf, [analysisFolder filesep 'ACperiodReds.pdf']);
 
 %% plot AC period time changes - According to color and animal
 
-animals = unique(stimTable.Animal);
+% animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
 % plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
-numAnimal = length(animals);
+% numAnimal = length(animals);
 numType = length(stimType);
 stimData = [];
 groupNum=[];
@@ -1292,42 +1292,32 @@ for type = 1:numType
     [p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
     fprintf('p-value for freidman ANOVA test: %.5f\n',p)
     % % p-valure is very low, post hoc:
-    % data for the four groups
-    beforeAC = curData(:,1);
-    duringAC = curData(:,2);
-    afterAC = curData(:,3);
+    if p<0.05
+        % data for the four groups
+        beforeAC = curData(:,1);
+        duringAC = curData(:,2);
+        afterAC = curData(:,3);
 
-    % Bonferroni-corrected alpha level
-    alpha = 0.05 / 3;
+        % Pairwise Wilcoxon signed-rank tests
+        [p_pre_during, ~, stats_before_during] = signrank(beforeAC, duringAC);
+        [p_during_post, ~, stats_during_after] = signrank(duringAC, afterAC);
+        [p_pre_post, ~, stats_wake_during] = signrank(beforeAC, afterAC);
 
-    % Pairwise Wilcoxon signed-rank tests
-    [p_pre_during, ~, stats_before_during] = signrank(beforeAC, duringAC);
-    [p_during_post, ~, stats_during_after] = signrank(duringAC, afterAC);
-    [p_pre_post, ~, stats_wake_during] = signrank(beforeAC, afterAC);
+        raw_pvals = [p_pre_during,p_during_post,p_pre_post];
+        num_comparisons = 3;
+        corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
 
-    raw_pvals = [p_pre_during,p_during_post,p_pre_post];
-    num_comparisons = 3;
-    % Display results with Bonferroni correction
-    % fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-    % fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-    % fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-    % fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
-    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
-    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-    fprintf('Before vs During:: p-value = %.4f \n', corrected_pvals_bonferroni(1));
-    fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
-    fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+        % Display results with Bonferroni correction
+        fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+        fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+        fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+        fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
     
+        %save statistics:
+        statsAC.(curName).pAnova = p;
+        statsAC.(curName).corrected_pvals_bonferroni = corrected_pvals_bonferroni;
+    end
     
-    %save statistics:
-    statsAC.(curName).alpha = alpha;
-    statsAC.(curName).pAnova = p;
-    statsAC.(curName).p_pre_post = p_pre_post;
-    statsAC.(curName).p_pre_during = p_pre_during;
-    statsAC.(curName).p_during_post = p_during_post;
-    statsAC.(curName).corrected_pvals_bonferroni = corrected_pvals_bonferroni;
-
-
     if n>0
         [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
         curColorMat = animalsColors(animalIndices, :);
