@@ -1040,7 +1040,7 @@ fileName=[analysisFolder filesep 'DBdecreaseAllnigthscolors'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% Fig3- plot D/B decrease - all nights DIFFS
+%% Fig3d- plot D/B decrease - all nights DIFFS
 
 stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
@@ -1056,10 +1056,7 @@ DBMean = [];
 
 
 for type = 1:numType
-    %plot the data
-    % subplot(1,4,type)
-    curType = stimWaveL(type);
-    % curName = stimType(type);
+     curType = stimWaveL(type);
     curTrials = contains(stimTable.Remarks,curType) &...
                 ~contains(stimTable.Remarks,"Ex") &...
                 all(~isnan(stimTable.dbSWMeans(:,1:2)), 2);
@@ -1080,8 +1077,6 @@ end
 [p, tbl, statsDBdiff] = kruskalwallis(DBdiff,groupNum,'off');
 
 if p < 0.05
-    % cDBdiff = multcompare(statsDBdiff, 'CType', 'dunn-sidak');
-
     if isstring(groupNum)
         groupNum = cellstr(groupNum);
     end
