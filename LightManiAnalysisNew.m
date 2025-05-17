@@ -943,7 +943,7 @@ annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
 set(fdb,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'DBSWSredNights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-%% plot D/B decrease - all nights
+%% plot D/B decrease - all nights - not in paper
 
 stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
@@ -1139,7 +1139,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% AC changes 
 
-%% plot sliding AC sith stimulations:
+%% plot sliding AC sith stimulations: Figure 1I
 %set the recording:
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -1147,7 +1147,7 @@ SA.setCurrentRecording(recName);
 AC = SA.getDelta2BetaAC;
 SA.plotDelta2BetaSlidingAC ('stim',1,'stimCh',stimTable.StimTrighCh(i));
 
-%% AC - plot specific before during and after AC - for a specific rec/
+%% AC - plot specific before during and after AC - for a specific rec - Figure 1I
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
@@ -1183,7 +1183,6 @@ for j = 1:3
    set(fAC,'PaperPositionMode','auto');
    fileName=[analysisFolder filesep 'dbAC_ch' num2str(parDbAutocorr.ch) '_t' num2str(round(parDbAutocorr.tStart)) labels{j}];
    print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-   close all
 
 end
 

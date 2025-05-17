@@ -242,5 +242,46 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
     fileName=[analysisFolder filesep 'ITIISIallunits'];
     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
+%% Figure 1 I
+% plot sliding AC sith stimulations: (bottom)
+%set the recording:
+i = 22; %night 18, PV161
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+AC = SA.getDelta2BetaAC;
+SA.plotDelta2BetaSlidingAC ('stim',1,'stimCh',stimTable.StimTrighCh(i));
 
-    %%
+% plot partial AC for each part of the night:
+ACpre = stimTable.ACpre{i};
+ACstim = stimTable.ACstim{i};
+ACpost = stimTable.ACpost{i};
+
+PDPcolors = [0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+ACstructs = {ACpre,ACstim,ACpost};
+labels = {'preStim', 'Stim', 'postStim'};
+for j = 1:3
+    struct2vars(ACstructs{j});
+    fAC = figure;
+    %plot:
+    lineHandles = plot(autocorrTimes/1000,real(xcf),'Color',PDPcolors(j,:),'LineWidth',4);
+    ylim([-0.4 1])
+    set(lineHandles(1),'MarkerSize',4);
+    % grid('on');
+    xlabel('Period [s]');
+    ylabel('Auto corr.');
+    hold('on');
+
+    plot(period/1000,real(xcf(pPeriod)),'o','MarkerSize',5,'color','k');
+    text(period/1000,0.05+real(xcf(pPeriod)),num2str(period/1000));
+
+    a = axis;
+   plot([a(1) a(2)],[0 0],'-k');
+    hold('off');
+    title (labels{j})
+   % save fig:
+   set(fAC,'PaperPositionMode','auto');
+   fileName=[analysisFolder filesep 'dbAC_ch' num2str(parDbAutocorr.ch) '_t' num2str(round(parDbAutocorr.tStart)) labels{j}];
+   print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+end
+
