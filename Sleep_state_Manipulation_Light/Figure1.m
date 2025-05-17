@@ -245,6 +245,55 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
     fileName=[analysisFolder filesep 'ITIISIallunits'];
     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
+%% Figure 1H - stim sham all red nights:
+
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ...
+    ~contains(stimTable.Remarks,'Ex') & ...
+    all(~isnan(stimTable.dbDiffStimM), 2) &...
+    all(~isnan(stimTable.dbDiffShamM), 2); 
+    
+n = sum(curTrials);
+animals = unique(stimTable.Animal(curTrials));
+N = length(animals);
+
+% statistical tests for that figure 
+groupSham = stimTable.dbDiffShamM(curTrials);
+groupStim = stimTable.dbDiffStimM(curTrials);
+
+% 1. Wilcoxon Signed-Rank Test
+[pWilcoxon, ~, statsWilcoxon] = signrank(groupSham, groupStim);
+fprintf('Wilcoxon Signed-Rank Test p-value: %.4f\n', pWilcoxon);
+disp(statsWilcoxon)
+
+% plot:
+figure;
+title('Change in mean D/B norm across trials - All nights')
+x=[1,2];
+curData = [stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)];
+% color code per animal:
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); % Use the indices to directly fetch corresponding colors
+curMeanStim = mean(stimTable.dbDiffStimM(curTrials),1);
+curMeanSham = mean(stimTable.dbDiffShamM(curTrials),1);
+hold on
+for i = 1:height(curData)
+    plot(x, curData(i,:), 'Color',curColorMat(i,:), 'Marker','.', 'MarkerSize',10, 'LineWidth',1)
+end
+plot(x,[curMeanSham,curMeanStim],'color','k','LineWidth',2,'Marker','.','MarkerSize',10)
+hold off
+
+
+ylim([-40 120])
+xlim([0.9 2.1]);
+xticks([1, 2]); % Position of the x-ticks
+xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
+
+%save figure:
+set(gcf,'PaperPosition',[1 4 1.2 1.6])
+saveas (gcf, [analysisFolder filesep 'DBdiffStimShamRedNights.pdf']);
+
+    
 %% Figure 1I
 % plot sliding AC sith stimulations: (bottom)
 %set the recording:

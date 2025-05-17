@@ -272,7 +272,19 @@ for i=1:height(stimTable)
     stimTable.dbDiffSleepM(i) = mean(durSleep,'omitnan')-mean(befSleep,'omitnan');
     
 end
+%% calculate the P2V for 156 sec (tril time)
+fs = 156*1000;
+P2Vfs = zeros(height(stimTable),3);
 
+for i=1:height(stimTable)
+    preAC = stimTable.ACpre{i};
+    P2Vfs(i,1) = preAC.xcf(preAC.autocorrTimes ==fs)-preAC.xcf(preAC.autocorrTimes ==preAC.vallyPeriod);
+    stimAC = stimTable.ACstim{i};
+    P2Vfs(i,2) = stimAC.xcf(stimAC.autocorrTimes ==fs)-stimAC.xcf(stimAC.autocorrTimes ==stimAC.vallyPeriod);
+    postAC = stimTable.ACpost{i};
+    P2Vfs(i,3) = postAC.xcf(postAC.autocorrTimes ==fs)-postAC.xcf(postAC.autocorrTimes ==postAC.vallyPeriod);
+end
+stimTable.P2V_156 = P2Vfs;
 
 %% save stimTable
 save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
@@ -1158,7 +1170,7 @@ ACpost = stimTable.ACpost{i};
 PDPcolors = [0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
 ACstructs = {ACpre,ACstim,ACpost};
 labels = {'preStim', 'Stim', 'postStim'};
-%%
+%
 for j = 1:3
     struct2vars(ACstructs{j});
     fAC = figure;
@@ -1187,7 +1199,7 @@ for j = 1:3
 end
 
 
-%% plot AC - only Red nights:
+%% plot AC - only Red nights: - Figure 1J
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
             ~contains(stimTable.Remarks,'Ex') & ...
@@ -1402,20 +1414,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% get the P2V at 156 sec: Figure 3C
-%noved to data prep:
-fs = 156*1000;
-P2Vfs = zeros(height(stimTable),3);
 
-for i=1:height(stimTable)
-    preAC = stimTable.ACpre{i};
-    P2Vfs(i,1) = preAC.xcf(preAC.autocorrTimes ==fs)-preAC.xcf(preAC.autocorrTimes ==preAC.vallyPeriod);
-    stimAC = stimTable.ACstim{i};
-    P2Vfs(i,2) = stimAC.xcf(stimAC.autocorrTimes ==fs)-stimAC.xcf(stimAC.autocorrTimes ==stimAC.vallyPeriod);
-    postAC = stimTable.ACpost{i};
-    P2Vfs(i,3) = postAC.xcf(postAC.autocorrTimes ==fs)-postAC.xcf(postAC.autocorrTimes ==postAC.vallyPeriod);
-end
-
-%% plot
+%plot
 stimP2V = [];
 groupNum = [];
 colorMat = [];
@@ -1531,28 +1531,12 @@ end
 
 %% StimSham analysis:
 
-
-%% plot the statistics:
-% i want a bar plot (with points) of the max values of the D/B during
-% stim/Sham
-% also, plot the max slop, i think that will show better results.
-
-% assuming the table is in the workspace
-% load([analysisFolder filesep 'stimTable.mat'])
-
-% calculate max value and max slop
-% max:
-stimTable.maxStim = cellfun(@max,stimTable.StimAvg);
-stimTable.maxSham = cellfun(@max,stimTable.StimAvgSham);
-
 % stimtime minus pre stim - change in D/B:
 % take the last 30 sec of stim and substract the 30 sec before the start of
 % stim, ans avrage that. 
 
-%% plot D/B diff stimSham bar plot - only Red nights
-% animals = unique(stimTable.Animal);
-% numAnimal = length(animals);
-type = 'Red';
+%% plot D/B diff stimSham - only Red nights - Figure 1H
+% type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
     ~contains(stimTable.Remarks,'Ex') & ...
@@ -1604,8 +1588,8 @@ curData = [stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)];
 % color code per animal:
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
 curColorMat = animalsColors(animalIndices, :); % Use the indices to directly fetch corresponding colors
-curMeanStim = mean(stimTable.dbDiffStimM(curTrials),1,'omitnan');
-curMeanSham = mean(stimTable.dbDiffShamM(curTrials),1,'omitnan');
+curMeanStim = mean(stimTable.dbDiffStimM(curTrials),1);
+curMeanSham = mean(stimTable.dbDiffShamM(curTrials),1);
 hold on
 for i = 1:height(curData)
     plot(x, curData(i,:), 'Color',curColorMat(i,:), 'Marker','.', 'MarkerSize',10, 'LineWidth',1)
