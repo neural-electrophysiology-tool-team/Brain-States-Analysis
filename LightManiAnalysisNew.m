@@ -793,7 +793,7 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
 
 %% plot D2B general decrease for each part of the stimulation - SWS parts
 
-%% plot one night: D/B decrease
+%% plot one night: D/B decrease - Figure 2 B
 
 i =22 ;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -882,12 +882,12 @@ end
 set(fdbDec,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'DBSWSpreStimPostOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-%% plot all nights: - only red
+%% plot all red nights - figure 2c
 
 type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ...
-    & ~any(isnan(stimTable.dbSWMeans),2); %& contains(stimTable.Animal,curAni);
+    & ~any(isnan(stimTable.dbSWMeans),2); 
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 groupNames = {'Pre', 'During', 'After'};
@@ -895,45 +895,29 @@ curData = stimTable.dbSWMeans(curTrials,:);
 
 
 % statistics:
-
-% Assuming data in columns where each row is a subject and each column is a timepoint
-% bdSWDataStat = stimTable.dbSWMeans(curTrials,:);
-% cleanDBSW = bdSWDataStat(~any(isnan(bdSWDataStat), 2), :);
-% n=height(cleanDBSW);
-
-[p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
+[p, tbl, stats] = friedman(curData, 1,'off'); % paired data
 fprintf('p-value for freidman ANOVA test: %.5f\n',p)
-% p-valure is very low, post hoc:
-% Example data for three groups
-before = stimTable.dbSWMeans(curTrials,1);
-during = stimTable.dbSWMeans(curTrials,2);
-after = stimTable.dbSWMeans(curTrials,3);
+if p<0.05
+    % data for three groups
+    before = stimTable.dbSWMeans(curTrials,1);
+    during = stimTable.dbSWMeans(curTrials,2);
+    after = stimTable.dbSWMeans(curTrials,3);
 
-% Bonferroni-corrected alpha level
-alpha = 0.05 / 3;
-
-% Pairwise Wilcoxon signed-rank tests
-[p_before_during, ~, stats_before_during] = signrank(before, during);
-[p_during_after, ~, stats_during_after] = signrank(during, after);
-[p_after_before, ~, stats_after_before] = signrank(after, before);
-raw_pvals = [p_before_during,p_during_after,p_after_before];
-num_comparisons = 3;
-% Display results with Bonferroni correction
-% fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-% fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-% fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
-corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
-fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
-fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
-fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
-
+    % Pairwise Wilcoxon signed-rank tests
+    [p_before_during, ~, stats_before_during] = signrank(before, during);
+    [p_during_after, ~, stats_during_after] = signrank(during, after);
+    [p_after_before, ~, stats_after_before] = signrank(after, before);
+    
+    raw_pvals = [p_before_during,p_during_after,p_after_before];
+    num_comparisons = 3;
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons,1);
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end 
 %plot
 fdb = figure;
-% plot(stimTable.dbSWMeans(curTrials,:)','Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
-%create color code:
-
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
 curColorMat = animalsColors(animalIndices, :); 
 hold on; 
@@ -942,7 +926,6 @@ for i = 1:height(curData)
 end
 plot(mean(stimTable.dbSWMeans(curTrials,:),1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 xlim([0.5, 3.5])
-% grid on;
 ylim([0 450])
 xticks(1:3)
 xticklabels(groupNames)
@@ -954,18 +937,6 @@ annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
 
 annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
     sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.15, 0.65, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f (Significant if < %.4f)', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f', p_after_before), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
 
 % savefigure
