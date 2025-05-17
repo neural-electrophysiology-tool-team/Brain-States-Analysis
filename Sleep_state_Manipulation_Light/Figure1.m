@@ -201,3 +201,46 @@ fileName=[analysisFolder filesep 'spikeRates-allnights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Figure 1 G:
+% load data
+ITIISImatfilename = [analysisFolder filesep 'ITIISIdata.mat'];
+load(ITIISImatfilename, "ITIsamples", "ISIsamples","spikeRecs")
+
+
+fall = figure;
+subplot(1,2,1)
+IIdata = [ITIsamples, ISIsamples];
+plot([1,2] ,IIdata,'Color',[0.7 0.7 0.7],'Marker','.','MarkerSize',4);
+hold on;
+plot([1,2] ,mean(IIdata),'Color','k', 'LineWidth',2,'Marker','.','MarkerSize',4);
+xticks([1,2]);xticklabels(["Before Stims", "After Stims"]);xlim([0.5 2.5])
+% grid on;
+ylabel('Spikes/S')
+sgtitle ('all units')
+n = length(IIdata); 
+N= length(spikeRecs);
+
+subplot(1,2,2)
+diff= ITIsamples- ISIsamples; %ISI = after, ITI =before
+x = [ones(length(IIdata),1)];
+colors = [ 0.5 0.7 0.8];
+swarmchart(x,diff,1,colors,'filled','XJitterWidth',0.8);
+ylabel('Spikes/S')
+xticks(1);xticklabels("Before-After");
+xlim([0.5 1.5])
+yline(0,'--','Color',[0.4 0.4 0.4])
+percent = (sum(diff<0)/length(diff))*100; % how many units are bellow zero in percent
+[pWilcoxon, ~, statsWilcoxon] = signrank(ITIsamples, ISIsamples);
+
+annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
+    sprintf('Wilcoxon p-val: %.4f\n', pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+% avefigures
+    set(fall,'PaperPosition',[1 1 2.1 2]);
+    fileName=[analysisFolder filesep 'ITIISIallunits'];
+    print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+    %%

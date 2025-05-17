@@ -611,7 +611,7 @@ allnightsfilename = [analysisFolder filesep 'allNightsSpikingRate.mat'];
 save(allnightsfilename, "AllNightsUnits","spikeRecs","xPositions",'-mat')
 
 ITIISImatfilename = [analysisFolder filesep 'ITIISIdata.mat'];
-save(ITIISImatfilename, "ITIsamples", "ISIsamples","ITIsamplesN","ISIsamplesN",'-mat')
+save(ITIISImatfilename, "ITIsamples", "ISIsamples","ITIsamplesN","ISIsamplesN","goodUnits","spikeRecs",'-mat')
 
 %% Plot Spike rates avrages for all nights:
     % 3 subplots: 1 unit, all units same night, all units
@@ -676,7 +676,7 @@ fileName=[analysisFolder filesep 'spikeRates-allnights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% plot before and after (ITI/ISI) spiking rate, only good neurons. 
+%% plot before and after (ITI/ISI) spiking rate, only good neurons. - not in paper.
 fgood = figure; % only good units:
 subplot(1,2,1)
 goodUnitsL = logical(goodUnits);
@@ -711,26 +711,15 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% plot before and after (ITI/ISI) spiking rate, all units. 
-% fall = figure; % only good units:
-% % subplot(1,2,1)
-% % goodUnitsL = logical(goodUnits);
-% diff= ISIsamples- ITIsamples; %ISI = after, ITI =before
-% IIdata = [ITIsamples, ISIsamples, diff];
-% 
-% x = [ones(length(IIdata),1) 2*ones(length(IIdata),1) 3*ones(length(IIdata),1) ];
-% colors = [0.6 0.49 0.97; 1 0.65 0];%  0.5 0.7 0.8];
-% swarmchart(x,IIdata,1,colors,'filled','XJitterWidth',0.8);%'MarkerEdgeColor',[0.45 0.45 0.45]);
-% ylabel('Spikes/S')
-% xticks([1,2,3]);xticklabels(["Before Stims", "After Stims","Before-After"]);
-% xlim([0.5 3.5])
-% ylim([-10 15])
-% hold on
-% yline(0,'Color',[0.4 0.4 0.4],'LineStyle','--','LabelHorizontalAlignment','left')
+%% plot before and after (ITI/ISI) spiking rate, all units. - Fig 1G
+% load data
+ITIISImatfilename = [analysisFolder filesep 'ITIISIdata.mat'];
+load(ITIISImatfilename, "ITIsamples", "ISIsamples","spikeRecs")
 
-fall = figure; % only good units:
+
+fall = figure;
 subplot(1,2,1)
-colors = [0.6 0.49 0.97; 1 0.65 0];%  0.5 0.7 0.8];
+% colors = [0.6 0.49 0.97; 1 0.65 0];%  0.5 0.7 0.8];
 IIdata = [ITIsamples, ISIsamples];
 plot([1,2] ,IIdata,'Color',[0.7 0.7 0.7],'Marker','.','MarkerSize',4);
 hold on;
@@ -747,12 +736,12 @@ subplot(1,2,2)
 diff= ITIsamples- ISIsamples; %ISI = after, ITI =before
 x = [ones(length(IIdata),1)];
 colors = [ 0.5 0.7 0.8];
-swarmchart(x,diff,1,colors,'filled','XJitterWidth',0.8);%'MarkerEdgeColor',[0.45 0.45 0.45]);
+swarmchart(x,diff,1,colors,'filled','XJitterWidth',0.8);
 ylabel('Spikes/S')
-xticks([1,]);xticklabels(["Before-After"]);
+xticks([1]);xticklabels(["Before-After"]);
 xlim([0.5 1.5])
 yline(0,'--','Color',[0.4 0.4 0.4])
-percent = (sum(diff<0)/length(diff))*100;
+percent = (sum(diff<0)/length(diff))*100; % how many units are bellow zero in percent
 [pWilcoxon, ~, statsWilcoxon] = signrank(ITIsamples, ISIsamples);
 
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
