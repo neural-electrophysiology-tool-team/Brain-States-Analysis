@@ -15,6 +15,113 @@ animalsColors = [
 ];
 uniqueAnimals = unique(stimTable.Animal);
 
+%% Figure 3A - Sham-stim all nights:
+stimType = ["Blue","Green","Red","LED"];
+stimWaveL = ["47","532","635","LED"];
+numType = length(stimType);
+statsStimSham = struct();
+diffData = [];
+groupNames = [];
+colorMat =[];
+ns = [];
+Ns = [];
+diffmeans = [];
+diffSDs = [];
+
+
+f=figure;
+x=1:2;
+for type = 1:numType
+    h = subplot(1,numType,type);
+    curType = stimWaveL(type);
+    curName = stimType(type);
+    curTrials = contains(stimTable.Remarks,curType) &...
+                ~contains(stimTable.Remarks,'Ex') & ...
+                all(~isnan(stimTable.dbDiffStimM),2) & ...
+                all(~isnan(stimTable.dbDiffShamM),2); 
+    n = sum(curTrials);
+    N = length(unique(stimTable.Animal(curTrials)));
+    ns = [ns; n];
+    Ns = [Ns; N];
+    curData = [stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)];
+    curDatadiff = [stimTable.dbDiffStimM(curTrials)-stimTable.dbDiffShamM(curTrials)];
+    diffData = [diffData; curDatadiff];
+    diffmeans = [diffmeans; mean(curDatadiff)];
+    diffSDs = [diffSDs;std(curDatadiff)];
+    groupNames = [groupNames; repmat(type, length(curDatadiff), 1)];
+    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+    curColorMat = animalsColors(animalIndices, :);
+    colorMat = [colorMat; curColorMat];
+    hold on
+    for i = 1:height(curData)
+        plot(x, curData(i,:), 'Color',curColorMat(i,:), 'Marker','.', 'MarkerSize',10, 'LineWidth',1)
+    end
+    plot(x,mean(curData),'Color','k', 'Marker','.', 'MarkerSize',10, 'LineWidth',1.5)
+    ylim([-50 200])
+
+    xticks(1:2); xticklabels(["Sham", "Stim"])
+    xlim([0.5, 2.5]);
+    %wilcoxon:
+    p = signrank(curData(:,1), curData(:,2));
+    fprintf('%s: p-value = %.5f\n',stimType(type), p);
+end
+
+% savefigure
+set(f,'PaperPosition',[1 1 4 2]);
+fileName=[analysisFolder filesep 'meanNormBDStimSham'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+% add titles. labels...
+ylabel('Diff in D2B power')
+
+% statistics: between groups diffs:
+% 1. kruskal wallas:
+[pkruskal, tbl, stats] = kruskalwallis(diffData,groupNames,'off');
+
+if pkruskal < 0.05
+    if isstring(groupNames)
+        groupNames = cellstr(groupNames);
+    end
+
+    % Get unique group names
+    [groupName, ~, groupIdx] = unique(groupNames);
+    numGroups = numel(groupName);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = diffData(groupIdx == i);
+            data_j = diffData(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [num2str(groupName(i)) ' vs ' num2str(groupName(j))];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
+end 
+
+
+
 %% Figure 3B - AC all colors
 % plot AC period time changes - According to color and animal
 close all

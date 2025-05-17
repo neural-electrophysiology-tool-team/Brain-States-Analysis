@@ -1541,8 +1541,7 @@ wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
     ~contains(stimTable.Remarks,'Ex') & ...
     all(~isnan(stimTable.dbDiffStimM), 2) &...
-    all(~isnan(stimTable.dbDiffShamM), 2); %&...
-    % ~contains(stimTable.Animal,'157');
+    all(~isnan(stimTable.dbDiffShamM), 2); 
     
 n = sum(curTrials);
 animals = unique(stimTable.Animal(curTrials));
@@ -1557,28 +1556,6 @@ groupStim = stimTable.dbDiffStimM(curTrials);
 [pWilcoxon, ~, statsWilcoxon] = signrank(groupSham, groupStim);
 fprintf('Wilcoxon Signed-Rank Test p-value: %.4f\n', pWilcoxon);
 disp(statsWilcoxon)
-
-% bootstrap
-% %create data set:
-% stimData = NaN(N,5);
-% shamData = NaN(N,5);
-% for a = 1:N
-%     curAnimal = animals(a);
-%     curcurT = contains(stimTable.Remarks,wavelength) & ...
-%               ~contains(stimTable.Remarks,'Ex') & ...
-%               all(~isnan(stimTable.dbDiffStimM), 2) &...
-%               all(~isnan(stimTable.dbDiffShamM), 2)&...
-%               contains(stimTable.Animal,curAnimal);
-%     n = sum(curcurT);
-%     shamData(a,1:n) = stimTable.dbDiffShamM(curcurT);
-%     stimData(a,1:n) = stimTable.dbDiffStimM(curcurT);
-% end
-% n_runs = 1000;
-% num_trials = 3;
-% param = 'mean';
-% [p_boot, bootstats, bootstats_center, bootstats_sem] = ...
-%     get_bootstrap_results_equalsamples(shamData,stimData,n_runs,num_trials,param);
-
 
 % plot:
 figure;
@@ -1612,14 +1589,10 @@ annotation('textbox', [0.15, 0.8, 0.3, 0.2], 'String', ...
 set(gcf,'PaperPosition',[1 4 1.2 1.6])
 saveas (gcf, [analysisFolder filesep 'DBdiffStimShamRedNights.pdf']);
 
-% clearvars -except stimTable SA analysisFolder
 
-%% plot the bar plot - D/B change - stim sham -  all colors
-animals = unique(stimTable.Animal);
+%% plot the bar plot - D/B change - stim sham -  all colors - Fig 3A
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
-% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
-numAnimal = length(animals);
 numType = length(stimType);
 statsStimSham = struct();
 diffData = [];
@@ -1631,27 +1604,20 @@ diffmeans = [];
 diffSDs = [];
 
 
-% mean normelized change in D/B.
 f=figure;
-% sgtitle('mean normelized D/B')
 x=1:2;
 for type = 1:numType
     h = subplot(1,numType,type);
-    %plot the data
-    %curAni = animals{animal};
     curType = stimWaveL(type);
     curName = stimType(type);
     curTrials = contains(stimTable.Remarks,curType) &...
                 ~contains(stimTable.Remarks,'Ex') & ...
                 all(~isnan(stimTable.dbDiffStimM),2) & ...
-                all(~isnan(stimTable.dbDiffShamM),2); %& contains(stimTable.Animal,curAni);
+                all(~isnan(stimTable.dbDiffShamM),2); 
     n = sum(curTrials);
     N = length(unique(stimTable.Animal(curTrials)));
     ns = [ns; n];
     Ns = [Ns; N];
-    % curCol = plotColors{type};
-    curMeanNdbStim = mean(stimTable.dbDiffStimM(curTrials),1);
-    curMeanNdbSham = mean(stimTable.dbDiffShamM(curTrials),1);
     curData = [stimTable.dbDiffShamM(curTrials), stimTable.dbDiffStimM(curTrials)];
     curDatadiff = [stimTable.dbDiffStimM(curTrials)-stimTable.dbDiffShamM(curTrials)];
     diffData = [diffData; curDatadiff];
@@ -1670,40 +1636,24 @@ for type = 1:numType
 
     xticks(1:2); xticklabels(["Sham", "Stim"])
     xlim([0.5, 2.5]);
-
+    %wilcoxon:
     p = signrank(curData(:,1), curData(:,2));
     fprintf('%s: p-value = %.5f\n',stimType(type), p);
 end
 
-    % subplot(2,numType,[1:numType]+4)
-    % swarmchart(groupNames,diffData,15,colorMat,'filled','XJitterWidth',0.5);
-    % xticks(1:length(stimType)); % Position of the x-ticks
-    % xticklabels(stimType); % Labels for the x-ticks
-    % ylim([-40 250])
 % savefigure
 set(f,'PaperPosition',[1 1 4 2]);
 fileName=[analysisFolder filesep 'meanNormBDStimSham'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
+% add titles. labels...
+ylabel('Diff in D2B power')
 
-   %  annotation('textbox', [.095 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
-   %      sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-   %      'right', 'VerticalAlignment', 'middle');
-   % annotation('textbox', [.15 + 0.195*type, 0.85, 0.03, 0.1], 'String', ...
-   %  sprintf('Wilcoxon test p =%.3f',pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-   %  'right', 'VerticalAlignment', 'middle');
-    
-
-    % add titles. labels...
-    ylabel('Diff in D2B power')
-    % title(stimType(type))
- 
-% end
-% statistics:
+% statistics: between groups diffs:
 % 1. kruskal wallas:
-[p, tbl, stats] = kruskalwallis(diffData,groupNames,'off');
+[pkruskal, tbl, stats] = kruskalwallis(diffData,groupNames,'off');
 
-if p < 0.05
+if pkruskal < 0.05
     if isstring(groupNames)
         groupNames = cellstr(groupNames);
     end
@@ -1743,12 +1693,9 @@ if p < 0.05
         fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
             comparisons{i}, raw_pvals(i), corrected_pvals(i));
     end
-
-    % c = multcompare(stats, 'CType', 'dunn-sidak');
 end 
 
 
-% clearvars -except stimTable SA analysisFolde
 %% Lizard Movement Data analysis:
 
 %% Get LM DATA
