@@ -15,7 +15,8 @@ animalsColors = [
 ];
 uniqueAnimals = unique(stimTable.Animal);
 %% Figure 1 A, C, E
-%% single traces from one night:
+% parameters calculations for next plots:
+% single traces from one night:
 
 i = 22; % set the recording to PV161,N18
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -36,7 +37,8 @@ pre=20000;
 post=130000;
 ch = 17;
 
-%% Figure 1A: plot trace from before stimulation:
+%% Figure 1A
+% plot trace from before stimulation:
 p = 90*60*1000;
 win = 180*1000;
 tStart = firstTrig(1)-p+(870*1000);
@@ -68,7 +70,8 @@ set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'cleanTraces'];
 print(fileName,'-dpdf','-r300');
 
-%% Figure 1C+E: plot trace + raster:
+%% Figure 1C+E
+% plot trace + raster:
 
 j = 16; %trial number example:
 pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
@@ -200,7 +203,7 @@ set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'spikeRates-allnights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% Figure 1 G:
+%% Figure 1G
 % load data
 ITIISImatfilename = [analysisFolder filesep 'ITIISIdata.mat'];
 load(ITIISImatfilename, "ITIsamples", "ISIsamples","spikeRecs")
@@ -242,7 +245,7 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
     fileName=[analysisFolder filesep 'ITIISIallunits'];
     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% Figure 1 I
+%% Figure 1I
 % plot sliding AC sith stimulations: (bottom)
 %set the recording:
 i = 22; %night 18, PV161
@@ -285,3 +288,66 @@ for j = 1:3
 
 end
 
+%% Figure 1J
+% plot AC - only Red nights:
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ...
+            ~contains(stimTable.Remarks,'Ex') & ...
+            all(~isnan(stimTable.ACcomPer),2) &...
+            all(stimTable.ACcomP2V > 0.15,2);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+
+% statistical tests:
+% first, we need to check the differences in genral, in Freidman test,
+% which is a a-parametrical ANOVA test. then we can use wilcoxon post-hoc
+% to check where is the differenc (with benforoni corection)
+
+% Assuming data in columns where each row is a subject and each column is a timepoint
+[p, tbl, stats] = friedman(stimTable.ACcomPer(curTrials,:), 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+if p<0.05
+    before = stimTable.ACcomPer(curTrials,1);
+    during = stimTable.ACcomPer(curTrials,2);
+    after = stimTable.ACcomPer(curTrials,3);
+
+    % Pairwise Wilcoxon signed-rank tests
+    [p_before_during, ~, stats_before_during] = signrank(before, during);
+    [p_during_after, ~, stats_during_after] = signrank(during, after);
+    [p_after_before, ~, stats_after_before] = signrank(after, before);
+
+    raw_pvals = [p_before_during,p_during_after,p_after_before];
+    num_comparisons = 3;
+    % Display results with Bonferroni correction
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end
+
+%plot
+figure;
+x = 1:3;
+% color code per animal:
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1);
+curData = stimTable.ACcomPer(curTrials,:)/1000;
+hold on
+for i = 1:height(curData)
+    plot(x, curData(i,:),'Color',curColorMat(i,:),'Marker','.','MarkerSize',10,'LineWidth',1)
+end
+plot(x, curMean,'Color','k','LineWidth',2)
+xlim([0.75 3.25])
+xticks(x)  % Set ticks after xlim to avoid automatic adjustment
+xticklabels({'Pre', 'During', 'Post'})
+
+ylim([50 200])
+ylabel('Period Time[s]')
+title ('Perios Times changes - all red nights')
+
+% savefigure
+set(gcf,'PaperPositionMode','auto')
+saveas (gcf, [analysisFolder filesep 'ACperiodReds.pdf']);

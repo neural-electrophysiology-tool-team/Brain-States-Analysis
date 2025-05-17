@@ -1188,14 +1188,11 @@ end
 
 
 %% plot AC - only Red nights:
-type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
             ~contains(stimTable.Remarks,'Ex') & ...
             all(~isnan(stimTable.ACcomPer),2) &...
             all(stimTable.ACcomP2V > 0.15,2);
-       
-    % (~any(isnan(stimTable.dbDiffShamM), 2) & ~any(isnan(stimTable.dbDiffStimM), 2));
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 
@@ -1208,44 +1205,38 @@ N = length(unique(stimTable.Animal(curTrials)));
 [p, tbl, stats] = friedman(stimTable.ACcomPer(curTrials,:), 1); % Here, 1 indicates within-subjects design
 fprintf('p-value for freidman ANOVA test: %.5f\n',p)
 % p-valure is very low, post hoc:
-% Example data for three groups
-before = stimTable.ACcomPer(curTrials,1);
-during = stimTable.ACcomPer(curTrials,2);
-after = stimTable.ACcomPer(curTrials,3);
+if p<0.05
+    before = stimTable.ACcomPer(curTrials,1);
+    during = stimTable.ACcomPer(curTrials,2);
+    after = stimTable.ACcomPer(curTrials,3);
 
-% Bonferroni-corrected alpha level
-alpha = 0.05 / 3;
+    % Pairwise Wilcoxon signed-rank tests
+    [p_before_during, ~, stats_before_during] = signrank(before, during);
+    [p_during_after, ~, stats_during_after] = signrank(during, after);
+    [p_after_before, ~, stats_after_before] = signrank(after, before);
 
-% Pairwise Wilcoxon signed-rank tests
-[p_before_during, ~, stats_before_during] = signrank(before, during);
-[p_during_after, ~, stats_during_after] = signrank(during, after);
-[p_after_before, ~, stats_after_before] = signrank(after, before);
+    raw_pvals = [p_before_during,p_during_after,p_after_before];
+    num_comparisons = 3;
+    % Display results with Bonferroni correction
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end
 
-raw_pvals = [p_before_during,p_during_after,p_after_before];
-num_comparisons = 3;
-% Display results with Bonferroni correction
-% fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-% fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-% fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
-corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
-fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
-fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
-fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
 %plot
 figure;
 x = 1:3;
 % color code per animal:
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
 curColorMat = animalsColors(animalIndices, :); 
-curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1,'omitnan');
+curMean = mean(stimTable.ACcomPer(curTrials,:)/1000,1);
 curData = stimTable.ACcomPer(curTrials,:)/1000;
 hold on
 for i = 1:height(curData)
     plot(x, curData(i,:),'Color',curColorMat(i,:),'Marker','.','MarkerSize',10,'LineWidth',1)
 end
-% plot(x, stimTable.ACcomPer(curTrials,:)/1000,'Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
 plot(x, curMean,'Color','k','LineWidth',2)
 xlim([0.75 3.25])
 xticks(x)  % Set ticks after xlim to avoid automatic adjustment
@@ -1254,30 +1245,11 @@ xticklabels({'Pre', 'During', 'Post'})
 ylim([50 200])
 ylabel('Period Time[s]')
 title ('Perios Times changes - all red nights')
-annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
-    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
-    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.15, 0.65, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f (Significant if < %.4f)', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f', p_after_before), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
 
 % savefigure
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'ACperiodReds.pdf']);
+
 %% plot AC period time changes - According to color and animal
 
 animals = unique(stimTable.Animal);
