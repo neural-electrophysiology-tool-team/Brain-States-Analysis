@@ -17,12 +17,11 @@ uniqueAnimals = unique(stimTable.Animal);
 
 %% Figure 3B - AC all colors
 % plot AC period time changes - According to color and animal
+close all
+clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder
 
-% animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
-% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
-% numAnimal = length(animals);
 numType = length(stimType);
 stimData = [];
 groupNum=[];
@@ -30,7 +29,8 @@ colorMat = [];
 Ns = [];
 ns = [];
 x=1:3;
-%plot Period Times:
+
+
 f=figure;
 set(f, 'Position', [100, 100, 800, 400]);
 hold on
@@ -47,7 +47,6 @@ for type = 1:numType
     N = numel(unique(stimTable.Animal(curTrials)));
     ns = [ns; n];
     Ns = [Ns; N];
-    % curCol = plotColors{type};
     curData = stimTable.ACcomPer(curTrials,:);
     curMean = mean(curData,1,'omitnan');
     stimData = [stimData; curData(:,2)];
@@ -112,7 +111,108 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 save([analysisFolder filesep 'statsACperiodstimAll.mat'], "statsAC")
 
 
+%% Figure 3C - Pv2 at 156 s
+close all
+clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder
+
+
+stimP2V = [];
+groupNum = [];
+colorMat = [];
+means = [];
+SDs = [];
+Ns = [];
+ns = [];
+
+stimType = ["Blue","Green","Red","WhiteEx"];
+stimWaveL = ["47","532","635","LED"];
+numType = length(stimType);
+
+hold on
+for type = 1:numType
+    curType = stimWaveL(type);
+    curName = stimType(type);
+    curTrials = contains(stimTable.Remarks,curType) &...
+                ~contains(stimTable.Remarks,"Ex");
+    n = sum(curTrials);
+    N = numel(unique(stimTable.Animal(curTrials)));
+    ns = [ns;n];
+    Ns = [Ns; N];
+    curData = stimTable.P2V_156(curTrials,:);
+    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+    curColorMat = animalsColors(animalIndices, :);
+    stimP2V = [stimP2V; curData(:,2)];
+    means = [means, mean(curData(:,2))];
+    SDs = [SDs,std(curData(:,2))];
+    groupNum = [groupNum; repmat(type,height(curData),1)];
+    colorMat = [colorMat; curColorMat];
+    
+end
+f=figure;
+x=1:3;
+swarmchart(groupNum,stimP2V,10,colorMat,'filled','XJitterWidth',0.5);
+hold on; scatter(1:4,means,'k','Marker','+')
+xticks(1:4);xticklabels(stimType)
+ylabel('P2V in 156s in Stim')
+
+% 
+% % savefigure
+set(gcf,'PaperPosition',[1 1 3.5 3]);
+fileName=[analysisFolder filesep 'P2V156n'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+%
+
+[p, tbl, statsP2Vfs] = kruskalwallis(stimP2V,groupNum,'off');
+
+if p < 0.05
+    % figure;
+    % cP2Vfs = multcompare(statsP2Vfs, 'CType', 'dunn-sidak');
+    % Convert group to cell array of strings if needed
+    if isstring(groupNum)
+        groupNum = cellstr(groupNum);
+    end
+
+    % Get unique group names
+    [groupNames, ~, groupIdx] = unique(groupNum);
+    numGroups = numel(groupNames);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = stimP2V(groupIdx == i);
+            data_j = stimP2V(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [num2str(groupNames(i)) ' vs ' num2str(groupNames(j))];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
+end
+
+
 %% Figure 3D - D/B decrease
+close all
+clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder
 
 stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
@@ -124,8 +224,6 @@ ns = [];
 Ns = [];
 psFromZero = [];
 DBMean = [];
-%plot Period Times:
-
 
 for type = 1:numType
     curType = stimWaveL(type);
@@ -207,6 +305,8 @@ set(f,'PaperPosition',[2 1 2.5 1.5]);
 fileName=[analysisFolder filesep 'DBdecreaseDiffAllnigthscolors'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
+close all
+clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder
 
 
-%%
+%% Figure 3C

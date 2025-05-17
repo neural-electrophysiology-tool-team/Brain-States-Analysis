@@ -187,6 +187,21 @@ stimTable.dbMeans = dbMeans;
 stimTable.deltaSWMeans = deltaSWMeans;
 stimTable.betaSWMeans = betaSWMeans;
 
+
+%% calculate the P2V for 156 sec (tril time)
+fs = 156*1000;
+P2Vfs = zeros(height(stimTable),3);
+
+for i=1:height(stimTable)
+    preAC = stimTable.ACpre{i};
+    P2Vfs(i,1) = preAC.xcf(preAC.autocorrTimes ==fs)-preAC.xcf(preAC.autocorrTimes ==preAC.vallyPeriod);
+    stimAC = stimTable.ACstim{i};
+    P2Vfs(i,2) = stimAC.xcf(stimAC.autocorrTimes ==fs)-stimAC.xcf(stimAC.autocorrTimes ==stimAC.vallyPeriod);
+    postAC = stimTable.ACpost{i};
+    P2Vfs(i,3) = postAC.xcf(postAC.autocorrTimes ==fs)-postAC.xcf(postAC.autocorrTimes ==postAC.vallyPeriod);
+end
+stimTable.P2V_156 = P2Vfs;
+
 %% save stimTable
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 clearvars -except SA analysisFolder stimTable

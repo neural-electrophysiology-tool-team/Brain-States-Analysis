@@ -1250,7 +1250,7 @@ title ('Perios Times changes - all red nights')
 set(gcf,'PaperPositionMode','auto')
 saveas (gcf, [analysisFolder filesep 'ACperiodReds.pdf']);
 
-%% plot AC period time changes - According to color and animal
+%% Figure 3B - plot AC period time changes - According to color and animal
 
 % animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
@@ -1317,7 +1317,7 @@ for type = 1:numType
         statsAC.(curName).pAnova = p;
         statsAC.(curName).corrected_pvals_bonferroni = corrected_pvals_bonferroni;
     end
-    
+
     if n>0
         [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
         curColorMat = animalsColors(animalIndices, :);
@@ -1345,7 +1345,7 @@ fileName=[analysisFolder filesep 'ACperiodstimAll'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 save([analysisFolder filesep 'statsACperiodstimAll.mat'], "statsAC")
 
-%% plot stim data on 1 line:
+%% plot stim data on 1 line:  not in paper
 %run previous
 pVals = zeros(numType,1);
 SDs = zeros(numType,1);
@@ -1401,7 +1401,8 @@ fileName=[analysisFolder filesep 'ACto156'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% get the P2V at 156 sec:
+%% get the P2V at 156 sec: Figure 3C
+%noved to data prep:
 fs = 156*1000;
 P2Vfs = zeros(height(stimTable),3);
 
@@ -1413,7 +1414,8 @@ for i=1:height(stimTable)
     postAC = stimTable.ACpost{i};
     P2Vfs(i,3) = postAC.xcf(postAC.autocorrTimes ==fs)-postAC.xcf(postAC.autocorrTimes ==postAC.vallyPeriod);
 end
-% plot
+
+%% plot
 stimP2V = [];
 groupNum = [];
 colorMat = [];
@@ -1426,7 +1428,8 @@ stimType = ["Blue","Green","Red","WhiteEx"];
 stimWaveL = ["47","532","635","LED"];
 numType = length(stimType);
 x=1:3;
-%plot Period Times:
+
+%plot:
 f=figure;
 hold on
 for type = 1:numType
