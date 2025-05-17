@@ -736,12 +736,12 @@ subplot(1,2,2)
 diff= ITIsamples- ISIsamples; %ISI = after, ITI =before
 x = [ones(length(IIdata),1)];
 colors = [ 0.5 0.7 0.8];
-swarmchart(x,diff,1,colors,'filled','XJitterWidth',0.8);%'MarkerEdgeColor',[0.45 0.45 0.45]);
+swarmchart(x,diff,1,colors,'filled','XJitterWidth',0.8);
 ylabel('Spikes/S')
-xticks([1,]);xticklabels(["Before-After"]);
+xticks([1]);xticklabels(["Before-After"]);
 xlim([0.5 1.5])
 yline(0,'--','Color',[0.4 0.4 0.4])
-percent = (sum(diff<0)/length(diff))*100;
+percent = (sum(diff<0)/length(diff))*100; % how many units are bellow zero in percent
 [pWilcoxon, ~, statsWilcoxon] = signrank(ITIsamples, ISIsamples);
 
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
@@ -755,7 +755,7 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
     fileName=[analysisFolder filesep 'ITIISIallunits'];
     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% plot before and after (ITI/ISI) spiking rate, only good neurons. NORMELIZED:
+%% plot before and after (ITI/ISI) spiking rate, only good neurons. NORMELIZED: - not in paper
 
 fgoodN = figure; % only good units:
 subplot(1,2,1)
@@ -794,8 +794,7 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
 %% plot D2B general decrease for each part of the stimulation - SWS parts
 
 %% plot one night: D/B decrease
- 
-% for i = 1:height(stimTable)
+
 i =22 ;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
@@ -806,7 +805,7 @@ fdbDec = figure;
 groupNames = ["Pre", "Stim","Post"];
 colors = [0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
 
-yswarm = [stimTable.dbSW(i).Pre stimTable.dbSW(i).Stim stimTable.dbSW(i).Post];
+yswarm = [stimTable.dbSW(i).Pre stimTable.dbSW(i).Stim stimTable.dbSW(i).Post]; %same data in one array
 xswarm=[1*ones(1,length(stimTable.dbSW(i).Pre)), 2*ones(1,length(stimTable.dbSW(i).Stim)), 3*ones(1,length(stimTable.dbSW(i).Post))];
 colorswarm = [repmat([0.2, 0.6, 0.8;], length(stimTable.dbSW(i).Pre), 1);  % Red for Array 1
     repmat([0.9, 0.4, 0.3], length(stimTable.dbSW(i).Stim), 1);  % Green for Array 2
@@ -818,9 +817,6 @@ set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
 title('D/B power during SWS bouts - one night')
 
 % statistics:
-
-% Group names
-groupNames = {'Pre', 'During', 'After'};
 
 % Combine data into a single vector and create a grouping variable
 allData = [dbStimData{1},dbStimData{2},dbStimData{3}]'; % Concatenate all data
@@ -869,7 +865,7 @@ if pKruskal < 0.05
     end
 
     % Bonferroni correction
-    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+    corrected_pvals = raw_pvals * length(raw_pvals);
 
     % Display results
     fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
@@ -884,9 +880,6 @@ end
 
 %savefigure
 set(fdbDec,'PaperPositionMode','auto');
-fileName=[SA.currentPlotFolder filesep 'DBSWSpreStimPost'];
-print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-
 fileName=[analysisFolder filesep 'DBSWSpreStimPostOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 %% plot all nights: - only red

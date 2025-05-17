@@ -1,0 +1,105 @@
+%% Figure 1:
+% initiating stimTable and other essentials. 
+
+SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
+load([analysisFolder filesep 'stimTable.mat'])
+load([analysisFolder filesep 'LMdata.mat'])
+animalsColors = [
+    255/255, 142/255, 71/255;% HEX:  FF8E47 - orange  - PV126
+    28/255, 144/255, 217/255;  % HEX: 1C90D9 - blue - PV149
+    148/255, 120/255, 186/255; % HEX: 9478BA - perpule - PV157
+    217/255, 62/255, 67/255; % HEX: D93E43 - red - PV159
+    255/255, 202/255, 58/255; % HEX: FFCA3A - yellow -  PV161
+    97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
+];
+uniqueAnimals = unique(stimTable.Animal);
+
+%% Figure 1 B - plot one night: D/B decrease
+
+i =22 ; % PV161, N18
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+
+dbStimData = {stimTable.dbSW(i).Pre stimTable.dbSW(i).Stim stimTable.dbSW(i).Post};
+
+fdbDec = figure;
+groupNames = ["Pre", "Stim","Post"];
+colors = [0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+
+yswarm = [stimTable.dbSW(i).Pre stimTable.dbSW(i).Stim stimTable.dbSW(i).Post]; %same data in one array
+xswarm=[1*ones(1,length(stimTable.dbSW(i).Pre)), 2*ones(1,length(stimTable.dbSW(i).Stim)), 3*ones(1,length(stimTable.dbSW(i).Post))];
+colorswarm = [repmat([0.2, 0.6, 0.8;], length(stimTable.dbSW(i).Pre), 1);  % Red for Array 1
+    repmat([0.9, 0.4, 0.3], length(stimTable.dbSW(i).Stim), 1);  % Green for Array 2
+    repmat([0.5, 0.8, 0.5], length(stimTable.dbSW(i).Post), 1)]; % Blue for Array 3
+swarmchart(xswarm,yswarm,20,colorswarm,"filled",'o','XJitterWidth',0.3)
+ylabel('D/B power in SWS bouts')
+ylim([0 450])
+set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
+title('D/B power during SWS bouts - one night')
+
+% statistics:
+
+% Combine data into a single vector and create a grouping variable
+allData = [dbStimData{1},dbStimData{2},dbStimData{3}]'; % Concatenate all data
+groupLabels = [...
+    repmat({'Pre'}, numel(dbStimData{1}), 1); ...
+    repmat({'During'}, numel(dbStimData{2}), 1); ...
+    repmat({'After'}, numel(dbStimData{3}), 1)]';
+
+% Kruskal-Wallis test
+[pKruskal, tblKruskal, statsKruskal] = kruskalwallis(allData, groupLabels, 'off');
+fprintf('Kruskal-Wallis test p-value: %.4f\n', pKruskal);
+annotation('textbox', [0.1, 0.8, 0.2, 0.1], 'String', ...
+    sprintf('Kruskal-Wallis test p-value: %.4f\n', pKruskal), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+    'right', 'VerticalAlignment', 'middle');
+
+
+if pKruskal < 0.05
+    if isstring(groupLabels)
+        groupLabels = cellstr(groupLabels);
+    end
+
+    % Get unique group names
+    [groupNames, ~, groupIdx] = unique(groupLabels);
+    numGroups = numel(groupNames);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = allData(groupIdx == i);
+            data_j = allData(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [groupNames{i} ' vs ' groupNames{j}];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = raw_pvals * length(raw_pvals);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
+
+
+end
+
+%savefigure
+set(fdbDec,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'DBSWSpreStimPostOneNight'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
