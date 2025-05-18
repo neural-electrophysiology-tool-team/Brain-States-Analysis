@@ -1782,13 +1782,11 @@ set(gcf,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'lizMovWholeNightPV161N18'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% plot head movements - Red nights!
+%% plot head movements - Red nights! - figure 2G
 
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
-    ~contains(stimTable.Remarks,'Ex');% & ...
-     % ~any(isempty(stimTable.LM_DBt), 2) &...
-     % ~cellfun(@isempty, stimTable.LM_DBt);
+    ~contains(stimTable.Remarks,'Ex');
 
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
@@ -1800,38 +1798,27 @@ LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
 LMstimbintrialM = mean(LMstimbinM(curTrials,:),2); % mean for each night
 
 
-LMplotData = [LMwake, LMpre, LMstimbintrialM];%LMpost];
+LMplotData = [LMwake, LMpre, LMstimbintrialM];
 
 % check the statistics:
-% Assuming data in columns where each row is a subject and each column is a timepoint
-
 [p, tbl, stats] = friedman(LMplotData, 1,'off'); % Here, 1 indicates within-subjects design
 fprintf('p-value for freidman ANOVA test: %.5f\n',p)
 % p-valure is very low, post hoc:
-% Bonferroni-corrected alpha level
-alpha = 0.05 / 3;
-% Pairwise Wilcoxon signed-rank tests
-[p_wake_pre, ~, stats_wake_pre] = signrank(LMwake, LMpre);
-[p_wake_during, ~, stats_wake_during] = signrank(LMwake, LMstimbintrialM);
-% [p_wake_after, ~, stats_wake_after] = signrank(LMwake, LMpost);
-[p_pre_during, ~, stats_pre_during] = signrank(LMstimbintrialM,LMpre);
-% [p_during_after, ~, stats_during_after] = signrank(LMstimbintrialM, LMpost);
-% [p_pre_after, ~, stats_pre_after] = signrank(LMpre, LMpost);
+if p<0.05
+    % Pairwise Wilcoxon signed-rank tests
+    [p_wake_pre, ~, stats_wake_pre] = signrank(LMwake, LMpre);
+    [p_wake_during, ~, stats_wake_during] = signrank(LMwake, LMstimbintrialM);
+    [p_pre_during, ~, stats_pre_during] = signrank(LMstimbintrialM,LMpre);
+
     raw_pvals = [p_wake_pre,p_pre_during,p_wake_during];
-    num_comparisons = 3;
-    % Display results with Bonferroni correction
-    % fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-    % fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-    % fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-    % fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
+    num_comparisons = length(raw_pvals); 
     corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    % Display results with Bonferroni correction
     fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
     fprintf('Wake vs pre: p-value = %.4f \n', corrected_pvals_bonferroni(1));
     fprintf('pre vs During: p-value = %.4f\n', corrected_pvals_bonferroni(2));
     fprintf('Wake vs During: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
-
-fileName = [analysisFolder filesep 'postHocPvalLMRedNights.mat'];
-save(fileName, 'alpha','p_wake_pre','p_wake_during','p_pre_during')
+end
 
 
 fLMr = figure;
@@ -1848,18 +1835,6 @@ plot(x, mean(LMplotData),'Color','k','Marker','.')
 xticks(x), xticklabels(Groups); xlim([0.7 3.3]);
 ylabel('Mov/S')
 ylim([0 30]);
-
-% annotation('textbox', [0.4, 0.85, 0.03, 0.1], 'String', ...
-%     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-%     'right', 'VerticalAlignment', 'middle');
-% 
-% annotation('textbox', [0.5, 0.65, 0.3, 0.1], 'String', ...
-%     sprintf(['Wake vs Pre: p-value = %.5f (Significant if < %.4f)\nWake vs During: ' ...
-%     'p-value = %.5f \nWake vs Post: p-value = %.5f \nDuring vs Pre: p-value = ' ...
-%     '%.5f \nDuring vs Post: p-value = %.5f \nPre vs Post: p-value = %.5f \n'],...
-%     p_wake_pre, alpha,p_wake_during,p_wake_after,p_pre_during, p_during_after,p_pre_after), ...
-%     'EdgeColor', 'none', 'HorizontalAlignment', ...
-%     'right', 'VerticalAlignment', 'middle');
 
 % savefigure
 set(fLMr,'PaperPosition',[1 1 3 2]);

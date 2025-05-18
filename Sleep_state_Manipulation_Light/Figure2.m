@@ -170,6 +170,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Figure 2E+F
 % plot the full movement data for a night
+close all
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder
 
 % for one night:
 i = 22;
@@ -232,4 +234,64 @@ sgtitle('Mean movement during stimulation, PV161, Night18');
 % save fig
 set(gcf,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'lizMovWholeNightPV161N18'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% Figure 2G
+% plot head movements - Red nights!
+close all
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder
+ 
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ...
+    ~contains(stimTable.Remarks,'Ex');
+
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+
+LMpre = LMData.LMpre(curTrials, :);
+LMwake = LMData.LMwake(curTrials, :);
+LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
+LMstimbintrialM = mean(LMstimbinM(curTrials,:),2); % mean for each night
+
+LMplotData = [LMwake, LMpre, LMstimbintrialM];
+
+% check the statistics:
+[p, tbl, stats] = friedman(LMplotData, 1,'off'); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+if p<0.05
+    % Pairwise Wilcoxon signed-rank tests
+    [p_wake_pre, ~, stats_wake_pre] = signrank(LMwake, LMpre);
+    [p_wake_during, ~, stats_wake_during] = signrank(LMwake, LMstimbintrialM);
+    [p_pre_during, ~, stats_pre_during] = signrank(LMstimbintrialM,LMpre);
+
+    raw_pvals = [p_wake_pre,p_pre_during,p_wake_during];
+    num_comparisons = length(raw_pvals); 
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    % Display results with Bonferroni correction
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Wake vs pre: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('pre vs During: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('Wake vs During: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end
+
+
+fLMr = figure;
+Groups = ["Wake","Pre","During Stim"];
+
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :);
+x = 1:3;
+hold on 
+for i = 1:length(LMplotData)
+    plot(x,LMplotData(i,:),'Color',curColorMat(i,:),'Marker','.')
+end
+plot(x, mean(LMplotData),'Color','k','Marker','.')
+xticks(x), xticklabels(Groups); xlim([0.7 3.3]);
+ylabel('Mov/S')
+ylim([0 30]);
+
+% savefigure
+set(fLMr,'PaperPosition',[1 1 3 2]);
+fileName=[analysisFolder filesep 'LMRednights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
