@@ -121,7 +121,7 @@ for i = 1:height(stimTable)
     % calculate the angles from the LM output:
     pitchAngles = LM.angles(2,:);% the angle of the headstage from floor
     if i>9
-        pitchAngles = -pitchAngles; %headstage was fliped towards the tail in those recs
+        pitchAngles = -pitchAngles; %headstage was fliped towards the tail.
     end
     [angleF, angleF_t] = getHeadLifts(pitchAngles,LM.t_static_ms,100,5);
 
@@ -166,9 +166,66 @@ fprintf('Head angles avgrages for this recordings: %f,%f, %f, %f',[HeadAngleAvg(
 end
 
 fileName = [analysisFolder filesep 'LMdata.mat'];
-LMData = table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...
+LMdata = table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...
                'VariableNames', {'LM_DBts','LMwake', 'LMpre', 'LMstimbin','LMpost', ...
                'LMallMean','HeadAngleAvg','headAngleSD'});
 
-save(fileName,"LMData",'-mat')
+% save(fileName,"LMdata",'-mat')
 
+% end
+
+%% recalculate stim:
+stimlength = 150;
+post =150*1000;
+binSize = 10;
+LMstimbin = cell(height(stimTable),1);
+LMstimbinN = cell(height(stimTable),1);
+for i = 1:height(stimTable)
+    %set the recording:
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    DB = SA.getDelta2BetaRatio;
+
+    startSleepT = stimTable.sleepStartT(i);
+    endSleepT = stimTable.sleepEndT(i);
+
+    % stimulations timings:
+    stimStartT = stimTable.stimStartT(i);
+    stimEndT = stimTable.stimEndT(i);
+    t_ch = stimTable.StimTrighCh(i);
+    T=SA.getDigitalTriggers;
+    stims = T.tTrig{t_ch};
+    firstTrig=stims(1:8:end-2);
+
+    %
+    LM_DBt = LMData.LM_DBts{i};
+    
+    
+    
+    stimLM = zeros(numel(firstTrig),stimlength);
+    stimLMbin = zeros(numel(firstTrig),stimlength/binSize);
+    stimLMbinN = zeros(numel(firstTrig),stimlength/binSize);
+    % Add the last bin edge
+    for j=1:numel(firstTrig)
+        pTmp=find(DB.t_ms>(firstTrig(j)) & DB.t_ms<=(firstTrig(j)+post));
+        %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+        if length(pTmp) ~=stimlength
+            pTmp = pTmp(1:stimlength);
+        end
+        curstimLM = LM_DBt(pTmp);
+        stimLM(i,:) = curstimLM;
+
+        %
+        % Reshape the array to 15x10
+        curReshLM = reshape(curstimLM, binSize,stimlength/binSize);
+
+        % Sum along the rows (dim=1) to get a 1x15 array
+        curStimLMBin = sum(curReshLM, 1);
+        stimLMbin(j,:) = curStimLMBin/(binSize); %normelized to sec - to bin size.
+        stimLMbinN(j,:) = mean(curReshLM,1);
+    end
+    LMstim(i) = {mean(stimLM,1)};
+    LMstimbinN(i) = {mean(stimLMbin,1)};
+    LMstimbin(i) = {mean(stimLMbin,1)};
+
+end

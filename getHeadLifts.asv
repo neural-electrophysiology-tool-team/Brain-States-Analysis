@@ -2,7 +2,7 @@
 function [angleF, angleF_t] = getHeadLifts(angles,angle_t,newFS,lowpasspass)
 
     % initiating parameters:
-    if nargin >2
+    if nargin <2
         samplesPerS = newFS; %samples per s - hz
     else
         samplesPerS = 100;

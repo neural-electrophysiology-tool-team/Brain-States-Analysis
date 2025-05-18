@@ -412,8 +412,5 @@ set(f,'PaperPosition',[2 1 2.5 1.5]);
 fileName=[analysisFolder filesep 'DBdecreaseDiffAllnigthscolors'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-close all
-clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder
-
 
 %% Figure 3C
