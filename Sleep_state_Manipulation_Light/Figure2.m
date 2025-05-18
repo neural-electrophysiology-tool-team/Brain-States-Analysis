@@ -106,8 +106,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% Figure 2C - D/B decrease all red nights
-
-%% plot all red nights 
+% plot all red nights 
 
 type = 'Red';
 wavelength = '635';
@@ -167,4 +166,70 @@ annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
 % savefigure
 set(fdb,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'DBSWSredNights'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% Figure 2E+F
+% plot the full movement data for a night
+
+% for one night:
+i = 22;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+DB = SA.getDelta2BetaRatio;
+
+curLMwake = LMData.LMwake(i);
+curLMpre = LMData.LMpre(i);
+curLMstim = LMData.LMstimbin{i};
+curLMpost = LMData.LMpost(i);
+
+figure;
+
+% Total number of horizontal slots = 5
+% Subplot widths:
+w_small = 0.12;  % Width for small subplots (1/5)
+w_large = 0.39;  % Width for the large subplot (2/5)
+
+h = 0.8;  % Height of all subplots (80% of the figure height)
+bottom = 0.1;  % Distance from the bottom edge of the figure
+
+% Subplot 1: Position manually
+left1 = 0.05;  % Left edge for subplot 1
+a1 = subplot('Position', [left1, bottom, w_small, h]);
+plot(1, curLMwake, '.', 'Color', 'black', 'MarkerSize', 20);
+xticks(1); xticklabels('Wake');
+ylabel('Mov/s');
+
+% Subplot 2: Position manually
+left2 = left1 + w_small + 0.05;  % Space after subplot 1
+a2 = subplot('Position', [left2, bottom, w_small, h]);
+plot(1, curLMpre, '.', 'Color', 'black', 'MarkerSize', 20);
+xticks(1); xticklabels('Sleep before');
+
+% Subplot 3: Larger width
+left3 = left2 + w_small + 0.05;  % Space after subplot 2
+a3 = subplot('Position', [left3, bottom, w_large, h]);
+xdur = (1:length(curLMstim))*10;
+plot(xdur, curLMstim, '-o', 'Color', 'black', 'Marker','.','MarkerSize',20);
+xlabel('Stimulations Avg.: Time from start trial');
+% ylabel('Trials Avg.');
+hold on;
+xline(0, 'Color', 'r', 'LineWidth', 2);
+xline(37, 'Color', 'r', 'LineWidth', 2);
+hold off;
+
+% Subplot 4: Position manually
+left4 = left3 + w_large + 0.05;  % Space after subplot 3
+a4 = subplot('Position', [left4, bottom, w_small, h]);
+plot(1, curLMpost, '.', 'Color', 'black', 'MarkerSize', 20);
+xticks(1); xticklabels('Sleep After');
+
+% Link y-axes and set limits
+linkaxes([a1, a2, a3, a4], 'y'); ylim([0 6.5]);
+
+% Add 4 shared title
+sgtitle('Mean movement during stimulation, PV161, Night18');
+
+% save fig
+set(gcf,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'lizMovWholeNightPV161N18'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);

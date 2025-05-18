@@ -1701,7 +1701,7 @@ end
 %% Get LM DATA
 
 % LMData = getLMData(SA, stimTable,analysisFolder);
-load([analysisFolder filesep 'LMdata.mat'])
+load([analysisFolder filesep 'LMData.mat'])
 
 %% check the correlation of mevement with th D/B
 % i = 19;
@@ -1717,10 +1717,9 @@ load([analysisFolder filesep 'LMdata.mat'])
 % hold on;
 % yyaxis right
 % plot(LM_DBt,'k')
-%% plot the full movement data for a night
+%% plot the full movement data for a night - Figure 2E+F
 
 % for one night:
-
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
@@ -1757,13 +1756,13 @@ xticks(1); xticklabels('Sleep before');
 % Subplot 3: Larger width
 left3 = left2 + w_small + 0.05;  % Space after subplot 2
 a3 = subplot('Position', [left3, bottom, w_large, h]);
-xdur = 1:length(curLMstim);
+xdur = (1:length(curLMstim))*10;
 plot(xdur, curLMstim, '-o', 'Color', 'black', 'Marker','.','MarkerSize',20);
-xlabel('Stimulations Avg.: Time from start trial (10 sec)');
+xlabel('Stimulations Avg.: Time from start trial');
 % ylabel('Trials Avg.');
 hold on;
-xline(1, 'Color', 'r', 'LineWidth', 2);
-xline(4, 'Color', 'r', 'LineWidth', 2);
+xline(0, 'Color', 'r', 'LineWidth', 2);
+xline(37, 'Color', 'r', 'LineWidth', 2);
 hold off;
 
 % Subplot 4: Position manually
@@ -1778,10 +1777,7 @@ linkaxes([a1, a2, a3, a4], 'y'); ylim([0 6.5]);
 % Add 4 shared title
 sgtitle('Mean movement during stimulation, PV161, Night18');
 
-
 % save fig
-% set(gcf,'PaperPosition',)
-% saveas (gcf, [analysisFolder filesep 'lizMovWholeNightPV161N18new.pdf']);
 set(gcf,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'lizMovWholeNightPV161N18'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
