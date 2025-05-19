@@ -12,8 +12,7 @@ SA.plotDelta2BetaRatio('stim',1,'stimCh',15)
 %% beta +delta during SWS.
 
 %% plot one night: Beta during SW cycle
- 
-% for i = 1:height(stimTable)
+
 i =22 ;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
@@ -30,7 +29,7 @@ colorswarm = [repmat([0.2, 0.6, 0.8;], length(dbStimData{1}), 1);  % Red for Arr
     repmat([0.9, 0.4, 0.3], length(dbStimData{2}), 1);  % Green for Array 2
     repmat([0.5, 0.8, 0.5], length(dbStimData{3}), 1)]; % Blue for Array 3
 swarmchart(xswarm,yswarm,10,colorswarm,"filled",'o','XJitterWidth',0.5)
-ylabel('beta power during SWS')
+ylabel('1/beta power during SWS')
 % ylim([ylims])
 set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
 title('Beta power during SWS - one night')
@@ -50,10 +49,6 @@ groupLabels = [...
 % Kruskal-Wallis test
 [pKruskal, tblKruskal, statsKruskal] = kruskalwallis(allData, groupLabels, 'off');
 fprintf('Kruskal-Wallis test p-value: %.4f\n', pKruskal);
-annotation('textbox', [0.1, 0.8, 0.2, 0.1], 'String', ...
-    sprintf('Kruskal-Wallis test p-value: %.4f\n', pKruskal), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
 
 if pKruskal < 0.05
     disp('Significant differences found in Kruskal-Wallis test. Proceeding with pairwise comparisons...');
@@ -103,9 +98,6 @@ end
 
 
 %savefigure
-set(fdbDec,'PaperPositionMode','auto');
-fileName=[SA.currentPlotFolder filesep 'betaSWpreStimPost'];
-print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 set(fdbDec,'PaperPosition',[1 1 2.7 2.3]);
 fileName=[analysisFolder filesep 'BetaSWOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
@@ -115,11 +107,10 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% plot all nights: Beta SW- only red
 
-type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength)...
         & ~contains(stimTable.Remarks,'Ex') ...
-        & ~any(isnan(stimTable.betaSWMeans),2); %& contains(stimTable.Animal,curAni);
+        & ~any(isnan(stimTable.betaSWMeans),2); 
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 groupNames = {'Pre', 'During', 'After'};
@@ -128,77 +119,40 @@ curData = 1./stimTable.betaSWMeans(curTrials,:);
 
 % statistics:
 
-% Assuming data in columns where each row is a subject and each column is a timepoint
-% bdSWDataStat = stimTable.dbSWMeans(curTrials,:);
-% cleanDBSW = bdSWDataStat(~any(isnan(bdSWDataStat), 2), :);
-% n=height(cleanDBSW);
-
 [p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
 fprintf('p-value for freidman ANOVA test: %.5f\n',p)
 % p-valure is very low, post hoc:
-% Example data for three groups
-before = curData(:,1);
-during = curData(:,2);
-after = curData(:,3);
+if p<0.05
+    before = curData(:,1);
+    during = curData(:,2);
+    after = curData(:,3);
 
-% Bonferroni-corrected alpha level
-alpha = 0.05 / 3;
+    % Pairwise Wilcoxon signed-rank tests
+    [p_before_during, ~, stats_before_during] = signrank(before, during);
+    [p_during_after, ~, stats_during_after] = signrank(during, after);
+    [p_after_before, ~, stats_after_before] = signrank(after, before);
+    raw_pvals = [p_before_during,p_during_after,p_after_before];
+    num_comparisons = length(raw_pvals);
 
-% Pairwise Wilcoxon signed-rank tests
-[p_before_during, ~, stats_before_during] = signrank(before, during);
-[p_during_after, ~, stats_during_after] = signrank(during, after);
-[p_after_before, ~, stats_after_before] = signrank(after, before);
-raw_pvals = [p_before_during,p_during_after,p_after_before];
-num_comparisons = 3;
-
-corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
-fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
-fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
-fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
-% Display results with Bonferroni correction
-% fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
-% fprintf('Before vs During: p-value = %.4f (Significant if < %.4f)\n', p_before_during, alpha);
-% fprintf('During vs After: p-value = %.4f (Significant if < %.4f)\n', p_during_after, alpha);
-% fprintf('After vs Before: p-value = %.4f (Significant if < %.4f)\n', p_after_before, alpha);
-
-%plot
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end
+    %plot
 fdb = figure;
-% plot(stimTable.dbSWMeans(curTrials,:)','Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
-%create color code:
-
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
 curColorMat = animalsColors(animalIndices, :); 
 hold on; 
 for i = 1:height(curData)
     plot(curData(i,:),'Color',curColorMat(i,:),'Marker','.','MarkerSize',10)
 end
-plot(mean(curData,1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
+plot(mean(curData,1),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 xlim([0.5, 3.5])
 xticks(1:3)
 xticklabels(groupNames)
 ylabel('1/Beta means during SWS ')
-% ylim(ylims)
-
-annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
-    sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
-    sprintf('p-value for Friedman ANOVA test: %.5f',p), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.15, 0.65, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f (Significant if < %.4f)', p_before_during, alpha), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.55, 0.65, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f', p_during_after), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
-
-annotation('textbox', [0.3, 0.1, 0.25, 0.1], 'String', ...
-    sprintf('p-value = %.4f', p_after_before), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
 
 % savefigure
 set(fdb,'PaperPosition',[1 1 2.7 2.3]);

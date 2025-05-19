@@ -161,7 +161,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Supplementary Figure 2
 %% Sup 2B
-%% plot all raw traces, 1 nights:
+% plot all raw traces, 1 nights:
 
 i = 17;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -198,7 +198,8 @@ fileName=[analysisFolder filesep 'SWRrawPV159N34'];
 % print(fileName,'-depsc','-vector');
 print(fileName, '-dpdf', '-r300');
 
-%% Sup 2C+D, plot cros corr 1 night:
+%% Sup 2C+D
+% plot cros corr 1 night:
 % detect SWR using SWR detection method.
 
 % for 1 night first:
@@ -276,7 +277,7 @@ set(f,'PaperPosition',[1 2 7 2]);
 fileName=[analysisFolder filesep 'SWRcrosPV161N18'];
 print(fileName,'-dpdf','-r300');
  
-%% Supp 2E+F
+%% Sup 2E+F
 fName = [analysisFolder filesep 'ShWcrossCorrData.mat'];
 load(fName)
 
@@ -322,10 +323,159 @@ fileName=[analysisFolder filesep 'SWRcrosRedNights'];
 print(fileName,'-dpdf','-r300');
 
 %% Supplementary Figure 3
+%% Sup 3A
+% plot one night: Beta during SW cycle
+
+i =22 ;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+
+dbStimData = {1./stimTable.betaSW(i).Pre 1./stimTable.betaSW(i).Stim 1./stimTable.betaSW(i).Post};
+
+fdbDec = figure;
+groupNames = ["Pre", "Stim","Post"];
+colors = [0.2, 0.6, 0.8; 0.9, 0.4, 0.3; 0.5, 0.8, 0.5];
+
+yswarm = [dbStimData{1} dbStimData{2} dbStimData{3}];
+xswarm=[1*ones(1,length(dbStimData{1})), 2*ones(1,length(dbStimData{2})), 3*ones(1,length(dbStimData{3}))];
+colorswarm = [repmat([0.2, 0.6, 0.8;], length(dbStimData{1}), 1);  % Red for Array 1
+    repmat([0.9, 0.4, 0.3], length(dbStimData{2}), 1);  % Green for Array 2
+    repmat([0.5, 0.8, 0.5], length(dbStimData{3}), 1)]; % Blue for Array 3
+swarmchart(xswarm,yswarm,10,colorswarm,"filled",'o','XJitterWidth',0.5)
+ylabel('1/beta power during SWS')
+% ylim([ylims])
+set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
+title('Beta power during SWS - one night')
+
+% statistics:
+
+% Group names
+groupNames = {'Pre', 'During', 'After'};
+
+% Combine data into a single vector and create a grouping variable
+allData = [dbStimData{1},dbStimData{2},dbStimData{3}]'; % Concatenate all data
+groupLabels = [...
+    repmat({'Pre'}, numel(dbStimData{1}), 1); ...
+    repmat({'During'}, numel(dbStimData{2}), 1); ...
+    repmat({'After'}, numel(dbStimData{3}), 1)]';
+
+% Kruskal-Wallis test
+[pKruskal, tblKruskal, statsKruskal] = kruskalwallis(allData, groupLabels, 'off');
+fprintf('Kruskal-Wallis test p-value: %.4f\n', pKruskal);
+
+if pKruskal < 0.05
+    disp('Significant differences found in Kruskal-Wallis test. Proceeding with pairwise comparisons...');
+
+    if isstring(groupLabels)
+        groupLabels = cellstr(groupLabels);
+    end
+
+    % Get unique group names
+    [groupNames, ~, groupIdx] = unique(groupLabels);
+    numGroups = numel(groupNames);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = allData(groupIdx == i);
+            data_j = allData(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [groupNames{i} ' vs ' groupNames{j}];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
+else
+    disp('No significant differences found in Kruskal-Wallis test.');
+end
+
+
+%savefigure
+set(fdbDec,'PaperPosition',[1 1 2.7 2.3]);
+fileName=[analysisFolder filesep 'BetaSWOneNight'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+%% Sup 3B
+% plot all nights: Beta SW- only red
+
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength)...
+        & ~contains(stimTable.Remarks,'Ex') ...
+        & ~any(isnan(stimTable.betaSWMeans),2); 
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+groupNames = {'Pre', 'During', 'After'};
+curData = 1./stimTable.betaSWMeans(curTrials,:);
+
+
+% statistics:
+
+[p, tbl, stats] = friedman(curData, 1,'off'); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+if p<0.05
+    before = curData(:,1);
+    during = curData(:,2);
+    after = curData(:,3);
+
+    % Pairwise Wilcoxon signed-rank tests
+    [p_before_during, ~, stats_before_during] = signrank(before, during);
+    [p_during_after, ~, stats_during_after] = signrank(during, after);
+    [p_after_before, ~, stats_after_before] = signrank(after, before);
+    raw_pvals = [p_before_during,p_during_after,p_after_before];
+    num_comparisons = length(raw_pvals);
+
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end
+    %plot
+fdb = figure;
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+hold on; 
+for i = 1:height(curData)
+    plot(curData(i,:),'Color',curColorMat(i,:),'Marker','.','MarkerSize',10)
+end
+plot(mean(curData,1),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
+xlim([0.5, 3.5])
+xticks(1:3)
+xticklabels(groupNames)
+ylabel('1/Beta means during SWS ')
+
+% savefigure
+set(fdb,'PaperPosition',[1 1 2.7 2.3]);
+fileName=[analysisFolder filesep 'BetachangeSWS'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
 
 
 %% Supplementary Figure 4
-%% Sup 4A: plot one night: D/B decrease full cycle
+%% Sup 4A
+% plot one night: D/B decrease full cycle
 
 i =22 ;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -418,9 +568,8 @@ set(fdbDec,'PaperPosition',[1,1,2.7,2.3]);
 fileName=[analysisFolder filesep 'DBfullcycOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% Supp 4B
-
-%% plot all nights: D/B full cycle - only red
+%% Sup 4B 
+% plot all nights: D/B full cycle - only red
 type = 'Red';
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength)...
@@ -433,7 +582,7 @@ curData = stimTable.dbMeans(curTrials,:);
 
 
 % statistics:
-[p, tbl, stats] = friedman(curData, 1); % Here, 1 indicates within-subjects design
+[p, tbl, stats] = friedman(curData, 1,'off'); 
 fprintf('p-value for freidman ANOVA test: %.5f\n',p)
 % p-valure is very low, post hoc:
 if p<0.05
@@ -458,16 +607,13 @@ end
 
 %plot
 fdb = figure;
-% plot(stimTable.dbSWMeans(curTrials,:)','Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
-%create color code:
-
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
 curColorMat = animalsColors(animalIndices, :); 
 hold on; 
 for i = 1:height(curData)
     plot(curData(i,:),'Color',curColorMat(i,:),'Marker','.','MarkerSize',10)
 end
-plot(mean(stimTable.dbMeans(curTrials,:),1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
+plot(mean(stimTable.dbMeans(curTrials,:),1),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
 xlim([0.5, 3.5])
 ylim([0 350])
 xticks(1:3)
@@ -481,6 +627,47 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Supplementary Figure 5
 
+%% Sup 5A
+ p = 1000*60*45;
+ cali_result = load(['/media/sil3/Data/accelerometer_calibrations/' ...
+     'headtagse_cali_recs/calibration_results.mat']).cali_result;
+
+recName = 'Animal=PV159,recNames=Night4';
+SA.setCurrentRecording(recName);
+curHS = SA.recTable.Headstage{SA.currentPRec};%stimTable.Headstage(i,:);
+headstageAmpCalib = cali_result.(curHS);
+cur_sensativity = headstageAmpCalib.sensetivity;
+cur_zeroGbias = headstageAmpCalib.zeroGbais;
+
+SA.getLizardMovements('sensitivity', cur_sensativity(1,:)', 'zeroGBias', ...
+    cur_zeroGbias(1,:)')
+LM = SA.getLizardMovements;
+pitch = -LM.angles(2,:);
+[angleF, angleF_t] = getHeadLifts(pitch,LM.t_static_ms,100,5);
+
+%get sleep times:
+SA.getDelta2BetaRatio;
+SA.getDelta2BetaAC;
+AC = SA.getDelta2BetaAC;
+curSleepStartT = AC.tStartSleep;
+curSleepEndT = AC.tEndSleep;
+
+fHA = figure;
+plot(angleF_t/(1000*60*60), angleF,'k');
+xlabel('Time (hours)'); ylabel('Head Angle')
+xline(curSleepStartT/(1000*60*60),'k')
+xline((curSleepStartT+p)/(1000*60*60),'g')
+xline(curSleepEndT/(1000*60*60),'b')
+yline(0,'--','Color',[0.4 0.4 0.4])
+
+%save Figure
+set(fHA,'PaperPositionMode','auto');
+fileName=[SA.currentPlotFolder filesep 'headAngleNoStim'];
+print(fileName,'-dpdf','-r300');
+
+
+
+%% Sup 5B
 i = 17;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
