@@ -15,7 +15,7 @@ animalsColors = [
 ];
 uniqueAnimals = unique(stimTable.Animal);
 
-%% Figure 2 B - one night: D/B decrease
+%% Figure 2B - one night: D/B decrease
 
 i =22 ; % PV161, N18
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -167,6 +167,57 @@ annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
 set(fdb,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'DBSWSredNights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% Figure 2D
+load([analysisFolder filesep 'LMData.mat'])
+headAngleSD = LMData.headAngleSD;
+
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex');
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+groupNames = {'Pre', 'During', 'After'};
+curHeadSD = headAngleSD(curTrials,1:3);
+
+figure;
+x1 = 1:width(curHeadSD);
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+for i= 1:height(curHeadSD)
+    plot(x1,curHeadSD(i,:),'Color',curColorMat(i,:),'Marker','.'); hold on;
+end
+plot(x1, mean(curHeadSD), 'Color','k','Marker','.','LineWidth',1.5)
+xlim([0.7,3.2]); xticks(x1); xticklabels(["Wake","Pre","Stim"])
+ylabel('Avg Head SD')
+title('Head Angle SD - red nights')
+
+% stats:
+[p, tbl, stats] = friedman(curHeadSD, 1,'off'); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+if p<0.05
+    wakeSD = curHeadSD(:,1);
+    beforeSD = curHeadSD(:,2);
+    duringSD = curHeadSD(:,3);
+
+    % Pairwise Wilcoxon signed-rank tests
+    [p_wake_before, ~, stats_wake_before] = signrank(wakeSD, beforeSD);
+    [p_before_during, ~, stats_before_during] = signrank(beforeSD, duringSD);
+    [p_wake_during, ~, stats_wake_during] = signrank(wakeSD, duringSD);
+
+    raw_pvals = [p_wake_before,p_before_during,p_wake_during];
+    num_comparisons = length(raw_pvals);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    % Display results with Bonferroni correction
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Wake vs pre: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('pre vs During: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('Wake vs During: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end
+% savefigure
+set(gcf,'PaperPosition',[1 4 2.2 1.6])
+saveas (gcf, [analysisFolder filesep 'HeadLiftsRedNightsSD.pdf']);
+
 
 %% Figure 2E+F
 % plot the full movement data for a night

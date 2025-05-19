@@ -2345,7 +2345,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 HeadAngleAvg = LMData.HeadAngleAvg;
 headAngleSD = LMData.headAngleSD;
 
-%% plot Head Angle - RED NIGHTS ONLY - Figure 2
+%% plot Head Angle - RED NIGHTS ONLY - not in paper
 % headAngDiff = diff(HeadAngleAvg,[],2);
 % set the zero to 90 Deg, according to accelerometer data ( this is the z
 % axis, when it is 90 the accelerometer is penpendicular to the ground)
@@ -2353,8 +2353,8 @@ headAngleSD = LMData.headAngleSD;
 
 
 wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength) & ~contains(stimTable.Remarks,'Ex') ;%...
-    % & (headAngDiff(:,1)>3 | headAngDiff(:,1)<-3); %& contains(stimTable.Animal,curAni);
+curTrials = contains(stimTable.Remarks,wavelength) &...
+    ~contains(stimTable.Remarks,'Ex');
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 groupNames = {'Pre', 'During', 'After'};
