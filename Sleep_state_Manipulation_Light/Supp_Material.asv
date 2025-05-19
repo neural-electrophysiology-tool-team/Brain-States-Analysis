@@ -275,51 +275,7 @@ title('Cross-Correlation SWR and stimulations');
 set(f,'PaperPosition',[1 2 7 2]);
 fileName=[analysisFolder filesep 'SWRcrosPV161N18'];
 print(fileName,'-dpdf','-r300');
- 
-%% Supp 2E+F
-fName = [analysisFolder filesep 'ShWcrossCorrData.mat'];
-load(fName)
 
-wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength) ...
-            & ~contains(stimTable.Remarks,'Ex');
-n = sum(curTrials);
-N = length(unique(stimTable.Animal(curTrials)));
-curDataShort = cShort(curTrials,:);
-curDataLong = cLong(curTrials,:);
-
-fr = figure;
-% plot Short according to animaL
-subplot(1,2,1)
-[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-curColorMat = animalsColors(animalIndices, :); 
-hold on; 
-for i = 1:height(curDataShort)
-    plot(lagTimeS, curDataShort(i,:),'Color',curColorMat(i,:))%,'Marker','.','MarkerSize',4)
-end
-plot(lagTimeS, mean(curDataShort,1)','Color','k','LineWidth',1.5)%,'Marker','.','MarkerSize',5)
-yline(mean(boundsShort(curTrials,:)),'Color',[0.4 0.4 0.4],'LineStyle','--')
-yline(0,'Color',[0.4 0.4 0.4])
-ylims = [-0.02 .12];
-ylim(ylims)
-
-% plot Long according to animaL
-subplot(1,2,2)
-[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-curColorMat = animalsColors(animalIndices, :); 
-hold on; 
-for i = 1:height(curDataLong)
-    plot(lagTimeL, curDataLong(i,:),'Color',curColorMat(i,:))%,'Marker','.','MarkerSize',4)
-end
-plot(lagTimeL, mean(curDataLong,1)','Color','k','LineWidth',1.5)%,'Marker','.','MarkerSize',5)
-yline(mean(boundsLong(curTrials,:)),'Color',[0.4 0.4 0.4],'LineStyle','--')
-yline(0,'Color',[0.4 0.4 0.4])
-ylim(ylims)
-
-% save figure:
-set(fr,'PaperPosition',[1 2 7 2]);
-fileName=[analysisFolder filesep 'SWRcrosRedNights'];
-print(fileName,'-dpdf','-r300');
 
 %% Supplementary Figure 3
 

@@ -119,7 +119,13 @@ fileName=[analysisFolder filesep 'SWRcrosPV161N18'];
 print(fileName,'-dpdf','-r300');
 
 %% run get sharp waves on all nights with stim.
-% calc and plot cross all nights
+% or i = 25:height(stimTable)
+% i = 25;  
+% recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    % SA.setCurrentRecording(recName);
+    % SA.getSharpWaves('detectOnlyDuringSWS',false,'startEnds',[5*60*1000 SA.currentDataObj.recordingDuration_ms]) % if you change to true, make sure you run SlowWave detction first.
+
+%% calc and plot cross all nights
 % calc the long and short, keep bounds for each 
 % setting general variables, true for all recs and for plot!!!
 binSizeS = 200; % ms 
@@ -130,8 +136,7 @@ maxLagShort = winShort/binSizeS;
 maxLagLong = winLong/binSizeL;
 lagTimeS = ([-maxLagShort:1:maxLagShort] * binSizeS)/1000; % Convert lag indices to time (and moving from ms to s
 lagTimeL = ([-maxLagLong:1:maxLagLong] * binSizeL)/1000; 
-
-% creating variables for saving the data of each experiment:
+%% creating variables for saving the data of each experiment:
 cShort = zeros(height(stimTable),(2*maxLagShort +1));
 boundsShort = zeros(height(stimTable),2);
 cLong = zeros(height(stimTable),(2*maxLagLong +1));
@@ -176,8 +181,7 @@ for i = 1:height(stimTable)
     boundsLong(i,:) =  curBoundsL;
 
 end
-fName = [analysisFolder filesep 'ShWcrossCorrData.mat'];
-save(fName,"cShort","cLong","boundsLong","boundsShort","lagTimeS","lagTimeL",'-mat')
+
 
 %% SHW save and load
 fName = [analysisFolder filesep 'ShWcrossCorrData.mat'];

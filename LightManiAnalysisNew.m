@@ -2569,7 +2569,7 @@ set(gcf,'PaperPosition',[1 4 2.2 1.6])
 saveas (gcf, [analysisFolder filesep 'HeadLiftsRedNightsSD.pdf']);
 
 
-%% plot Head Angle - all nights, 4 subplots:
+%% plot Head Angle - all nights, 4 subplots: not in paper
 
 % headAngDiff = diff(HeadAngleAvg,[],2);
 % set the zero to 90 Deg, according to accelerometer data ( this is the z
