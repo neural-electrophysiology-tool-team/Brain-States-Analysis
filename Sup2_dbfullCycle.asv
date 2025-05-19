@@ -87,7 +87,9 @@ end
 
 
 %savefigure
-
+set(fdbDec,'PaperPositionMode','auto');
+fileName=[SA.currentPlotFolder filesep 'DBfullcycpreStimPost'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 set(fdbDec,'PaperPosition',[1,1,2.7,2.3]);
 fileName=[analysisFolder filesep 'DBfullcycOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
