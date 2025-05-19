@@ -412,10 +412,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% Figure 3E
-
 load([analysisFolder filesep 'LMData.mat'])
 headAngleSD = LMData.headAngleSD;
-% HeadAngleAvg = LMData.HeadAngleAvg;
 
 % plot SDs
 stimType = ["Blue","Green","Red","LED"];
@@ -517,6 +515,7 @@ end
 set(fHL,'PaperPosition',[1 5 3.5 2]);
 fileName=[analysisFolder filesep 'headAngleSDalltypesDiffs'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
 %% Figure 3F - movement diff all nights
 close all
 clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder

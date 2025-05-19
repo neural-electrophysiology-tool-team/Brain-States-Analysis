@@ -381,4 +381,72 @@ LMData = table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg
 
 save(fileName,"LMData",'-mat')
 
+%% Ploar data preperation:
+for i = 1:height(stimTable)
+    if stimTable.LizMov(i) ~= 1
+        disp('run Lizard movement on this recording. Moving to next rec.');
+        mPhasePre.movs(i) = NaN;
+        mPhasePre.DBs(i) = NaN;
+        mPhaseStim.movs(i) = NaN;
+        mPhaseStim.DBs(i) = NaN;
+        % continue; % Skip to the next iteration;
+    end
 
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    stimStartT = stimTable.stimStartT(i);
+    stimEndT = stimTable.stimEndT(i);
+    sleepStartT = stimTable.sleepStartT(i);
+    sleepEndT = stimTable.sleepEndT(i);
+
+    p = 30*60*1000; %some time diff for the cycle to change.
+    preWin = stimStartT - sleepStartT; %all the time before stim start
+    stimWin = stimEndT - (stimStartT+p); % stimulation period, not including first 30 min
+    postWin = sleepEndT - (stimEndT+p); %post stimulations sleep, not including first 30 mins.
+
+    nBins = 16;
+
+    % get AC for the pre:
+    SA.getDelta2BetaAC('tStart',sleepStartT ,'win',preWin , 'overwrite', 1);
+    SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
+    try
+    hOutPre = SA.plotLizardMovementDB('stim',1 ,'part',1,'tStartStim', ...
+        stimStartT,'tEndStim',stimEndT,'nBins',nBins);
+    mPhasePre.movs(i) = hOutPre.mPhaseMov;
+    mPhasePre.DBs(i) = hOutPre.mPhaseDB;
+    catch ME
+        disp('No cycles in pre part of the recording')
+    end
+
+    % get AC for the stimulation:
+    SA.getDelta2BetaAC('tStart',stimStartT+p,'win',stimWin,'overwrite', 1);
+    SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
+    try    
+        hOutStim = SA.plotLizardMovementDB('stim',1 ,'part',2,'tStartStim', ...
+        stimStartT,'tEndStim',stimEndT,'nBins',nBins);
+        mPhaseStim.movs(i) = hOutStim.mPhaseMov;
+        mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
+    catch ME
+        disp('No cycles in stim part of the recording')
+        disp(ME.message);
+    end
+
+    % get AC for the Post:
+    SA.getDelta2BetaAC('tStart',stimEndT+p,'win',postWin,'overwrite', 1);
+    SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
+    try
+    hOutPost = SA.plotLizardMovementDB('stim',1 ,'part',3,'tStartStim', ...
+        stimStartT,'tEndStim',stimEndT,'nBins',nBins);
+    mPhasePost.movs(i) = hOutPost.mPhaseMov;
+    mPhasePost.DBs(i) = hOutPost.mPhaseDB;
+    catch ME
+        disp('No cycles in post part of the recording')
+        disp(ME.message);
+    end
+
+    close all
+end
+
+%% save histogram data
+fileName = [analysisFolder filesep 'polarhistoAllNights.mat'];
+save(fileName,"mPhasePre" ,"mPhaseStim","mPhasePost")

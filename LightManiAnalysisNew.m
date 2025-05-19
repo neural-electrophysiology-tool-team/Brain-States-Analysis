@@ -1842,7 +1842,7 @@ fileName=[analysisFolder filesep 'LMRednights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 % clearvars -except stimTable SA analysisFolder LMdata
-%% plot head movements - All nights!
+%% plot head movements - All nights! - not in paper
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
 numType = length(stimType);
@@ -1938,7 +1938,7 @@ mPhasePost.movs = zeros(height(stimTable),1);
 mPhasePost.DBs = zeros(height(stimTable),1);
 
 %% create data set for all nights:
-for i = 33:height(stimTable)
+for i = 15:height(stimTable)
 % i = 33;
     if stimTable.LizMov(i) ~= 1
         disp('run Lizard movement on this recording. Moving to next rec.');
@@ -1966,27 +1966,40 @@ for i = 33:height(stimTable)
     % get AC for the pre:
     SA.getDelta2BetaAC('tStart',sleepStartT ,'win',preWin , 'overwrite', 1);
     SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
+    try
     hOutPre = SA.plotLizardMovementDB('stim',1 ,'part',1,'tStartStim', ...
         stimStartT,'tEndStim',stimEndT,'nBins',nBins);
     mPhasePre.movs(i) = hOutPre.mPhaseMov;
     mPhasePre.DBs(i) = hOutPre.mPhaseDB;
-    
+    catch ME
+        disp('No cycles in pre part of the recording')
+    end
+
     % get AC for the stimulation:
     SA.getDelta2BetaAC('tStart',stimStartT+p,'win',stimWin,'overwrite', 1);
     SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
-    hOutStim = SA.plotLizardMovementDB('stim',1 ,'part',2,'tStartStim', ...
+    try    
+        hOutStim = SA.plotLizardMovementDB('stim',1 ,'part',2,'tStartStim', ...
         stimStartT,'tEndStim',stimEndT,'nBins',nBins);
-    mPhaseStim.movs(i) = hOutStim.mPhaseMov;
-    mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
+        mPhaseStim.movs(i) = hOutStim.mPhaseMov;
+        mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
+    catch ME
+        disp('No cycles in stim part of the recording')
+        disp(ME.message);
+    end
 
-    
     % get AC for the Post:
     SA.getDelta2BetaAC('tStart',stimEndT+p,'win',postWin,'overwrite', 1);
     SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
+    try
     hOutPost = SA.plotLizardMovementDB('stim',1 ,'part',3,'tStartStim', ...
         stimStartT,'tEndStim',stimEndT,'nBins',nBins);
     mPhasePost.movs(i) = hOutPost.mPhaseMov;
     mPhasePost.DBs(i) = hOutPost.mPhaseDB;
+    catch ME
+        disp('No cycles in post part of the recording')
+        disp(ME.message);
+    end
 
     close all
 end
@@ -2076,7 +2089,6 @@ text(0.2, Rlim/2, '\delta/\beta');
 h3.ThetaTick=[0:90:330];
 h3.RTick=[0.1:0.1:0.4];
 
-
 % savefigure
 
 set(gcf, 'PaperUnits', 'inches');         % Set paper units to inches
@@ -2088,7 +2100,7 @@ set(gcf, 'PaperPosition', [0, 0, 6,4]);  % Set position on paper to match size e
 fileName=[analysisFolder filesep 'PolarMovDBredNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);% clearvars -except stimTable SA analysisFolder LMdata
 
-%% plot polser histogram - red nights - combined
+%% plot polser histogram - red nights - combined - not in paper
 relativePhasePre = mPhasePre.movs -mPhasePre.DBs;
 relativePhaseStim = mPhaseStim.movs -mPhaseStim.DBs;
 relativePhasePost = mPhasePost.movs -mPhasePost.DBs;
@@ -2096,7 +2108,7 @@ relativePhasePost = mPhasePost.movs -mPhasePost.DBs;
 % pVal = cellfun(@(x) ~isempty(x),stimTable.LM_DBt);
 % pVal = mPhasePost.movs ~= 0;
 wavelength = '635';
-pVal = mPhasePost.movs ~= 0 & contains(stimTable.Remarks,wavelength) ...
+pVal = mPhaseStim.movs ~= 0 & contains(stimTable.Remarks,wavelength) ...
     & ~contains(stimTable.Remarks,'Ex');
 n = sum(pVal);
 N = numel(unique(stimTable.Animal(pVal)));
@@ -2105,7 +2117,6 @@ fMOVdbred=figure;
 h1=polaraxes;hold on;
 title('Red nights, Pre,during and Post')
 Rlim=0.5;
-% plotColors = {[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
 plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27]};
 a = 0.5;
 hP={};
@@ -2288,7 +2299,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 % clearvars -except stimTable SA analysisFolder LMdata
 
 
-%% Head angle to floor analysis:
+%% Head angle to floor analysis: - supplamenrty 5
 % 2: go over all records
 %
 % one night:
@@ -2304,7 +2315,6 @@ wakeEnd = 1000*60*60*1;
 if wakeEnd>stimTable.sleepStartT(i)
     wakeEnd = stimTable.sleepStartT(i);
 end
-
 
 parts ={[0, wakeEnd],[stimTable.sleepStartT(i),stimTable.stimStartT(i)],...
     [stimTable.stimStartT(i),stimTable.stimEndT(i)], ...
@@ -2325,7 +2335,7 @@ legend({'';'Start Sleep';'Start Stimulations';'End Stimulations';'End Sleep'})
 
 %save figure:
 set(f,'PaperPositionMode','auto');
-fileName=[analysisFolder filesep 'headAnglesPV158N34'];
+fileName=[analysisFolder filesep 'headAnglesPV159N34'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% prepare head angle data for plots:
@@ -2335,7 +2345,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 HeadAngleAvg = LMData.HeadAngleAvg;
 headAngleSD = LMData.headAngleSD;
 
-%% plot Head Angle - RED NIGHTS ONLY"
+%% plot Head Angle - RED NIGHTS ONLY - Figure 2
 % headAngDiff = diff(HeadAngleAvg,[],2);
 % set the zero to 90 Deg, according to accelerometer data ( this is the z
 % axis, when it is 90 the accelerometer is penpendicular to the ground)
