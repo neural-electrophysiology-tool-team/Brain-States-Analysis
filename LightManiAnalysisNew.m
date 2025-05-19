@@ -1843,12 +1843,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 % clearvars -except stimTable SA analysisFolder LMdata
 %% plot head movements - All nights!
-
-% animals = unique(stimTable.Animal);
 stimType = ["Blue","Green","Red","LED"];
 stimWaveL = ["47","532","635","LED"];
-% plotColors = {[0 0.586 0.9766],[0.05 0.81 0.379],[1 0.27 0.27], [0.5 0.5 0.5]};
-% numAnimal = length(animals);
 numType = length(stimType);
 Groups = ["Wake","Pre","During Stim","Post"];
 statsHeadMovAll = struct();

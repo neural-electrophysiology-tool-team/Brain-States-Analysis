@@ -172,7 +172,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 % plot the full movement data for a night
 close all
 clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder
-
+load([analysisFolder filesep 'LMData.mat'])
 % for one night:
 i = 22;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -240,7 +240,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 % plot head movements - Red nights!
 close all
 clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder
- 
+
+load([analysisFolder filesep 'LMData.mat'])
 wavelength = '635';
 curTrials = contains(stimTable.Remarks,wavelength) & ...
     ~contains(stimTable.Remarks,'Ex');
