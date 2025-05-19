@@ -413,8 +413,114 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Figure 3E
 
+load([analysisFolder filesep 'LMData.mat'])
+headAngleSD = LMData.headAngleSD;
+% HeadAngleAvg = LMData.HeadAngleAvg;
 
+% plot SDs
+stimType = ["Blue","Green","Red","LED"];
+stimWaveL = ["47","532","635","LED"];
+numType = length(stimType);
+statsHeadangSd = struct();
+
+% mean normelized change in D/B.
+fHA=figure;
+sgtitle('Head Angles over night')
+headSDdiff = [];
+groupNum = [];
+headSDdiffM = [];
+colorMat = [];
+psFromZero = [];
+ns = [];
+Ns = [];
+for type = 1:numType
+
+    %create data subset:
+    curName = stimType(type);
+    curType = stimWaveL(type);
+    curTrials = contains(stimTable.Remarks,curType)& ~contains(stimTable.Remarks,'Ex' );
+    n = sum(curTrials);
+    N = length(unique(stimTable.Animal(curTrials)));
+    [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+    curColorMat = animalsColors(animalIndices, :); 
+    curHeadSD = headAngleSD(curTrials,1:3);
+    curHeadSDmean = mean(curHeadSD,1);
+
+    %data for swarmplot
+    curData = curHeadSD(:,3) - curHeadSD(:,2);
+    headSDdiff = [headSDdiff; curData];
+    headSDdiffM = [headSDdiffM; mean(curData)];
+    groupNum = [groupNum; repmat(type,length(curData),1)];
+    colorMat = [colorMat; curColorMat];
+    % statistic diff from zero
+    [pfromZero, h] = signrank(curData, 0);
+    psFromZero = [psFromZero , pfromZero];
+    ns = [ns; n];
+    Ns = [Ns; N];
+    
+end
+
+fHL = figure;
+swarmchart(groupNum,headSDdiff,10,colorMat,'filled','XJitterWidth',0.5);
+hold on;
+scatter(1:4, headSDdiffM,14,'k','Marker','+')
+ylabel('Head Angle SD Diff -  (Stim-Pre)')
+xticks(1:numType); xticklabels(stimType)
+yline(0,'Color',[0.4 0.4 0.4],'LineStyle','--')
+
+[pKW, tbl, stats] = kruskalwallis(headSDdiff,groupNum,'off');
+
+if pKW < 0.05
+    if isstring(groupNum)
+        groupNum = cellstr(groupNum);
+    end
+
+    % Get unique group names
+    [groupNames, ~, groupIdx] = unique(groupNum);
+    numGroups = numel(groupNames);
+
+    % Initialize
+    comparisons = {};
+    raw_pvals = [];
+    idx = 1;
+
+    % Loop through all group pairs
+    for i = 1:numGroups-1
+        for j = i+1:numGroups
+            % Extract data for group i and j
+            data_i = headSDdiff(groupIdx == i);
+            data_j = headSDdiff(groupIdx == j);
+
+            % Wilcoxon rank-sum (Mann-Whitney U)
+            [p, ~] = ranksum(data_i, data_j);
+
+            % Store results
+            comparisons{idx,1} = [num2str(groupNames(i)) ' vs ' num2str(groupNames(j))];
+            raw_pvals(idx,1) = p;
+            idx = idx + 1;
+        end
+    end
+
+    % Bonferroni correction
+    corrected_pvals = min(raw_pvals * length(raw_pvals), 1);
+
+    % Display results
+    fprintf('\nPairwise Wilcoxon Rank-Sum Test (Mann-Whitney U):\n');
+    for i = 1:length(raw_pvals)
+        fprintf('%s:\t raw p = %.4f,\t Bonferroni-corrected p = %.4f\n', ...
+            comparisons{i}, raw_pvals(i), corrected_pvals(i));
+    end
+
+end
+
+%save figure #2
+set(fHL,'PaperPosition',[1 5 3.5 2]);
+fileName=[analysisFolder filesep 'headAngleSDalltypesDiffs'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 %% Figure 3F - movement diff all nights
+close all
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder
+
 load([analysisFolder filesep 'LMData.mat'])
 
 stimType = ["Blue","Green","Red","LED"];

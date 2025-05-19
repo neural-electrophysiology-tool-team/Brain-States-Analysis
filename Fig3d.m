@@ -3,8 +3,7 @@
 %% prepare head angle data for plots:
 % load([analysisFolder filesep 'HeadAngleAvg.mat'])
 % load([analysisFolder filesep 'HeadAngleSD.mat'])
-load([analysisFolder filesep 'LMdata.mat'])
-LMData = LMdata;
+load([analysisFolder filesep 'LMData.mat'])
 headAngleSD = LMData.headAngleSD;
 HeadAngleAvg = LMData.HeadAngleAvg;
 % headAngDiff = diff(HeadAngleAvg,[],2);
