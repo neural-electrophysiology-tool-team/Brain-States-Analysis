@@ -418,6 +418,66 @@ set(fdbDec,'PaperPosition',[1,1,2.7,2.3]);
 fileName=[analysisFolder filesep 'DBfullcycOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
+%% Supp 4B
+
+%% plot all nights: D/B full cycle - only red
+type = 'Red';
+wavelength = '635';
+curTrials = contains(stimTable.Remarks,wavelength)...
+        & ~contains(stimTable.Remarks,'Ex') ...
+        & ~any(isnan(stimTable.dbMeans),2); %& contains(stimTable.Animal,curAni);
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+groupNames = {'Pre', 'During', 'After'};
+curData = stimTable.dbMeans(curTrials,:);
+
+
+% statistics:
+[p, tbl, stats] = friedman(curData, 1); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+if p<0.05
+    before = stimTable.dbMeans(curTrials,1);
+    during = stimTable.dbMeans(curTrials,2);
+    after = stimTable.dbMeans(curTrials,3);
+
+
+    % Pairwise Wilcoxon signed-rank tests
+    [p_before_during, ~, stats_before_during] = signrank(before, during);
+    [p_during_after, ~, stats_during_after] = signrank(during, after);
+    [p_after_before, ~, stats_after_before] = signrank(after, before);
+    raw_pvals = [p_before_during,p_during_after,p_after_before];
+    num_comparisons = length(raw_pvals);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    %disp:
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Before vs During: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('During vs After: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('After vs Before: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end
+
+%plot
+fdb = figure;
+% plot(stimTable.dbSWMeans(curTrials,:)','Color',[0.5 0.5 0.5],'Marker','.','MarkerSize',10)
+%create color code:
+
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+hold on; 
+for i = 1:height(curData)
+    plot(curData(i,:),'Color',curColorMat(i,:),'Marker','.','MarkerSize',10)
+end
+plot(mean(stimTable.dbMeans(curTrials,:),1,'omitnan'),'Color','k','LineWidth',2,'Marker','.','MarkerSize',10)
+xlim([0.5, 3.5])
+ylim([0 350])
+xticks(1:3)
+xticklabels(groupNames)
+ylabel('D/B means during full cycle')
+
+% savefigure
+set(fdb,'PaperPosition',[1 1 2.7 2.3]);
+fileName=[analysisFolder filesep 'DBchangeFullCycle'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Supplementary Figure 5
 
