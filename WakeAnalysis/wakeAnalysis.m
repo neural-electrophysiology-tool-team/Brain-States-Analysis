@@ -240,7 +240,7 @@ classdef wakeAnalysis < sleepAnalysis
         end
 
         %% getBeta2GamnaRatio
-        function data=getBeta2GamnaRatio(obj,varargin)
+        function data=getBeta2GammaRatio(obj,varargin)
             obj.checkFileRecording;
 
             parseObj = inputParser;
@@ -282,7 +282,7 @@ classdef wakeAnalysis < sleepAnalysis
                 return;
             end
             %check if analysis was already done done
-            obj.files.bgRatio=sprintf('%bgRatio_ch%d.mat',[obj.currentAnalysisFolder filesep],ch);
+            obj.files.bgRatio=[obj.currentAnalysisFolder filesep 'bgRatio_ch' num2str(ch) '.mat'];
             if exist(obj.files.bgRatio,'file') & ~overwrite
                 if nargout==1
                     data=load(obj.files.bgRatio);
@@ -396,7 +396,7 @@ classdef wakeAnalysis < sleepAnalysis
         
         
         %% plotTrialsGB
-        function [] = plotTrailsGB(obj,varargin)
+        function [] = plotTrailsBG(obj,varargin)
           % parameter and settings
             obj.checkFileRecording;
             
@@ -426,9 +426,9 @@ classdef wakeAnalysis < sleepAnalysis
                 eval([parseObj.Parameters{i} '=' 'parseObj.Results.(parseObj.Parameters{i});']);
             end
         
-            bgRatioFile=[obj.currentAnalysisFolder filesep 'gbRatio_ch' num2str(ch) '.mat'];
-            obj.checkFileRecording(dbRatioFile,'beta to gamma file missing, please first run getBGRatio');
-            load(dbRatioFile); %load data
+            bgRatioFile=[obj.currentAnalysisFolder filesep 'bgRatio_ch' num2str(ch) '.mat'];
+            obj.checkFileRecording(bgRatioFile,'beta to gamma file missing, please first run getBGRatio');
+            load(bgRatioFile); %load data
 
         
         end
