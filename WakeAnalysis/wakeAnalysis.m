@@ -407,13 +407,9 @@ classdef wakeAnalysis < sleepAnalysis
             addParameter(parseObj,'saveFigures',1,@isnumeric);
             addParameter(parseObj,'trials',1:20,@isnumeric); %trials to incluse in analysis
             addParameter(parseObj,'win',5000,@isnumeric); % before and after start trial, ms
-            addParameter(parseObj,'inputParams',false,@isnumeric);
-            addParameter(parseObj,'maxDendroClusters',2,@isnumeric);
-            addParameter(parseObj,'fs',obj.currentDataObj.samplingFrequency(1),@isnumeric); 
-            addParameter(parseObj,'welchOL',0.5,@isnumeric); 
-            addParameter(parseObj,'welchWin',5000,@isnumeric); 
-            addParameter(parseObj,'fMax',110,@isnumeric);
-          
+            addParameter(parseObj,'inputParams',false,@isnumeric);    
+            addParameter(parseObj,'fullwin',20000,@isnumeric);    
+            addParameter(parseObj,'bug_t',6000,@isnumeric);    
 
             parseObj.parse(varargin{:});
             if parseObj.Results.inputParams
@@ -429,6 +425,79 @@ classdef wakeAnalysis < sleepAnalysis
             bgRatioFile=[obj.currentAnalysisFolder filesep 'bgRatio_ch' num2str(ch) '.mat'];
             obj.checkFileRecording(bgRatioFile,'beta to gamma file missing, please first run getBGRatio');
             load(bgRatioFile); %load data
+
+            arenaCSVFile=[obj.currentAnalysisFolder filesep 'ArenaCSV.mat'];
+            obj.checkFileRecording(arenaCSVFile,'arenaCSV file missing, please first run getArenaCSV');
+            load(arenaCSVFile); %load data
+
+
+            zeroTimes = arenaCSVs.startTrigSh-bug_t; %6 seconds before trial started
+            endTrialT = arenaCSVs.endTrigSh - zeroTimes;
+            strikeTrialNum =arenaCSVs.strikeTrialNum;
+            strikeT = arenaCSVs.strikeTrigSh -zeroTimes(strikeTrialNum);
+            str_ind = 1;
+
+
+            matLen = length(find((t_ms>zeroTimes(1))&(t_ms<(zeroTimes(1)+fullwin))));
+            BG_mat = zeros([length(zeroTimes),matLen]);
+            % BG_mat = [];
+            for i=1:length(zeroTimes)
+                BG_ind = find((t_ms>zeroTimes(i))&(t_ms<(zeroTimes(i)+fullwin)));
+                BG_mc = beta2gammaRatio(BG_ind);
+
+                %     BG_mat= [BG_mat;BG_mc'];
+                BG_mat(i,1:length(BG_mc)) = BG_mc';
+            end
+            
+            % plot
+            figure;
+            %add subplot for the B/G ratio
+            ax1 = subplot('Position', [0.1, 0.3, 0.7, 0.6]);
+            tdiff = (par.movWin-par.movOLWin);
+            timeAxis = ((0:matLen-1) * tdiff)/1000; %in s
+            % timeAxis = (0:500:(length(BG_mat)-1)*500)/1000; % 0 ms to 19500 ms
+            imagesc(timeAxis,1:length(zeroTimes),BG_mat)
+            xlabel("Time (s)")
+            hold on
+            % Plot start time horizontal line:
+            xline(bug_t/1000,'r' ,'LineWidth', 1.5, 'Label', 'Bug Apperance', 'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'Left');
+            ylabel('Trial #')
+            % Plot end times and strike times
+            for i = 1:size(BG_mat, 1)
+                h1 = plot(endTrialT(i)/1000, i, '.', 'Color', 'k','MarkerSize',20); % 'ko' for black circles
+                if ismember (i,strikeTrialNum)
+                    h2 = plot(strikeT(str_ind)/1000, i, 'pentagram', 'Color', 'g','MarkerFaceColor','g','MarkerSize',8); % 'ko' for black circles
+                    str_ind = str_ind+1;
+                end
+            end
+            %add legend and title:
+            if ~isempty(strikeTrialNum)
+                legend([h2(1), h1(1)], {'Strike','End Trial'},'Position',[0.85 0.15 0.04 0.08],'Box','off');%[x, y, width, height]
+            else
+                legend(h1(1), 'End Trial','Position',[0.85 0.15 0.04 0.08],'Box','off');%[x, y, width, height]
+
+            end
+
+            %add colorbar
+            c = colorbar;
+            c.Position = [0.82 0.3 0.02 0.6];
+            % Set vertical label for colorbar
+            c.Label.String = 'B/G ratio'; % Set label text
+            c.Label.Position = [4, 80, 0]; % Adjust label position (relative to colorbar)
+            c.Label.Rotation = 90; % Set label rotation to 0 degrees for vertical alignment
+
+            % Plot Average
+            ax2 = subplot('Position', [0.1, 0.1, 0.7, 0.15]);
+            plot(timeAxis, mean(BG_mat,1,"omitmissing"),'LineWidth', 1.5)
+            xlabel('Time [s]'); ylabel('avg. B2G')
+            % ylim([10 85])
+            xline(bug_t/1000,'r' ,'LineWidth', 1.5)
+            linkaxes([ax1,ax2],'x');
+
+            % Save plot:
+            set(gcf,'PaperPosition',[.25 3 8 6])
+            saveas(gcf,strcat(obj.currentPlotFolder, '/TrialsBG.pdf'));
+
 
         
         end
