@@ -207,141 +207,7 @@ fileName=[analysisFolderWake filesep 'ExampleTrailPV157,H5'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% Dendrogram + spectral profiles:
-% re-write the pwelch and dendrogram:
-WA.setCurrentRecording('Animal=PV157,recNames=Hunter5');
-ArenaCSVs = WA.getArenaCSVs(1);
-startTrigSh = ArenaCSVs.startTrigSh;
-goodTrials = [1,3:4, 6:13, 15:20];
-defCh = WA.recTable.defaulLFPCh(WA.currentPRec);
 
-
-% get the data:
-win = 5000; % in ms
-fs = WA.currentDataObj.samplingFrequency(1); %samples per sec
-% Bug apperance: before and after
-% defCh = 3;
-postStart = WA.currentDataObj.getData(defCh,startTrigSh(goodTrials)+400,win);
-preStart = WA.currentDataObj.getData(defCh,startTrigSh(goodTrials)-win, win);
-prePost = [squeeze(preStart);squeeze(postStart)];
-
-% prePost= transpose(reshape(startData(goodTrials,:),[win*fs/2000,length(goodTrials)*2]));
-
-
-welchWin = 1*fs; 
-welchOL = 0.5; % the percent of overlap
-samplesOL = welchOL*welchWin;
-%calculate the ppx:
-[pxx,f] = pwelch(prePost',welchWin,samplesOL,[],fs);
-
-fMax = 110;
-% times=(tStart+binDuration/2):binDuration:(tStart+win);
-% dendrogram:          
-maxDendroClusters = 2;
-
-p=find(f<fMax);
-pp=find(sum(pxx(p,:))<0.4e6); %reject signals with very high amplitudes (probably noise)
-            
-sPxx=pxx(p,pp);
-freqHz=f(p);
-normsPxx=bsxfun(@rdivide,sPxx,mean(sPxx,2));
-corrMat=corrcoef(normsPxx);
-% times=times(pp);
-
-
-if maxDendroClusters==2
-
-    [DC,order,clusters]=DendrogramMatrix(corrMat,'linkMetric','euclidean','linkMethod','ward','maxClusters',maxDendroClusters);
-
-    S1=mean(normsPxx(:,clusters==1),2);
-    S2=mean(normsPxx(:,clusters==2),2);
-    if mean(S1(1:3))>mean(S2(1:3))
-        crossFreq=freqHz(find(S2-S1>=0,1,'first'));
-    else
-        crossFreq=freqHz(find(S1-S2>=0,1,'first'));
-    end
-else
-    [DC,order,clusters]=DendrogramMatrix(corrMat,'linkMetric','euclidean','linkMethod','ward','maxClusters',maxDendroClusters);
-
-    for i=1:maxDendroClusters
-        S(:,i)=mean(normsPxx(:,clusters==i),2);
-    end
-    crossFreq=[];
-end
-
-%not normelized PSD:
-sPxx1 = mean(sPxx(:,clusters==1),2);
-sPxx2 = mean(sPxx(:,clusters==2),2);
-
-
-
-% plot
-
-k = length(goodTrials); % Threshold
-
-% Display the correlation matrix
-fig1 = figure;
-set(fig1, 'Position', [100, 100, 900, 800]); % [x, y, width, height]
-
-imagesc(DC);
-colorbar;
-% axis equal;
-hold on;
-
-% Set axis labels
-% xticks(1:length(order));
-% yticks(1:length(order));
-
-% Loop through each segment number and display it
-for i = 1:length(order)
-    if order(i) <= k
-        text_color = 'black';
-        background_color = [0.7, 0.7, 1]; % Light purple background
-    else
-        text_color = 'black';
-        background_color = [1, 0.85, 0.7]; % Light orange background
-    end
-    
-    % Display the segment number with background
-    text(-0.5, i, num2str(order(i)), 'HorizontalAlignment', 'center', ...
-        'BackgroundColor', background_color, 'Color',text_color , ...
-        'FontWeight', 'bold');
-    text(i, -0.5, num2str(order(i)), 'HorizontalAlignment', 'center', ...
-        'BackgroundColor', background_color, 'Color',text_color , ...
-        'FontWeight', 'bold');
-
-end
-% Adjust limits
-% xlim([-1, length(order)]);
-% ylim([0.5, length(order) + 0.5]);
-set(gca, 'XTick', [], 'YTick', []);
-hold off;
-set(fig1,'PaperPosition',[.25 3 8 6])
-saveas(gcf,strcat(WA.currentPlotFolder, '/corelogram.pdf'));
-
-%plot the freqs:
-figure;
-set(gcf, 'Position', [300, 300, 700, 500]); % [x, y, width, height]
-plot(freqHz,S1,'Color',[0.7, 0.7, 1], 'LineWidth',2);
-hold on
-plot(freqHz,S2,'Color',[1, 0.85, 0.7],'LineWidth',2);
-legend('Quiet','Attention')
-%plot(freqHz,normsPxx(:,clusters==1), 'Color', [0.7, 0.7, 1, 0.5])
-%plot(freqHz,normsPxx(:,clusters==2), 'Color', [1, 0.85, 0.7, 0.5])
-
-%save Figure
-set(gcf,'PaperPosition',[.25 3 8 6])
-saveas(gcf,strcat(WA.currentPlotFolder, '/freqBands.pdf'));
-
-%plot the freqs - not norelized::
-figure;
-set(gcf, 'Position', [300, 400, 700, 500]); % [x, y, width, height]
-plot(freqHz,sPxx1,'Color',[0.7, 0.7, 1], 'LineWidth',2);
-hold on
-plot(freqHz,sPxx2,'Color',[1, 0.85, 0.7],'LineWidth',2);
-set(gca, 'YScale', 'log');
-title(sprintf('Ch%i',defCh))
-legend('Quiet','Attention')
 
 
 %% get beta to gamma ratio:
@@ -394,13 +260,16 @@ legend('B/G', 'Trial Time', 'Location', 'best');
 
 hold off;
 
-
+%% fix behavioral data:
+WA.setCurrentRecording('Animal=PV157,recNames=Hunter9');
+locTable = WA.getHeadPosition;
+% locTableC = clean_dlc_table(locTable);
 
 
 
 %% Check the video annotations:
 videoPath = WA.recTable.VideoFiles{WA.currentPRec};
-matPath = WA.files.ArenaLocation;
+matPath = WA.files.locTable;
 xColumnName = 'x__nose___cam_x__';
 yColumnName = 'x__nose___cam_y__';
 

@@ -260,13 +260,16 @@ legend('B/G', 'Trial Time', 'Location', 'best');
 
 hold off;
 
-
-
+%% fix behavioral data:
+WA.setCurrentRecording('Animal=PV157,recNames=Hunter9');
+locTable = WA.getHeadPosition;
+% locTableC = clean_dlc_table(locTable);
+hist(locTable.x__nose___prob__)
 
 
 %% Check the video annotations:
 videoPath = WA.recTable.VideoFiles{WA.currentPRec};
-matPath = WA.files.ArenaLocation;
+matPath = WA.files.locTable;
 xColumnName = 'x__nose___cam_x__';
 yColumnName = 'x__nose___cam_y__';
 

@@ -81,12 +81,12 @@ classdef wakeAnalysis < sleepAnalysis
                 error('File does not exist: %s', locFilename);
             end
             locTable = parquetread(locFilename);
-            ArenaCSV = obj.getArenaCSVs();
+            ArenaCSV = obj.getArenaCSVs;
             locTable.t_ms = ArenaCSV.oeCamTrigs(1:height(locTable));
 
 
-            obj.files.ArenaLocation = [obj.currentAnalysisFolder filesep 'arenaLocation.mat'];
-            save(obj.files.ArenaLocation,"locTable",'-mat')
+            obj.files.locTable = [obj.currentAnalysisFolder filesep 'locTable.mat'];
+            save(obj.files.locTable,"locTable",'-mat')
 
         end
 
