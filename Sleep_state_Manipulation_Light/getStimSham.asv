@@ -35,7 +35,6 @@ function data = getStimSham(SA, t_ch,diode, overwrite)
         firstTrig = T.diodeTriggers(1:8:end-2);
         endStim = T.diodeTriggers(8:8:end)+200;
         stimDuration=(endStim(1)-firstTrig(1));
-
     end 
    
     pre=50000; %ms

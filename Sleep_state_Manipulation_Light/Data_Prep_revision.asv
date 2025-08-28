@@ -6,8 +6,9 @@
 % this part goes over all the records in SA.
 %  for every recoerd that is tagged (1/2/3..) 
 SA=sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
-maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
-stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage'});  % creating new table
+% maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
+maniRecs = SA.recTable.Mani==4; % taking all the rows with manipulation
+stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage','stimDiodeCh'});  % creating new table
 stimTable.stimStartT = zeros(height(stimTable),1);
 stimTable.stimEndT = zeros(height(stimTable),1);
 stimTable.sleepStartT = zeros(height(stimTable),1);
@@ -30,21 +31,29 @@ for i = 1:height(stimTable)
     % run all required analysis:
     SA.getDelta2BetaRatio;
     SA.getDelta2BetaAC('tStart',0,'overwrite',1); %for all the rec time
-    SA.getDigitalTriggers;
     
-   
-    % stimulations timings:
-    t_ch = stimTable.StimTrighCh(i);
-    T=SA.getDigitalTriggers;
-    stimTable.stimStartT(i) = T.tTrig{t_ch}(1);
-    stimTable.stimEndT(i) = T.tTrig{t_ch}(end);
+    if ~isnan(stimTable.StimTrighCh(i))
+        % stimulations timings:
+        SA.getDigitalTriggers;
+        t_ch = stimTable.StimTrighCh(i);
+        T=SA.getDigitalTriggers;
+        stimTable.stimStartT(i) = T.tTrig{t_ch}(1);
+        stimTable.stimEndT(i) = T.tTrig{t_ch}(end);
+        s = getStimSham(SA,stimTable.StimTrighCh(i),1);
+    elseif ~isempty(stimTable.stimDiodeCh)
+        SA.getStimDiodeTrig;
+        T = SA.getStimDiodeTrig;
+        stimTable.stimStartT(i) = T.diodeTriggers(1);
+        stimTable.stimEndT(i) = T.diodeTriggers(end);
+        s = getStimSham(SA,[],1,1);
+    end 
     
     ACfull =  SA.getDelta2BetaAC;
     stimTable.sleepStartT(i) = ACfull.tStartSleep;
     stimTable.sleepEndT(i) = ACfull.tEndSleep;
          
     % get and save the stim avg
-    s = getStimSham(SA,stimTable.StimTrighCh(i),1);
+    
     disp('got Stim for this rec')
     stimTable.StimAvg(i) = {mean(s.StimDB,1,"omitnan")};
     stimTable.StimAvgSham(i) = {mean(s.StimDBSham,1,"omitnan")};
@@ -205,7 +214,7 @@ stimTable.P2V_156 = P2Vfs;
 %% save stimTable
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 clearvars -except SA analysisFolder stimTable
-save([analysisFolder filesep 'stimTable.mat'], "stimTable",'-mat');
+save([analysisFolder filesep 'stimTable.mat'], "stimTableR",'-mat');
 
 %% calculate Lizard movement: getLMData
 
