@@ -2,7 +2,7 @@
 % 8.6.2025
 %% Inition parameters:
 % SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-WA = wakeAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 
 %% Hunter example - all parameters:
@@ -62,6 +62,7 @@ mov = LM.movAll(pTmp);
 mov_t = LM.t_mov_ms(pTmp)-start_t;
 
 % raster data: 
+
 %% plot Traces - 1 example
 plotNum = 4;
 f = figure;
@@ -211,23 +212,13 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% get beta to gamma ratio:
-WA.setCurrentRecording('Animal=PV157,recNames=Hunter5');
+WA.setCurrentRecording('Animal=PV106,recNames=Hunter1');
 
 movWin = 2000;
 movOLWin = 1000;
 segWel = 1000;
 % the ratio is band2 to band1
-WA.getMultiBandSpectralAnalysis('band1Low', 60,'band1High',80,'band2Low', ...
-    10,'band2High',30, ...
-    'maxVoltage',1000, 'tStart',0,'win',0, ...
-    'movLongWin',1000*60*30,'movWin',movWin,'movOLWin',movOLWin,'segmentWelch' ...
-    ,segWel,'overwrite',1);
-
-BG = WA.getMultiBandSpectralAnalysis('band1Low', 60,'band1High',80,'band2Low', ...
-    10,'band2High',30, ...
-    'maxVoltage',1000, 'tStart',0,'win',0, ...
-    'movLongWin',1000*60*30,'movWin',movWin,'movOLWin',movOLWin,'segmentWelch' ...
-    ,segWel,'overwrite',0);
+WA.getBet
 
 %get only non-Nan values.
 p = find(~isnan(BG.band2to1Ratio));
@@ -264,7 +255,7 @@ hold off;
 WA.setCurrentRecording('Animal=PV157,recNames=Hunter9');
 locTable = WA.getHeadPosition;
 % locTableC = clean_dlc_table(locTable);
-
+hist(locTable.x__nose___prob__)
 
 
 %% Check the video annotations:

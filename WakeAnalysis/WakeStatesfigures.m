@@ -2,7 +2,7 @@
 % 8.6.2025
 %% Inition parameters:
 % SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-WA = wakeAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 
 %% Hunter example - all parameters:
@@ -62,6 +62,7 @@ mov = LM.movAll(pTmp);
 mov_t = LM.t_mov_ms(pTmp)-start_t;
 
 % raster data: 
+
 %% plot Traces - 1 example
 plotNum = 4;
 f = figure;
@@ -211,27 +212,18 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% get beta to gamma ratio:
-WA.setCurrentRecording('Animal=PV157,recNames=Hunter5');
-
+WA.setCurrentRecording('Animal=PV106,recNames=Hunter1');
+ArenaCSV = WA.getArenaCSVs();
 movWin = 2000;
 movOLWin = 1000;
 segWel = 1000;
 % the ratio is band2 to band1
-WA.getMultiBandSpectralAnalysis('band1Low', 60,'band1High',80,'band2Low', ...
-    10,'band2High',30, ...
-    'maxVoltage',1000, 'tStart',0,'win',0, ...
-    'movLongWin',1000*60*30,'movWin',movWin,'movOLWin',movOLWin,'segmentWelch' ...
-    ,segWel,'overwrite',1);
-
-BG = WA.getMultiBandSpectralAnalysis('band1Low', 60,'band1High',80,'band2Low', ...
-    10,'band2High',30, ...
-    'maxVoltage',1000, 'tStart',0,'win',0, ...
-    'movLongWin',1000*60*30,'movWin',movWin,'movOLWin',movOLWin,'segmentWelch' ...
-    ,segWel,'overwrite',0);
+WA.getBeta2GammaRatio;
+BG = WA.getBeta2GammaRatio;
 
 %get only non-Nan values.
-p = find(~isnan(BG.band2to1Ratio));
-BG.band2to1Ratio = BG.band2to1Ratio(p);
+p = find(~isnan(BG.beta2gammaRatio));
+BG.beta2gammaRatio = BG.beta2gammaRatio(p);
 BG.t_ms = BG.t_ms(p);
 
 %% Create the plot
@@ -240,7 +232,7 @@ figure;
 % Plot the time series as an image
 % imagesc(BG.t_ms/1000, 1, BG.band2to1Ratio');
 % colorbar;
-plot(BG.t_ms/1000,BG.band2to1Ratio, color='k',LineStyle='-')
+plot(BG.t_ms/1000,BG.beta2gammaRatio, color='k',LineStyle='-')
 hold on; % Important: allows overlaying additional plots
 
 
@@ -260,11 +252,70 @@ legend('B/G', 'Trial Time', 'Location', 'best');
 
 hold off;
 
+
+
 %% fix behavioral data:
 WA.setCurrentRecording('Animal=PV157,recNames=Hunter9');
 locTable = WA.getHeadPosition;
 % locTableC = clean_dlc_table(locTable);
 hist(locTable.x__nose___prob__)
+
+
+%%
+%%  plot all trials in the session with aligned to bug appearance
+bug_t = 6000;
+zeroTimes = ArenaCSVs.startTrigSh-bug_t; %6 seconds before trial started
+endTrialT = ArenaCSVs.endTrigSh - zeroTimes;
+strikeTrialNum =ArenaCSVs.strikesTrialNum; 
+strikeT = ArenaCSVs.strikeTrigSh -zeroTimes(strikeTrialNum);
+str_ind = 1;
+
+BG_mat = [];
+for i=1:length(zeroTimes)
+    BG_ind = find((GB.t_ms>zeroTimes(i))&(GB.t_ms<(zeroTimes(i)+fullwin)));
+    BG_mc = GB.band2to1Ratio(BG_ind);
+    BG_mat = [BG_mat;BG_mc'];
+end
+figure;
+
+%add subplot for the B/G ratio
+ax1 = subplot('Position', [0.1, 0.3, 0.7, 0.6]);
+imagesc(BG_mat)
+hold on
+% Plot atart time horizontal line:
+xline(bug_t/1000,'r' ,'LineWidth', 1.5, 'Label', 'Bug Apperance', 'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'Left');
+ylabel('Trial #')
+% Plot end times and strike times
+for i = 1:size(BG_mat, 1)
+    h1 = plot(endTrialT(i)/1000, i, '.', 'Color', 'k','MarkerSize',20); % 'ko' for black circles
+    if ismember (i,strikeTrialNum)
+       h2 = plot(strikeT(str_ind)/1000, i, 'pentagram', 'Color', 'g','MarkerFaceColor','g','MarkerSize',8); % 'ko' for black circles 
+       str_ind = str_ind+1;
+    end
+end
+%add legend and title:
+legend([h2(1), h1(1)], {'Strike','End Trial'},'Position',[0.85 0.15 0.04 0.08],'Box','off');%[x, y, width, height]
+title ('All trials in session PV157,Hunter5')
+
+%add colorbar
+c = colorbar;
+c.Position = [0.82 0.3 0.02 0.6];
+% Set vertical label for colorbar
+c.Label.String = 'G/B ratio'; % Set label text
+c.Label.Position = [4, 80, 0]; % Adjust label position (relative to colorbar)
+c.Label.Rotation = 90; % Set label rotation to 0 degrees for vertical alignment
+
+% Plot Average 
+ax2 = subplot('Position', [0.1, 0.1, 0.7, 0.15]);
+plot(mean(BG_mat,1),'LineWidth', 1.5)
+xlabel('Time [s]'); ylabel('avg. B2G')
+ylim([10 85])
+xline(bug_t/1000,'r' ,'LineWidth', 1.5)
+linkaxes([ax1,ax2],'x');
+
+% Save plot:
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, '/avgB2GacrossTrials.pdf'));
 
 
 %% Check the video annotations:
