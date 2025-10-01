@@ -6,8 +6,8 @@
 % this part goes over all the records in SA.
 %  for every recoerd that is tagged (1/2/3..) 
 SA=sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
-% maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
-maniRecs = SA.recTable.Mani==4; % taking all the rows with manipulation
+maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
+% maniRecs = SA.recTable.Mani==4; % taking all the rows with manipulation
 stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage','stimDiodeCh'});  % creating new table
 stimTable.stimStartT = zeros(height(stimTable),1);
 stimTable.stimEndT = zeros(height(stimTable),1);
@@ -39,8 +39,8 @@ for i = 1:height(stimTable)
         T=SA.getDigitalTriggers;
         stimTable.stimStartT(i) = T.tTrig{t_ch}(1);
         stimTable.stimEndT(i) = T.tTrig{t_ch}(end);
-        s = getStimSham(SA,stimTable.StimTrighCh(i),1);
-    elseif ~isempty(stimTable.stimDiodeCh)
+        s = getStimSham(SA,stimTable.StimTrighCh(i));
+    elseif ~isempty(stimTable.stimDiodeCh(i))
         SA.getStimDiodeTrig;
         T = SA.getStimDiodeTrig;
         stimTable.stimStartT(i) = T.diodeTriggers(1);
@@ -58,7 +58,7 @@ for i = 1:height(stimTable)
     stimTable.StimAvg(i) = {mean(s.StimDB,1,"omitnan")};
     stimTable.StimAvgSham(i) = {mean(s.StimDBSham,1,"omitnan")};
     stimTable.times(i) = {s.ts};
-    stimTable.stimDuration(i) = s.stimDur;
+    stimTable.stimDuration(i) = s.stimDuration;
     disp('stimsham in table')
 
     % calculate the AC and the P2V for each part of the stimulation
@@ -214,7 +214,7 @@ stimTable.P2V_156 = P2Vfs;
 %% save stimTable
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 clearvars -except SA analysisFolder stimTable
-save([analysisFolder filesep 'stimTableR.mat'], "stimTable",'-mat');
+save([analysisFolder filesep 'stimTableAll.mat'], "stimTable",'-mat');
 
 %% calculate Lizard movement: getLMData
 
@@ -261,15 +261,23 @@ for i = 1:height(stimTable)
     % stimulations timings:
     stimStartT = stimTable.stimStartT(i);
     stimEndT = stimTable.stimEndT(i);
-    t_ch = stimTable.StimTrighCh(i);
-    T=SA.getDigitalTriggers;
-    stims = T.tTrig{t_ch};
+    
+    if ~isnan(stimTable.StimTrighCh(i))
+        t_ch = stimTable.StimTrighCh(i);
+        T=SA.getDigitalTriggers;
+        stims = T.tTrig{t_ch};
+        
+    elseif ~isempty(stimTable.stimDiodeCh)
+        trig = SA.getStimDiodeTrig;
+        stims = trig.diodeTriggers;
+        
+    end
     firstTrig=stims(1:8:end-2);
-
     %% movement calculations:
     % change movement data to DB time scale:
     % calculate the number of movements to each DB bin
-    debug =1; 
+    % debug =1; 
+    debug =0;
     if debug ==0
         LM_DBt = zeros(size(DB.t_ms));
         % Loop through each bin in DB and count the events in LM that fall within each bin
@@ -382,11 +390,13 @@ for i = 1:height(stimTable)
 fprintf('Head angles avgrages for this recordings: %f,%f, %f, %f',[HeadAngleAvg(i,:)])
 
 end
-
-fileName = [analysisFolder filesep 'LMdata.mat'];
-LMData = table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...
+%
+fileName = [analysisFolder filesep 'LMdataR.mat'];
+maniRecs = SA.recTable.Mani==4; % taking all the rows with manipulation
+LMData = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov'});  % creating new table
+LMData = [LMData table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...
                'VariableNames', {'LM_DBts','LMwake', 'LMpre', 'LMstimbin','LMpost', ...
-               'LMallMean','HeadAngleAvg','headAngleSD'});
+               'LMallMean','HeadAngleAvg','headAngleSD'})];
 
 save(fileName,"LMData",'-mat')
 

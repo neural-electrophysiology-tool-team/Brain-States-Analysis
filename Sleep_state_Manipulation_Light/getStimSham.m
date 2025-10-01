@@ -8,7 +8,7 @@ function data = getStimSham(SA, t_ch,diode, overwrite)
     if nargin ==2 
         diode =0;
     end 
-    if nargin ==3
+    if nargin <=3
         overwrite = 0;
     end
     %check if analysis was already done
@@ -61,6 +61,9 @@ function data = getStimSham(SA, t_ch,diode, overwrite)
     for i=1:numel(firstTrigSham)
         pTmp=find(DB.t_ms>(firstTrigSham(i)-pre) & DB.t_ms<=(firstTrigSham(i)+post));
         %StimDBSham(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
+        if length(pTmp) ~=150
+            continue
+        end
         StimDBSham(i,:)=DB.bufferedDelta2BetaRatio(pTmp);
     end
 
@@ -69,7 +72,7 @@ save(SA.files.stimSham,'StimDBSham','ts','StimDB','stimDuration','pre','post')
 data.StimDBSham = StimDBSham;
 data.ts = ts;
 data.StimDB = StimDB;
-data.stimDur = stimDuration;
+data.stimDuration = stimDuration;
 data.pre = pre;
 data.post = post;
 
