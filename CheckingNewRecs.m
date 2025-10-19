@@ -20,14 +20,15 @@ A = WA.getArenaCSVs;
 %% run on all and do...?
 SA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 
-% Animals = ["PV106"; "PV143"; "PV153"];
-Animals="PV106";
+Animals = ["PV106"; "PV143"; "PV153"];
+% Animals="PV106";
 % plot the D/B together
-figure;
-tiledlayout('flow'); 
+
+% figure;
+% tiledlayout('flow'); 
 % ax1 = nexttile;
 for i = 1:length(Animals)
-    for j = 7:35
+    for j = 1:42
         try  
             txt = evalc("SA.setCurrentRecording(sprintf('Animal=%s,recNames=Night%d',Animals{i},j));");
             if contains(txt,'Selected recording/s were not found')
@@ -41,10 +42,10 @@ for i = 1:length(Animals)
 
             % SA.plotDelta2BetaRatio;
             % SA.plotDelta2BetaSlidingAC;
-            if SA.recTable.Mani(SA.currentPRec) ==4
-                SA.plotDelta2BetaSlidingAC;
-                SA.getEyeMovements('startTime',2*60*60,'endTime',12*60*60)
-                SA.getRespirationMovements('startTime',2*60*60,'endTime',12*60*60)
+            if SA.recTable.Mani(SA.currentPRec) ==4 & contains(SA.recTable.Remarks(SA.currentPRec),'blue')
+                plotStimSham(SA)
+                % SA.plotDelta2BetaSlidingAC;
+
                 % ax1 = nexttile; % left tile
                 % getStimSham(SA,[],1)
                 % ax1 = plotStimSham(SA);
@@ -127,6 +128,24 @@ fileName=[analysisFolder filesep 'PV106Nights'];
 print(fileName,'-djpeg');
 
 
+%% updating recs: 
+%% 
+% first, I want to see all the plots according to the stimulations.
+analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
+load([analysisFolder filesep 'stimTableAll.mat'])
+
+%%
+recList=[];
+for i = 1:height(stimTable)
+
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    stimData = SA.getStimTriggers;
+    
+    if isempty(stimData)
+        recList = [recList; recName];
+    end
+end
 %% get the trigger fixed
 
 % SA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
@@ -161,6 +180,14 @@ figure; plot(diff(t_clean),'.');title('after cleanup')
 
 
 %% run Eye movement analysis
-SA.setCurrentRecording('Animal=PV106,recNames=Night18');
+SA.setCurrentRecording('Animal=PV106,recNames=Night26');
 SA.plotDelta2BetaSlidingAC;
-SA.getEyeMovements('startTime',2*60*60,'endTime',12*60*60);
+SA.getEyeMovements('startTime',3*60*60,'endTime',10*60*60,'minTrackingPoints',25,'overwrite',1,'saveTrackingVideo',1);
+
+%% run behavioral:
+SA.setCurrentRecording('Animal=PV106,recNames=Night16');
+SA.plotDelta2BetaSlidingAC;
+SA.getCameraTriggers;
+SA.getStimTriggers;
+SA.getSyncedDBEyeMovements;
+SA.plotSyncedDBEyeMovementsRaster;

@@ -2,13 +2,10 @@
 % this functio is getting the data rellevant for the stimulation and the
 % "sham" stimulation. It should save the data in the table. 
 
-function data = getStimSham(SA, t_ch,diode, overwrite)
+function data = getStimSham(SA, overwrite)
     % SA is an instance of sleep analysis class,with a record currently
     % selected
     if nargin ==2 
-        diode =0;
-    end 
-    if nargin <=3
         overwrite = 0;
     end
     %check if analysis was already done
@@ -25,19 +22,12 @@ function data = getStimSham(SA, t_ch,diode, overwrite)
     DB=SA.getDelta2BetaRatio;
     AC=SA.getDelta2BetaAC;
     
-    if diode==0 
-        T=SA.getDigitalTriggers;
-        firstTrig=T.tTrig{t_ch}(1:8:end-2);
-        endStim=T.tTrig{t_ch}(8:8:end)+200;
-        stimDuration=(endStim(1)-firstTrig(1));
-    elseif diode==1
-        T = SA.getStimDiodeTrig;
-        firstTrig = T.diodeTriggers(1:8:end-2);
-        endStim = T.diodeTriggers(8:8:end)+200;
-        stimDuration=(endStim(1)-firstTrig(1));
+    stimData = SA.getStimTriggers;
+    firstTrig = stimData(1:8:end-2);
+    endStim = stimData(8:8:end)+200;
+    stimDuration=(endStim(1)-firstTrig(1));
 
-    end 
-   
+     
     pre=50000; %ms
     post=100000; %ms
 %     clear StimDB; %change to zeros

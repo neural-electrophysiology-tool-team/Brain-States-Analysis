@@ -4,7 +4,7 @@
 SA=sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
 load([analysisFolder filesep 'stimTableAll.mat'])
-load([analysisFolder filesep 'LMdataR.mat'])
+load([analysisFolder filesep 'LMDataAll.mat'])
 animalsColors = [
     0,0.474509803921569,0.549019607843137; % dark blue  - PV106
     255/255, 142/255, 71/255;% HEX:  FF8E47 - orange  - PV126
@@ -421,12 +421,13 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% Figure 3E
-load([analysisFolder filesep 'LMDataR.mat'])
+% load([analysisFolder filesep 'LMDataAll.mat'])
+% load([analysisFolder filesep 'StimTableAll.mat'])
 headAngleSD = LMData.headAngleSD;
 
 % plot SDs
-stimType = ["Blue","Green","Red","LED"];
-stimWaveL = ["blue","green","red","white"];
+stimType = ["Blue","Green","Red","white","strongBlue","DayTime"];
+stimWaveL = ["blue","green","red","white", "strongBlue","DayTime"];
 numType = length(stimType);
 statsHeadangSd = struct();
 
@@ -468,7 +469,7 @@ for type = 1:numType
 end
 swarmchart(groupNum,headSDdiff,10,colorMat,'filled','XJitterWidth',0.5);
 hold on;
-scatter(1:4, headSDdiffM,14,'k','Marker','+')
+scatter(1:numType, headSDdiffM,14,'k','Marker','+')
 ylabel('Head Angle SD Diff -  (Stim-Pre)')
 xticks(1:numType); xticklabels(stimType)
 yline(0,'Color',[0.4 0.4 0.4],'LineStyle','--')
@@ -529,8 +530,8 @@ clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder
 
 % load([analysisFolder filesep 'LMData.mat'])
 
-stimType = ["Blue","Green","Red","LED"];
-stimWaveL = ["blue","green","red","white"];
+stimType = ["Blue","Green","Red","white","strongBlue","DayTime"];
+stimWaveL = ["blue","green","red","white", "strongBlue","DayTime"];
 numType = length(stimType);
 Groups = ["Wake","Pre","Stim"];
 
@@ -590,15 +591,15 @@ for type = 1:numType
         ylabel('Head Movements')
     end
 end
-xlim([0.7 8.2])
-xticks(1:8);xticklabels(repmat(["Pre","Stim"],1,numType))
+xlim([0.7 (2*numType+0.2)])
+xticks(1:2*numType);xticklabels(repmat(["Pre","Stim"],1,numType))
 
 % plot only stim-pre diff:
 subplot(2,1,2)
 swarmchart(groupNum,diffStimPre,15,colorMat,'filled','XJitterWidth',0.5);
 hold on;
-scatter(1:4,diffStimPreM,15,'k','Marker','+')
-xticks(1:4), xticklabels(stimType); xlim([0.7 4.3]); %ylim([0 10]);
+scatter(1:numType,diffStimPreM,15,'k','Marker','+')
+xticks(1:numType), xticklabels(stimType); xlim([0.7 numType+0.2]); %ylim([0 10]);
 yline(0,'--','Color',[0.4 0.4 0.4])
 [pKW, tbl, stats] = kruskalwallis(diffStimPre,groupNum,'off');
 

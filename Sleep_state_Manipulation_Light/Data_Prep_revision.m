@@ -31,22 +31,12 @@ for i = 1:height(stimTable)
     % run all required analysis:
     SA.getDelta2BetaRatio;
     SA.getDelta2BetaAC('tStart',0,'overwrite',1); %for all the rec time
-    
-    if ~isnan(stimTable.StimTrighCh(i))
-        % stimulations timings:
-        SA.getDigitalTriggers;
-        t_ch = stimTable.StimTrighCh(i);
-        T=SA.getDigitalTriggers;
-        stimTable.stimStartT(i) = T.tTrig{t_ch}(1);
-        stimTable.stimEndT(i) = T.tTrig{t_ch}(end);
-        s = getStimSham(SA,stimTable.StimTrighCh(i));
-    elseif ~isempty(stimTable.stimDiodeCh(i))
-        SA.getStimDiodeTrig;
-        T = SA.getStimDiodeTrig;
-        stimTable.stimStartT(i) = T.diodeTriggers(1);
-        stimTable.stimEndT(i) = T.diodeTriggers(end);
-        s = getStimSham(SA,[],1,1);
-    end 
+    stimTrigs = SA.getStimTriggers;
+    stimTable.stimStartT(i) = stimTrigs(1);
+    stimTable.stimEndT(i) = stimTrigs(end);
+    s = getStimSham(SA);
+  
+   
     
     ACfull =  SA.getDelta2BetaAC;
     stimTable.sleepStartT(i) = ACfull.tStartSleep;
@@ -391,7 +381,7 @@ fprintf('Head angles avgrages for this recordings: %f,%f, %f, %f',[HeadAngleAvg(
 
 end
 %
-fileName = [analysisFolder filesep 'LMdataR.mat'];
+fileName = [analysisFolder filesep 'LMDataAll.mat'];
 maniRecs = SA.recTable.Mani==4; % taking all the rows with manipulation
 LMData = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov'});  % creating new table
 LMData = [LMData table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...

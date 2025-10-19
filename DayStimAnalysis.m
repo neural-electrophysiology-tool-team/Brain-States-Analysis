@@ -1,0 +1,154 @@
+%% Day Time Stimulations
+
+SA = sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+SA.setCurrentRecording('Animal=PV106,recNames=DayStim1');
+trigs = SA.getStimTriggers;
+SA.getDelta2BetaRatio;
+DB = SA.getDelta2BetaRatio;
+%%
+figure;
+plot(DB.t_ms/1000 ,DB.bufferedDelta2BetaRatio);
+xline(trigs,'red')
+%% plot all trials in tiles
+SA = sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+dayTimeTrials=contains(SA.recTable.recNames,'DayStim');
+dayTimeTable = SA.recTable(dayTimeTrials,:);
+figure;
+tiledlayout('flow'); 
+for i = 1:height(dayTimeTable)
+    if dayTimeTable.Exclude(i) ==1
+        continue
+    end
+    recName = ['Animal=' dayTimeTable.Animal{i} ',recNames=' dayTimeTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    % SA.getStimDiodeTrig('overwrite',1);
+    trigs = SA.getStimTriggers;
+    % SA.getDelta2BetaRatio;
+    DB = SA.getDelta2BetaRatio;
+    dayTimeTable.DB(i) = DB;
+    dayTimeTable.trigs(i) = trigs;
+    
+    %plot
+    nexttile; 
+    plot(DB.t_ms/1000 ,DB.bufferedDelta2BetaRatio);
+    if ~isempty(trigs)
+        xline(trigs/1000,'red')
+    end
+    title(recName);ylabel('\delta/\beta');xlabel('Time[s]');
+end
+
+%% fix the ones without triggers.
+SA.setCurrentRecording('Animal=PV106,recNames=DayStim3');
+SA.currentDataObj.analogChannelNames
+SA.getStimDiodeTrig('overwrite',1,'plotFig',1);
+SA.getStimTriggers;
+
+%% mean delta to beta according to color
+SA = sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+dayTimeTrials=contains(SA.recTable.recNames,'DayStim');
+dayTimeTable = SA.recTable(dayTimeTrials,["Animal","recNames","Remarks","defaulLFPCh"]);
+dayTimeTable.DB = cell(height(dayTimeTable),1);
+dayTimeTable.LFP = cell(height(dayTimeTable),1);
+dayTimeTable.LFP_t = cell(height(dayTimeTable),1);
+
+pre = 120000; % 120 sec in ms
+post = 120000; % 120 sec in ms
+%%
+% recList = strcat('Animal=', string(dayTimeTable.Animal), ',recNames=', string(dayTimeTable.recNames))
+for i =16:17%21:height(dayTimeTable)
+    recName = ['Animal=' dayTimeTable.Animal{i} ',recNames=' dayTimeTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    trigs = SA.getStimTriggers;
+    tStart = trigs(1)-pre;
+    tEnd = (trigs(end)+post);
+    win = tEnd-tStart;
+
+    curDB = SA.getDelta2BetaRatio;
+    pTmp = curDB.t_ms>tStart & curDB.t_ms<tEnd;
+    dayTimeTable.DB{i} = curDB.bufferedDelta2BetaRatio(pTmp);
+    
+    LFPch = dayTimeTable.defaulLFPCh(i);
+    [LFP,LFP_t] = SA.currentDataObj.getData(LFPch,tStart,win);
+    dayTimeTable.LFP{i} = LFP;
+    dayTimeTable.LFP_t{i} = LFP_t;
+
+end
+
+%%
+analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
+
+save([analysisFolder filesep 'dayTimeTable.mat'],'dayTimeTable','-mat')
+
+%% plot DB
+f=figure;
+tiledlayout('flow'); 
+stimType = ["blue","green","red","white"];
+numType = length(stimType);
+pre = 120000; % 120 sec in ms
+post = 120000; % 120 sec in ms
+x=linspace((-pre/1000),435-(post/1000)-1,435);
+t_x = [linspace(0,40,8),linspace(160,200,8)];
+for i=1:numType
+    nexttile;
+    type = stimType(i);
+    curTrials= dayTimeTable(contains(dayTimeTable.Remarks,type),:);
+    meandata=[];
+    for j=1:height(curTrials)
+        % plot the delta 2 beta
+        data = curTrials.DB{j};
+        plot(x,data(1:length(x)),'Color',[0.5 0.5 0.5]); hold on;
+        meandata = [meandata;data(1:length(x))'];
+    end
+    hold on
+    meanDB = mean(meandata,1,'omitmissing');
+    plot(x,meanDB,'k','LineWidth',1)
+    xline(t_x,'r');
+    xlim([x(1),x(end)])
+    title(type);xlabel('Time[s]');ylabel('\delta/\beta')
+
+end
+
+% savefigure
+set(f,'PaperPosition',[1 5 6 4]);
+fileName=[analysisFolder filesep 'dayTimeStimDB'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+%% plot Raw
+f=figure;
+tiledlayout('flow'); 
+stimType = ["blue","green","red","white"];
+numType = length(stimType);
+pre = 120000; % 120 sec in ms
+post = 120000; % 120 sec in ms);
+t_x = [linspace(0,40,8),linspace(160,200,8)];
+ds=1000;
+len = 435*20000/ds;
+x=linspace((-pre/1000),435-(post/1000)-1,len);
+
+
+for i=1:numType
+    nexttile;
+    type = stimType(i);
+    curTrials= dayTimeTable(contains(dayTimeTable.Remarks,type),:);
+    meandata=[];
+    for j=1:height(curTrials)
+        % plot the delta 2 beta
+        data = downsample(squeeze(curTrials.LFP{j}),ds);
+        data_t = downsample(curTrials.LFP_t{j},ds);
+        plot(x,data(1:len),'Color',[0.5 0.5 0.5]); hold on;
+        meandata = [meandata;data(1:len)];
+    end
+    hold on
+    meanDB = mean(meandata,1,'omitmissing');
+    plot(x,meanDB,'k','LineWidth',1)
+    xline(t_x,'r');
+    xlim([x(1),x(end)]);
+    title(type);xlabel('Time[s]');ylabel('uV')
+
+end
+
+% % savefigure
+set(f,'PaperPosition',[1 1 4 2]);
+fileName=[analysisFolder filesep 'dayTimeStimRaw'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+

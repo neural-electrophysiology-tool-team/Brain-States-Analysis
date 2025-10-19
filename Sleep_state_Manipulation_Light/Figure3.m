@@ -412,7 +412,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% Figure 3E
-load([analysisFolder filesep 'LMData.mat'])
+% load([analysisFolder filesep 'LMData.mat'])
 headAngleSD = LMData.headAngleSD;
 
 % plot SDs
