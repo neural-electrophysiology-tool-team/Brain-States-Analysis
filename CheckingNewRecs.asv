@@ -1,5 +1,5 @@
 %% check new nights recording:
-SA = sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+SA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 SA.setCurrentRecording('Animal=PV143,recNames=Night41');
 SA.getDelta2BetaRatio;
 SA.getDelta2BetaAC;
@@ -254,5 +254,5 @@ end
 indskilo = subset2.kilosort==0&subset2.spikes==1&~strcmp(subset2.Animal,'PV153');
 recsFolders = subset2.folder(indskilo);
 folders = string(recsFolders);          % convert to string array
-X = 17;
-folders = "W:/" + extractAfter(folders, X) + "/spikeSorting/ch1_32.bin";
+X = 16;
+folders = "W:/" + extractAfter(folders, X) + "/spikeSo";
