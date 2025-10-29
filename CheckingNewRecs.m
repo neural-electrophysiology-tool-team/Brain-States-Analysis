@@ -186,12 +186,26 @@ figure; plot(diff(t_clean),'.');title('after cleanup')
 
 
 
-%% run Eye movement analysis
-SA.setCurrentRecording('Animal=PV106,recNames=Night26');
-SA.plotDelta2BetaSlidingAC;
-% SA.getEyeMovements('startTime',3*60*60,'endTime',10*60*60,'minTrackingPoints',25,'overwrite',1,'saveTrackingVideo',1);
+%% run Eye movement analysis #1
+SA.setCurrentRecording('Animal=PV106,recNames=Night10');
+SA.plotDelta2BetaSlidingAC(stim=1);
+SA.getEyeMovements('startTime',3*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
 trigs = SA.getStimTriggers;
-SA.getEyeMovements('startTime',trigs(1)/1000,'endTime',(trigs(end)/1000)+(30*60),'minTrackingPoints',25,'overwrite',1,'saveTrackingVideo',1);
+% SA.getEyeMovements('startTime',trigs(1)/1000,'endTime',(trigs(end)/1000)+(30*60),'minTrackingPoints',25,'overwrite',1, 'opticFlowNoiseThreshold',0.002);
+SA.getCameraTriggers;
+SA.getSyncedDBEyeMovements('digitalVideoSyncCh',7,'useRobustFloatingAvg',0,'overwrite',1);
+SA.plotSyncedDBEyeMovementsRaster
+%% run Eye movement analysis #2
+SA.setCurrentRecording('Animal=PV106,recNames=Night14');
+% SA.plotDelta2BetaSlidingAC(stim=1);
+SA.getEyeMovements('startTime',3*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
+trigs = SA.getStimTriggers;
+% SA.getEyeMovements('startTime',trigs(1)/1000,'endTime',(trigs(end)/1000)+(30*60),'minTrackingPoints',25,'overwrite',1, 'opticFlowNoiseThreshold',0.002);
+SA.getCameraTriggers;
+SA.getSyncedDBEyeMovements('digitalVideoSyncCh',7,'useRobustFloatingAvg',0,'overwrite',1);
+SA.plotSyncedDBEyeMovementsRaster
+
+
 
 %% run behavioral:
 SA.setCurrentRecording('Animal=PV106,recNames=Night16');
@@ -251,8 +265,9 @@ for i = 1:length(recList)
 end
 
 %%
-indskilo = subset2.kilosort==0&subset2.spikes==1&~strcmp(subset2.Animal,'PV153');
+indskilo = subset2.kilosort==0&subset2.spikes==1&strcmp(subset2.Animal,'PV153');
 recsFolders = subset2.folder(indskilo);
 folders = string(recsFolders);          % convert to string array
 X = 17;
 folders = "W:/" + extractAfter(folders, X) + "/spikeSorting/ch1_32.bin";
+folders = replace(folders,'/','\');
