@@ -5,7 +5,7 @@
 function data = getStimSham(SA, overwrite)
     % SA is an instance of sleep analysis class,with a record currently
     % selected
-    if nargin ==2 
+    if nargin <2 
         overwrite = 0;
     end
     %check if analysis was already done

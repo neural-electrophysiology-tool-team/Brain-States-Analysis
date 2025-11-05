@@ -187,7 +187,7 @@ figure; plot(diff(t_clean),'.');title('after cleanup')
 
 
 %% run Eye movement analysis #1
-SA.setCurrentRecording('Animal=PV106,recNames=Night10');
+SA.setCurrentRecording('Animal=PV153,recNames=Night13');
 SA.plotDelta2BetaSlidingAC(stim=1);
 SA.getEyeMovements('startTime',3*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
 trigs = SA.getStimTriggers;
@@ -196,9 +196,9 @@ SA.getCameraTriggers;
 SA.getSyncedDBEyeMovements('digitalVideoSyncCh',7,'useRobustFloatingAvg',0,'overwrite',1);
 SA.plotSyncedDBEyeMovementsRaster
 %% run Eye movement analysis #2
-SA.setCurrentRecording('Animal=PV106,recNames=Night14');
-% SA.plotDelta2BetaSlidingAC(stim=1);
-SA.getEyeMovements('startTime',3*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
+SA.setCurrentRecording('Animal=PV153,recNames=Night15');
+SA.plotDelta2BetaSlidingAC(stim=1);
+SA.getEyeMovements('startTime',4*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
 trigs = SA.getStimTriggers;
 % SA.getEyeMovements('startTime',trigs(1)/1000,'endTime',(trigs(end)/1000)+(30*60),'minTrackingPoints',25,'overwrite',1, 'opticFlowNoiseThreshold',0.002);
 SA.getCameraTriggers;
@@ -221,9 +221,12 @@ SA.plotSyncedDBEyeMovementsRaster;
 %% spike sorting - revision
 SA=sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
-% load([analysisFolder filesep 'stimTableAll.mat'])
+load([analysisFolder filesep 'stimTableAll.mat'])
 
 recInd = (contains(SA.recTable.Remarks,'white')| contains(SA.recTable.Remarks,'DayTime')) & SA.recTable.Mani >0;% SA.recTable.spikes ==1
+recI = (contains(stimTable.Remarks,'white')| contains(stimTable.Remarks,'DayTime')); %& SA.recTable.Mani >0;% SA.recTable.spikes ==1
+subsetStim = stimTable(recI,["Animal","recNames","Remarks"]);
+
 animals =SA.recTable.Animal(recInd);recnames = SA.recTable.recNames(recInd);
 subset = SA.recTable(recInd,["Animal","recNames","Remarks"]);
 recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);

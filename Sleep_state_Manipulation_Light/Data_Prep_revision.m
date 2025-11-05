@@ -6,8 +6,8 @@
 % this part goes over all the records in SA.
 %  for every recoerd that is tagged (1/2/3..) 
 SA=sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
-maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
-% maniRecs = SA.recTable.Mani==4; % taking all the rows with manipulation
+% maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
+maniRecs = SA.recTable.Mani==5; % taking all the rows with manipulation
 stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage','stimDiodeCh'});  % creating new table
 stimTable.stimStartT = zeros(height(stimTable),1);
 stimTable.stimEndT = zeros(height(stimTable),1);
@@ -36,8 +36,7 @@ for i = 1:height(stimTable)
     stimTable.stimEndT(i) = stimTrigs(end);
     s = getStimSham(SA);
   
-   
-    
+       
     ACfull =  SA.getDelta2BetaAC;
     stimTable.sleepStartT(i) = ACfull.tStartSleep;
     stimTable.sleepEndT(i) = ACfull.tEndSleep;
@@ -380,9 +379,9 @@ for i = 1:height(stimTable)
 fprintf('Head angles avgrages for this recordings: %f,%f, %f, %f',[HeadAngleAvg(i,:)])
 
 end
-%
+%%
 fileName = [analysisFolder filesep 'LMDataAll.mat'];
-maniRecs = SA.recTable.Mani==4; % taking all the rows with manipulation
+maniRecs = SA.recTable.Mani==5; % taking all the rows with manipulation
 LMData = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov'});  % creating new table
 LMData = [LMData table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,HeadAngleAvg,headAngleSD,...
                'VariableNames', {'LM_DBts','LMwake', 'LMpre', 'LMstimbin','LMpost', ...
@@ -476,3 +475,32 @@ for i = 1:length(recList)
     binaryileName = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'ch1_32.bin'];
     SA.currentDataObj.convert2Binary(binaryileName);
 end
+
+%% spikeSorting
+% convert to tIc:
+spikesInd = stimTable.spikes ==1;
+animals =stimTable.Animal(spikesInd);recnames = stimTable.recNames(spikesInd);
+recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
+for i = 1:length(recList)
+    SA.setCurrentRecording(recList{i});
+    tIcPath = [SA.currentDataObj.recordingDir '/spikeSorting/kilosort'];
+    tIc = SA.currentDataObj.convertPhySorting2tIc(tIcPath);
+end
+%% run spikeRate:
+% One of them is: BuildBurstMatrix
+trigs = SA.getStimTriggers;
+bin=1000; 
+pre = 20*1000; %ms
+startTimes = round(trigs-pre);
+width = 150*1000; %150 sec in ms.
+
+[M]=BuildBurstMatrix(tIc.ic,round(tIc.t/bin),round(startTimes/bin),round(width/bin));
+% M is a matrix of size trials x Neurons x width
+% Burst window is from [startTimes(i) , startTimes(i)+width]
+% Where all variables are ROUNDED and given in the same units
+% Class is the variable class (optional): 1='uint8',2='double',3='logical' (Default 2))
+% If you want the bin size to be different than 1ms you should use:
+% [M]=BuildBurstMatrix(ic,round(t/bin),round(startTimes/bin),round(width/bin));
+% 
+figure;
+plot(squeeze(M(1,1,:)))

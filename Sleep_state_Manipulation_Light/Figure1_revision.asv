@@ -74,36 +74,31 @@ print(fileName,'-dpdf','-r300');
 %% Figure 1C+E
 % plot trace + raster:
 
-j = 21; %trial number example:
+j = 16; %trial number example:
 
 pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
 dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
 [lfp,lfp_t] = SA.currentDataObj.getData(ch,firstTrig(j)-pre,pre+post);
     
+% plot trace + raster:
+f = figure;
+ax1=subplot(2,1,1);
+plot(lfp_t/1000,squeeze(lfp),'k'); hold on;
+curstims = (trial(j,:) -trial(j,1)) +pre ;
+xline(curstims/1000,'r','LineWidth',1.5)
+plot(dbTmp,'Color','b','LineWidth',2)
+sgtitle(sprintf('Trial num: %i',j));
+hold off;
+
 % get rasterdata
+% add a raster plot according to stimulation
+% Load spike times and cluster IDs (adjust file names as needed)
 curPhyFoler = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort'];
 tIc = SA.currentDataObj.convertPhySorting2tIc(curPhyFoler);
 bin=100; %ms
 startTime = firstTrig(j)-pre;
 width = pre+post; %150 sec in ms.
 [M]=BuildBurstMatrix(tIc.ic,round(tIc.t/bin),round(startTime/bin),round(width/bin));
-
-% plot trace + raster:
-f = figure;
-ax1=subplot(2,1,1);
-t = linspace(-pre/1000,post/1000,length(lfp_t));
-plot(t,squeeze(lfp),'k'); hold on;
-curstims = (trial(j,:) -trial(j,1));
-xline(curstims/1000,'r','LineWidth',1.5)
-tdb = linspace(-pre/1000,post/1000,length(dbTmp));
-yyaxis right
-plot(tdb,dbTmp,'Color','b','LineWidth',2), axis
-ylim([-150 150]);                   % limit for left axis
-ax = gca;
-ax.YColor = 'b';
-sgtitle(sprintf('Trial num: %i',j));
-hold off;
-
 % Plot RASTER!! spikes for each cluster, for each trig time!
 ax2=subplot(2,1,2);
 hold on;
@@ -111,7 +106,7 @@ spikemat = squeeze(M);
 Fs = 1000/bin; % sampling rate (150000 samples = 150 seconds ? Fs = 1000 Hz)
 
 nCols = size(spikemat,2);
-tEdges = linspace(-pre/1000,post/1000,nCols+1);
+tEdges = linspace(0,(pre+post)/1000,nCols+1);
 h2 = imagesc(tEdges, 1:size(spikemat,1), spikemat); box on;
 colormap(flipud(gray));   % flip so 0 is white, max is black
 axis xy;
@@ -122,11 +117,11 @@ set(h2, 'Interpolation','nearest');   % ?? Key line: prevents blending between p
 xlabel('Time (s)');
 ylabel('unit #');
 % ploting the stimulatiis
-curstims = trial(j,:) -trial(j,1);
+curstims = trial(j,:) -trial(j,1) +pre ;
 xline(curstims/1000,'r','LineWidth',1.5)
 linkaxes([ax1,ax2],'x')
-xlim([-pre/1000-0.5,post/1000]);
-% ylim([0.5 size(spikemat,1)+0.7])
+xlim([-0.5 (pre+post)/1000]);
+ylim
 
 % % save figure:
 % set(f,'PaperPositionMode','auto');
