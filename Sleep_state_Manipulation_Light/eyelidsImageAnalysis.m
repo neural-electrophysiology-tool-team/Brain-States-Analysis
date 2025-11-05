@@ -4,8 +4,27 @@
 % from the image. let it be calculate from a specific area. 
 % save the light intensity for each exposure and filter.
 % calculate the differences. 
+
+% calculate for each animal indvidualy
 AnimalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption/PV88';
 results = analyzeTiffFolders(AnimalFolder);
+%% analysis:
+Animals = {'PV106','PV88','PV143'};
+generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
+filterLabels = ["BF","DAPI-460","GFP-525","mCherry-630","iRFP-700","YFP-540"];
+
+results = getDataFromAll(generalFolder,Animals);
+
+plotIntensityRaw(results, generalFolder);
+plotExposure2Intensity(results,filterLabels,generalFolder)
+plotReltiveIntensity(results,filterLabels,generalFolder); %same - without No eyelid
+plotRelativeIntensity(results,filterLabels,generalFolder) % with noEyelid
+results = calcTransmision(results,generalFolder);
+plotRelativeTransmition(results,filterLabels, generalFolder)
+
+%% functions:
+
+
 function resultsTable = analyzeTiffFolders(mainFolder)
 % analyzeTiffFolders - Process TIFF images with noise correction and ROI analysis
 %
@@ -190,56 +209,59 @@ function resultsTable = analyzeTiffFolders(mainFolder)
 end
 
 
-%% Get the results together and plot:
-Animals = {'PV106','PV88','PV143'};
-generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
-results = [];
-for i = 1:length(Animals)
-    curFolder = [generalFolder '/' Animals{i} '/results.csv'];
-    curResults = readtable(curFolder);
-    results = [results;curResults];
+%% Get the results from all animals:
+
+function results = getDataFromAll(generalFolder,Animals)
+    results = [];
+    for i = 1:length(Animals)
+        curFolder = [generalFolder '/' Animals{i} '/results.csv'];
+        curResults = readtable(curFolder);
+        results = [results;curResults];
+    end
+    % update the exposure to numbers not str
+    results.Exposure = cellfun(@(x) str2double(regexp(x, '\d+', 'match', 'once')), results.Exposure);
+    results.Type(strcmp(results.Type,'noEyelids'))={'noEyelid'};
+    % calculate relative intesity to exposure
+    results.ExpMulti = 5 ./ results.Exposure;
+    results.ExpRelaInten = results.ROI_Intensity.*results.ExpMulti;
+    %update the filter number for images with no Brightfield
+    noBFidx = contains(results.BF,'no');
+    results.Filter(noBFidx) = results.Filter(noBFidx)+1;
+
+
+    %save all results
+    outputFile = fullfile(generalFolder, 'results.csv');
+    writetable(results, outputFile);
 end
 
-results.Exposure = cellfun(@(x) str2double(regexp(x, '\d+', 'match', 'once')), results.Exposure);
-results.Type(strcmp(results.Type,'noEyelids'))={'noEyelid'};
-results.ExpMulti = 5 ./ results.Exposure;
-results.ExpRelaInten = results.ROI_Intensity.*results.ExpMulti;
-
-noBFidx = contains(results.BF,'no');
-results.Filter(noBFidx) = results.Filter(noBFidx)+1;
-
-
-%save all results
-generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
-outputFile = fullfile(generalFolder, 'results.csv');
-
-writetable(results, outputFile);
-
-
-%% after relt
-filterLabels = ["BF","DAPI","GFP","mCherry","iRFP","YFP"];
-
-figure;
-idx = ~contains(results.Type,'no');
-         
-subData = results(idx, :);
-plot(subData.Filter,subData.ExpRelaInten,'.'); hold on; 
-idx = ~contains(results.BF, 'no') & ...
-    contains(results.Type,'no');
-         
-% subData2 = results(idx, :);
-% plot(subData2.Filter,subData2.ExpRelaInten,'.',color='red');    
-
-ylabel('reltive intesity (to exposure)'),xticks([1:6]);
-xticklabels(filterLabels)
-legend("Eyelids","noEyelids"), xlim([0.7,6.3])
+%% plot relative intensity
+function plotReltiveIntensity(results, filterLabels,generalFolder)
+    figure;
+    idx = ~contains(results.Type,'no');
+    
+    subData = results(idx, :);
+    plot(subData.Filter,subData.ExpRelaInten,'.'); hold on;
+    idx = ~contains(results.BF, 'no') & ...
+        contains(results.Type,'no');
+    
+    subData2 = results(idx, :);
+    plot(subData2.Filter,subData2.ExpRelaInten,'.',color='red');
+    
+    ylabel('reltive intesity (to exposure)'),xticks([1:6]);
+    xticklabels(filterLabels)
+    legend("Eyelids","noEyelids"), xlim([0.7,6.3])
+    yline(0,'--',Color=[0.5 0.5 0.5])
+    %save figure:
+    saveas(gcf, fullfile(generalFolder, 'relativeIntensity.png'));
+    fprintf('Plots saved to: %s\n', generalFolder);
+end
 %% first, check if the exposure is now linear
 
 % types = unique(results.Type);
 % Animals = unique(results.Animal);
-generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
-plotResults(results, generalFolder);
-function plotResults(resultsTable, mainFolder)
+
+
+function plotIntensityRaw(resultsTable, mainFolder)
     % plotResults - Create subplots for each animal-BF-type combination
     %
     % Each subplot shows different exposures with Filter on x-axis and 
@@ -303,70 +325,73 @@ function plotResults(resultsTable, mainFolder)
     
     % Save figure
     saveas(gcf, fullfile(mainFolder, 'ROI_Intensity_Plots.png'));
-    saveas(gcf, fullfile(mainFolder, 'ROI_Intensity_Plots.fig'));
+    % saveas(gcf, fullfile(mainFolder, 'ROI_Intensity_Plots.fig'));
     fprintf('Plots saved to: %s\n', mainFolder);
 end
 %% plot exposure to intensity for each wavelength:
-filterLabels = ["BF","DAPI-460","GFP-525","mCherry-630","iRFP-700","YFP-540"];
-uniqueExposures = unique(results.Exposure);
-colors = parula(length(uniqueExposures));  % or parula(8), hsv(8), etc.
-figure;
-for i = 1:length(filterLabels)
-    % get the sub set of data:
-    idx= results.Filter ==i &...
-        ~contains(results.Type,'noEyelid');
-    subData=results(idx,:);
 
-    subplot(3,2,i)
-    plot(subData.Exposure,subData.ROI_Intensity,'k-*'); hold on;
-    %plot regresion
-    p = polyfit(subData.Exposure,subData.ROI_Intensity,1);
-    yfit = polyval(p,subData.Exposure);
-    plot(subData.Exposure,yfit,'r-',LineWidth=1.5)
-    xlim([-5 1005])
-    title(filterLabels(i))
-    ylabel('Intensity');xlabel('Exposure (ms)')
+
+function plotExposure2Intensity(results,filterLabels,generalFolder)
+    uniqueExposures = unique(results.Exposure);
+    colors = parula(length(uniqueExposures));  % or parula(8), hsv(8), etc.
+    figure;
+    for i = 1:length(filterLabels)
+        % get the sub set of data:
+        idx= results.Filter ==i &...
+            ~contains(results.Type,'noEyelid');
+        subData=results(idx,:);
+    
+        subplot(3,2,i)
+        plot(subData.Exposure,subData.ROI_Intensity,'k-*'); hold on;
+        %plot regresion
+        p = polyfit(subData.Exposure,subData.ROI_Intensity,1);
+        yfit = polyval(p,subData.Exposure);
+        plot(subData.Exposure,yfit,'r-',LineWidth=1.5)
+        xlim([-5 1005])
+        title(filterLabels(i))
+        ylabel('Intensity');xlabel('Exposure (ms)')
+    
+    end
+       
+        saveas(gcf, fullfile(generalFolder, 'Intensity-Exposure.png'));
+        % saveas(gcf, fullfile(mainFolder, 'ROI_Intensity_Plots.fig'));
+        fprintf('Plots saved to: %s\n', generalFolder);
+end
+%% plot reltive intesity to exposure
+function plotRelativeIntensity(results,filterLabels,generalFolder)
+    figure;
+    idx = ~contains(results.BF, 'no') & ...
+        ~contains(results.Type,'no');
+             
+    subData = results(idx, :);
+    plot(subData.Filter,subData.ExpRelaInten,'.'); hold on; 
+    idx = ~contains(results.BF, 'no') & ...
+        contains(results.Type,'no');
+    yline(0,'--',Color=[0.5 0.5 0.5])
+
+    % 
+    % subData2 = results(idx, :);
+    % plot(subData2.Filter,subData2.ExpRelaInten,'.',color='red');    
+    
+    ylabel('reltive intesity (to exposure)'),xticks([1:6]);
+    xticklabels(filterLabels)
+    legend("Eyelids","noEyelids"), xlim([0.7,6.3])
+    saveas(gcf, fullfile(generalFolder, 'relativeIntensity.png'));
+        % saveas(gcf, fullfile(mainFolder, 'ROI_Intensity_Plots.fig'));
+        fprintf('Plots saved to: %s\n', generalFolder);
 
 end
-
-
-    saveas(gcf, fullfile(generalFolder, 'Intensity-Exposure.png'));
-    % saveas(gcf, fullfile(mainFolder, 'ROI_Intensity_Plots.fig'));
-    fprintf('Plots saved to: %s\n', generalFolder);
-
-%% plot reltive intesity to exposure
-filterLabels = ["BF","DAPI-460","GFP-525","mCherry-630","iRFP-700","YFP-540"];
-
-
-figure;
-idx = ~contains(results.BF, 'no') & ...
-    ~contains(results.Type,'no');
-         
-subData = results(idx, :);
-plot(subData.Filter,subData.ExpRelaInten,'.'); hold on; 
-idx = ~contains(results.BF, 'no') & ...
-    contains(results.Type,'no');
-% 
-% subData2 = results(idx, :);
-% plot(subData2.Filter,subData2.ExpRelaInten,'.',color='red');    
-
-ylabel('reltive intesity (to exposure)'),xticks([1:6]);
-xticklabels(filterLabels)
-legend("Eyelids","noEyelids"), xlim([0.7,6.3])
-
 
 
 %% calculate the relative light trasferation. 
 
-% function plotRelativeTransmition(resultsTable, resultsFolder)
+function results = calcTransmision(results,generalFolder)
     results.transmision = NaN(height(results),1);
     % Get unique animal-BF-type combinations
-    uniqueCombos = unique(resultsTable(:, {'Animal', 'BF','Filter'}), 'rows');
+    uniqueCombos = unique(results(:, {'Animal', 'BF','Filter'}), 'rows');
     numCombos = height(uniqueCombos);
-
     % calculate for each combination
     for i = 1:numCombos
-        
         animal = uniqueCombos.Animal{i};
         bf = uniqueCombos.BF{i};
         filter = uniqueCombos.Filter(i);
@@ -384,50 +409,51 @@ legend("Eyelids","noEyelids"), xlim([0.7,6.3])
               contains(results.Type,'no');
         %calculate relative transmition
         curbasline = results.ExpRelaInten(idxnoEye);
-        results.transmision(idxEye) = results.ExpRelaInten(idxEye) / curbasline;
-  
-        
+        results.transmision(idxEye) = results.ExpRelaInten(idxEye) / curbasline;       
     end
 
- generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
-outputFile = fullfile(generalFolder, 'results.csv');
-writetable(results, outputFile);
+    generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
+    outputFile = fullfile(generalFolder, 'results.csv');
+    writetable(results, outputFile);
+
+end
 %% plot reltive tranmition
-filterLabels = ["BF","DAPI-460","GFP-525","mCherry-630","iRFP-700","YFP-540"];
-Animals = unique(results.Animal);
-markers = {'s','o','*'};
-uniqueExposures = unique(results.Exposure);
-% colors = lines(length(uniqueExposures));
-colors = parula(length(uniqueExposures));  % or parula(8), hsv(8), etc.
-% colororder(colors);
-figure;
-for i =1:length(Animals)
-    idx = ~contains(results.Type,'no')&...
-        strcmp(results.Animal,Animals(i));
-    subData = results(idx,:);        
-    
+
+function plotRelativeTransmition(results,filterLabels, generalFolder)
+    Animals = unique(results.Animal);
+    % markers = {'s','o','*'};
+    uniqueExposures = unique(results.Exposure);
+    % colors = lines(length(uniqueExposures));
+    colors = parula(length(uniqueExposures));  % or parula(8), hsv(8), etc.
+    % colororder(colors);
+    figure;
+    for i =1:length(Animals)
+        idx = ~contains(results.Type,'no')&...
+            strcmp(results.Animal,Animals(i));
+        subData = results(idx,:);        
         
-        % Plot each exposure as a separate color
-        hold on;
-        curUnique=unique(subData.Exposure);
-        for j = 1:length(curUnique)
-            exposure = uniqueExposures(j);
-            expIdx = subData.Exposure == exposure;
-            expData = subData(expIdx, :);
-            expIndices = ismember(uniqueExposures, exposure);
-            expColor = colors(expIndices, :);
+            
+            % Plot each exposure as a separate color
+            hold on;
+            curUnique=unique(subData.Exposure);
+            for j = 1:length(curUnique)
+                exposure = uniqueExposures(j);
+                expIdx = subData.Exposure == exposure;
+                expData = subData(expIdx, :);
+                expIndices = ismember(uniqueExposures, exposure);
+                expColor = colors(expIndices, :);
+        
+                plot(expData.Filter,expData.transmision,'.',Color=expColor,MarkerSize=15); hold on;
+            end
     
-            plot(expData.Filter,expData.transmision,'.',Color=expColor,MarkerSize=15); hold on;
-        end
-
-
-end         
-
-ylabel('% Transmition'),xticks([1:6]);
-xticklabels(filterLabels)
-legend(num2str(uniqueExposures),Location="northeast"), xlim([0.7,6.3])
-ylim([0,0.05])
-% save image
-generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
-outputFile = fullfile(generalFolder, 'Tranmission.png');
-saveas(gcf, outputFile);
+    
+    end         
+    
+    ylabel('% Transmition'),xticks([1:6]);
+    xticklabels(filterLabels)
+    legend(num2str(uniqueExposures),Location="northeast"), xlim([0.7,6.3])
+    ylim([0,0.05])
+    % save image
+    outputFile = fullfile(generalFolder, 'Tranmission.png');
+    saveas(gcf, outputFile);
+end
