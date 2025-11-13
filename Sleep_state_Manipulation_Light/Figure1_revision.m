@@ -21,7 +21,7 @@ uniqueAnimals = unique(stimTable.Animal);
 % parameters calculations for next plots:
 % single traces from one night:
 
-i = 82; % set the recording to PV161,N18
+i = 82; % set the recording to PV153,N11
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 DB = SA.getDelta2BetaRatio;
@@ -73,8 +73,7 @@ print(fileName,'-dpdf','-r300');
 
 %% Figure 1C+E
 % plot trace + raster:
-
-j = 21; %trial number example:
+j = 19; %trial number example:
 
 pTmp=find(DB.t_ms>(firstTrig(j)-pre) & DB.t_ms<(firstTrig(j)+post));
 dbTmp=DB.bufferedDelta2BetaRatio(pTmp);
@@ -94,11 +93,11 @@ ax1=subplot(2,1,1);
 t = linspace(-pre/1000,post/1000,length(lfp_t));
 plot(t,squeeze(lfp),'k'); hold on;
 curstims = (trial(j,:) -trial(j,1));
-xline(curstims/1000,'r','LineWidth',1.5)
+xline(curstims/1000,'r','LineWidth',1.5);
 tdb = linspace(-pre/1000,post/1000,length(dbTmp));
 yyaxis right
-plot(tdb,dbTmp,'Color','b','LineWidth',2), axis
-ylim([-150 150]);                   % limit for left axis
+plot(tdb,dbTmp,'Color','b','LineWidth',2);
+ylim([-200 200]);                   % limit for left axis
 ax = gca;
 ax.YColor = 'b';
 sgtitle(sprintf('Trial num: %i',j));
@@ -108,6 +107,7 @@ hold off;
 ax2=subplot(2,1,2);
 hold on;
 spikemat = squeeze(M);
+%normelization:
 Fs = 1000/bin; % sampling rate (150000 samples = 150 seconds ? Fs = 1000 Hz)
 
 nCols = size(spikemat,2);
@@ -115,7 +115,8 @@ tEdges = linspace(-pre/1000,post/1000,nCols+1);
 h2 = imagesc(tEdges, 1:size(spikemat,1), spikemat); box on;
 colormap(flipud(gray));   % flip so 0 is white, max is black
 axis xy;
-clim([0 max(spikemat(:))]);%box on;
+% clim([0 max(spikemat(:))]);%box on;
+clim([0 1]);
 % colorbar;
 set(h2, 'Interpolation','nearest');   % ?? Key line: prevents blending between pixels
 
@@ -129,9 +130,9 @@ xlim([-pre/1000-0.5,post/1000]);
 % ylim([0.5 size(spikemat,1)+0.7])
 
 % % save figure:
-% set(f,'PaperPositionMode','auto');
-% fileName=[analysisFolder filesep 'singleTrialRasterPV161N18t16'];
-% print(fileName,'-depsc','-vector');
+set(f,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'singleTrialRasterPV153N33t32'];
+print(fileName,'-depsc','-vector');
 
 %% Figure 1D
 i = 82;
@@ -142,7 +143,7 @@ load(stimShamFile); %load data
     
 trialsham = height(StimDBSham)-70+1;
     
-colorLim=[0 200];
+colorLim=[0 300];
 f=figure;
 subplot(4,2,[1:2:6]);
 imagesc(StimDBSham(trialsham:end,:),colorLim);
@@ -172,97 +173,192 @@ saveas (f, fileName);
 %% Figure 1F
 
 % Plot Spike rates avrages for all nights:
-    % 3 subplots: 1 unit, all units same night, all units
-    % night for the single unit:
-    i = 22;
-    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-    SA.setCurrentRecording(recName);
-    curPhyFoler = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort4'];
-    spikeRateFile = [curPhyFoler filesep 'spikeRateAll.mat'];
-    load(spikeRateFile,"spikeRateAll","spikeRateT","allClusters","OL");
-    % all nights, all units:
-    allnightsfilename = [analysisFolder filesep 'allNightsSpikingRate.mat'];
-    load(allnightsfilename,"AllNightsUnits","spikeRecs","xPositions")
+% 2 subplots: 1 unit, all units
+% night for the single unit:
+i = 56;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+tIcPath= [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'Kilosort'];
+tIc = SA.currentDataObj.convertPhySorting2tIc(tIcPath);
 
-unitMean = mean(spikeRateAll,3);
-bestU = 48;
-bestUind = find(allClusters==bestU);
-% stimDiff = mean(mean(diff(trial,[],2)));
-% xPositions = (pre + (0:7)*(stimDiff))/OL;  % Example positions for lines
+% parameters:
+bin=1000;
+pre = 20*1000; %ms
+width = 150*1000; %150 sec in ms.
+stims = SA.getStimTriggers;
+trial = reshape(stims,[8,length(stims)/8])';
+firstTrig=stims(1:8:end-2);
+startTimes = round(firstTrig-pre);
+curstims = ((trial(1,:) -trial(1,1)))/1000;
+[M]=BuildBurstMatrix(tIc.ic,round(tIc.t/bin),round(startTimes/bin),round(width/bin));
+meanT = squeeze(mean(M,1,'omitnan'));
+% all nights, all units:
+meanAllRecsPath = [analysisFolder filesep 'meanSpikeRate1000msbin.mat'];
+load(meanAllRecsPath)
+%% get unit annotation
+labelsAll = [];
+spikesInd = stimTable.spikes ==1& (strcmp(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'));
+animals =stimTable.Animal(spikesInd);recnames = stimTable.recNames(spikesInd);
+recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
+
+for i = 1:length(recList)
+    SA.setCurrentRecording(recList{i});
+    tIcPath = [SA.currentDataObj.recordingDir '/spikeSorting/kilosort'];
+    tIc = SA.currentDataObj.convertPhySorting2tIc(tIcPath);
+    curLabels=tIc.label;
+    labelsAll = [labelsAll; curLabels];
+end%
+
+%% plot
 
 f= figure;
 %figrue1: one unit from 1 nights/
-ax1 = subplot(3,1,1);
-plot(spikeRateT/OL,unitMean(bestUind,:),'Color','k', 'LineWidth',1)
+ax1 = subplot(2,1,1);
+t=linspace(-pre/1000,(width-pre)/1000,size(meanAllRecs,2));
+plot(t,meanT(4,:),'Color','k', 'LineWidth',1)
 hold on
-xline(xPositions,'r','LineWidth',1)
+xline(curstims,'r','LineWidth',1)
 ylabel('Spike/s')
 title('one unit mean across all trials')
 hold off
 
-%figure 2: all units one night: 
-ax2=subplot(3,1,2);
-meanOneNight = mean(unitMean,1);
-n = height(unitMean);
-title 'Mean all units - One Night')
-plot(spikeRateT/OL,meanOneNight,'Color','k', 'LineWidth',1); hold on;
-xline(xPositions,'r','LineWidth',1)
-ylabel('Spike/s')
-hold off
-annotation('textbox', [0.8, 0.5, 0.03, 0.1], 'String', ...
-    sprintf('n=%i',n), 'EdgeColor', 'none', 'HorizontalAlignment', ...
-    'right', 'VerticalAlignment', 'middle');
 
-
-%figure 3: all units - all nights
-h3=subplot(3,1,3);
-title('Mean all units, all Red Nights')
-plot(spikeRateT/OL,mean(AllNightsUnits,1),'Color','k', 'LineWidth',1); hold on;
-xline(xPositions,'r','LineWidth',1)
+% %figure 3: all units - all nights
+% ax2=subplot(2,1,2);
+% title('Mean all units, all Red Nights')
+% plot(t,mean(meanAllRecs,1,'omitnan'),'Color','k', 'LineWidth',1); hold on;
+% xline(curstims,'r','LineWidth',1)
+% xlabel('Time[s]'); 
+% ylabel('Spike/s')
+% n= size(meanAllRecs,1);
+% spikesInd = stimTable.spikes ==1& (strcmp(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'));
+% N = sum(spikesInd);
+% annotation('textbox', [0.8, 0.2, 0.03, 0.1], 'String', ...
+%     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
+% 
+% % 
+%figure 3: good units - all nights
+ax2=subplot(2,1,2);
+title('Mean good units, all white Nights')
+data = meanAllRecs(goodUnitsInd,:);
+plot(t,mean(data,1,'omitnan'),'Color','k', 'LineWidth',1); hold on;
+xline(curstims,'r','LineWidth',1)
 xlabel('Time[s]'); 
 ylabel('Spike/s')
-n= height(AllNightsUnits);
-N = numel(spikeRecs);
+n= size(data,1);
+spikesInd = stimTable.spikes ==1& (strcmp(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'));
+N = sum(spikesInd);
 annotation('textbox', [0.8, 0.2, 0.03, 0.1], 'String', ...
     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
     'right', 'VerticalAlignment', 'middle');
 
-% linkaxes([h1,h2,h3],'x')
-%savefigure
+
+linkaxes([ax1,ax2],'x'); xlim([-20 130])
+% %savefigure
 set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'spikeRates-allnights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Figure 1G
-% load data
-ITIISImatfilename = [analysisFolder filesep 'ITIISIdata.mat'];
-load(ITIISImatfilename, "ITIsamples", "ISIsamples","spikeRecs")
+%% get the pre-post stim spike rates.
+clearvars -except stimTable SA LMData meanAllRecs analysisFolder 
+meanAllRecsPath = [analysisFolder filesep 'meanSpikeRate1000msbin.mat'];
+load(meanAllRecsPath)
+
+% spiking recs:
+spikesInd = stimTable.spikes ==1& (strcmp(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'));
+animals =stimTable.Animal(spikesInd);recnames = stimTable.recNames(spikesInd);
+recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
+SA.setCurrentRecording(recList{1});
+stims = SA.getStimTriggers;
+trial = reshape(stims,[8,length(stims)/8])';
+curstims = (trial(1,:) -trial(1,1))/1000;
+%parameters:
+bin=1000; 
+pre = 20*1000; %ms
+width = 150*1000; %150 sec in ms.
+spikeRateT = linspace(-pre/1000,(width-pre)/1000,width/bin);
+
+% timings for pre+post
+preStimI = find(spikeRateT> 9.5 & spikeRateT< 19.500);
+postStimI = find(spikeRateT> (curstims(end)+2) & spikeRateT< (curstims(end)+12));
+
+% cal data:
+preData=mean(meanAllRecs(:,preStimI),2);
+postData=mean(meanAllRecs(:,postStimI),2);
+
+% %% plot
+% 
+% fall = figure;
+% subplot(1,2,1)
+% IIdata = [preData, postData];
+% plot([1,2] ,IIdata,'Color',[0.7 0.7 0.7],'Marker','.','MarkerSize',4);
+% hold on;
+% plot([1,2] ,mean(IIdata),'Color','k', 'LineWidth',2,'Marker','.','MarkerSize',4);
+% xticks([1,2]);xticklabels(["Before Stims", "After Stims"]);xlim([0.7 2.3])
+% % grid on;
+% ylabel('Spikes/S')
+% sgtitle ('all units')
+% n = length(IIdata); 
+% N= length(recList);
+% 
+% subplot(1,2,2)
+% diff= preData- postData; %ISI = after, ITI =before
+% x = [ones(length(IIdata),1)];
+% colors = [ 0.5 0.7 0.8];
+% swarmchart(x,diff,10,colors,'filled','XJitterWidth',0.8);
+% ylabel('Spikes/S')
+% xticks(1);xticklabels("Before-After");
+% xlim([0.5 1.5])
+% yline(0,'--','Color',[0.4 0.4 0.4])
+% percent = (sum(diff<0)/length(diff))*100; % how many units are bellow zero in percent
+% [pWilcoxon, ~, statsWilcoxon] = signrank(preData, postData);
+% 
+% annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+%     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
+% annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
+%     sprintf('Wilcoxon p-val: %.4f\n', pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
+% % avefigures
+%     set(fall,'PaperPosition',[1 1 2.1 2]);
+%     fileName=[analysisFolder filesep 'ITIISIallunits'];
+%     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+% 
 
 
+
+%% plot only good units:
+goodUnitsInd = find(contains(labelsAll,'good'));
+preDataG = preData(goodUnitsInd);
+postDataG= postData(goodUnitsInd);
 fall = figure;
 subplot(1,2,1)
-IIdata = [ITIsamples, ISIsamples];
+IIdata = [preDataG, postDataG];
 plot([1,2] ,IIdata,'Color',[0.7 0.7 0.7],'Marker','.','MarkerSize',4);
 hold on;
 plot([1,2] ,mean(IIdata),'Color','k', 'LineWidth',2,'Marker','.','MarkerSize',4);
-xticks([1,2]);xticklabels(["Before Stims", "After Stims"]);xlim([0.5 2.5])
+xticks([1,2]);xticklabels(["Before Stims", "After Stims"]);xlim([0.7 2.3]);
+
 % grid on;
 ylabel('Spikes/S')
-sgtitle ('all units')
+sgtitle ('agood units')
 n = length(IIdata); 
-N= length(spikeRecs);
+N= length(recList);
 
 subplot(1,2,2)
-diff= ITIsamples- ISIsamples; %ISI = after, ITI =before
+diff= preDataG- postDataG; %ISI = after, ITI =before
 x = [ones(length(IIdata),1)];
 colors = [ 0.5 0.7 0.8];
-swarmchart(x,diff,1,colors,'filled','XJitterWidth',0.8);
+swarmchart(x,diff,10,colors,'filled','XJitterWidth',0.8);
 ylabel('Spikes/S')
 xticks(1);xticklabels("Before-After");
 xlim([0.5 1.5])
 yline(0,'--','Color',[0.4 0.4 0.4])
+%stats:
 percent = (sum(diff<0)/length(diff))*100; % how many units are bellow zero in percent
-[pWilcoxon, ~, statsWilcoxon] = signrank(ITIsamples, ISIsamples);
+[pWilcoxon, ~, statsWilcoxon] = signrank(preDataG, postDataG)
 
 annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
@@ -275,10 +371,12 @@ annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
     fileName=[analysisFolder filesep 'ITIISIallunits'];
     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
+
+
 %% Figure 1H - stim sham all red nights:
 
-wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength) & ...
+% wavelength =;
+curTrials = (contains(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'))& ...
     ~contains(stimTable.Remarks,'Ex') & ...
     all(~isnan(stimTable.dbDiffStimM), 2) &...
     all(~isnan(stimTable.dbDiffShamM), 2); 
@@ -314,7 +412,7 @@ plot(x,[curMeanSham,curMeanStim],'color','k','LineWidth',2,'Marker','.','MarkerS
 hold off
 
 
-ylim([-40 120])
+% ylim([-40 120])
 xlim([0.9 2.1]);
 xticks([1, 2]); % Position of the x-ticks
 xticklabels({'Sham', 'Stim'}); % Labels for the x-ticks
@@ -327,11 +425,11 @@ saveas (gcf, [analysisFolder filesep 'DBdiffStimShamRedNights.pdf']);
 %% Figure 1I
 % plot sliding AC sith stimulations: (bottom)
 %set the recording:
-i = 22; %night 18, PV161
+i = 74; %PV106, N32 (74)
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 AC = SA.getDelta2BetaAC;
-SA.plotDelta2BetaSlidingAC ('stim',1,'stimCh',stimTable.StimTrighCh(i));
+SA.plotDelta2BetaSlidingAC ('stim',1);
 
 % plot partial AC for each part of the night:
 ACpre = stimTable.ACpre{i};
@@ -368,9 +466,8 @@ for j = 1:3
 end
 
 %% Figure 1J
-% plot AC - only Red nights:
-wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength) & ...
+% plot AC - only white nights:
+curTrials = (contains(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime')) & ...
             ~contains(stimTable.Remarks,'Ex') & ...
             all(~isnan(stimTable.ACcomPer),2) &...
             all(stimTable.ACcomP2V > 0.15,2);
@@ -425,7 +522,8 @@ xticklabels({'Pre', 'During', 'Post'})
 
 ylim([50 200])
 ylabel('Period Time[s]')
-title ('Perios Times changes - all red nights')
+title ('Perios Times changes - all white nights')
+yline(156,'--',Color=[0.5 0.5 0.5])
 
 % savefigure
 set(gcf,'PaperPositionMode','auto')

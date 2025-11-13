@@ -6,15 +6,17 @@
 % calculate the differences. 
 
 % calculate for each animal indvidualy
-AnimalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption/PV88';
-results = analyzeTiffFolders(AnimalFolder);
-%% analysis:
-Animals = {'PV106','PV88','PV143'};
-generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
-filterLabels = ["BF","DAPI-460","GFP-525","mCherry-630","iRFP-700","YFP-540"];
+AnimalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption/PV153';
+analyzeTiffFolders(AnimalFolder);
 
+%% analysis:
+Animals = {'PV106','PV88','PV143','PV142','PV153'};
+generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
 results = getDataFromAll(generalFolder,Animals);
 
+% readtable([generalFolder filesep 'results.csv'])
+filterLabels = ["BF","DAPI-460","GFP-525","mCherry-630","iRFP-700","YFP-540"];
+%%
 plotIntensityRaw(results, generalFolder);
 plotExposure2Intensity(results,filterLabels,generalFolder)
 plotReltiveIntensity(results,filterLabels,generalFolder); %same - without No eyelid
@@ -306,7 +308,7 @@ function plotIntensityRaw(resultsTable, mainFolder)
             
             % Sort by filter number
             [~, sortIdx] = sort(expData.Filter);
-            expData = expData(sortIdx, :);
+            expData = expData(sortIdx(2:3), :);
             
             % Plot
             plot(expData.Filter, expData.ROI_Intensity, '-o', ...
@@ -384,7 +386,6 @@ end
 
 
 %% calculate the relative light trasferation. 
-
 function results = calcTransmision(results,generalFolder)
     results.transmision = NaN(height(results),1);
     % Get unique animal-BF-type combinations
@@ -406,7 +407,8 @@ function results = calcTransmision(results,generalFolder)
         idxnoEye = strcmp(results.Animal, animal) & ...
               strcmp(results.BF, bf) & ...
               results.Filter ==filter & ...
-              contains(results.Type,'no');
+              contains(results.Type,'no')& ...
+              results.Exposure ==5;
         %calculate relative transmition
         curbasline = results.ExpRelaInten(idxnoEye);
         results.transmision(idxEye) = results.ExpRelaInten(idxEye) / curbasline;       

@@ -7,8 +7,8 @@
 %  for every recoerd that is tagged (1/2/3..) 
 SA=sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 % maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
-maniRecs = SA.recTable.Mani==5; % taking all the rows with manipulation
-stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage','stimDiodeCh'});  % creating new table
+maniRecs = SA.recTable.Mani>0; % taking all the rows with manipulation
+stimTable = SA.recTable(maniRecs,{'Animal','recNames','Remarks','Mani','LizMov','StimTrighCh','Headstage','stimDiodeCh','spikes','eyeVideo'});  % creating new table
 stimTable.stimStartT = zeros(height(stimTable),1);
 stimTable.stimEndT = zeros(height(stimTable),1);
 stimTable.sleepStartT = zeros(height(stimTable),1);
@@ -485,22 +485,86 @@ for i = 1:length(recList)
     SA.setCurrentRecording(recList{i});
     tIcPath = [SA.currentDataObj.recordingDir '/spikeSorting/kilosort'];
     tIc = SA.currentDataObj.convertPhySorting2tIc(tIcPath);
+    
 end
 %% run spikeRate:
 % One of them is: BuildBurstMatrix
-trigs = SA.getStimTriggers;
+spikesInd = stimTable.spikes ==1& (strcmp(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'));
+animals =stimTable.Animal(spikesInd);recnames = stimTable.recNames(spikesInd);
+recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
 bin=1000; 
 pre = 20*1000; %ms
-startTimes = round(trigs-pre);
 width = 150*1000; %150 sec in ms.
+meanAllRecs = [];
+tiledlayout('flow')
+for i = 1:length(recList)
+    SA.setCurrentRecording(recList{i});
+    tIcPath = [SA.currentDataObj.recordingDir '/spikeSorting/kilosort'];
+    tIc = SA.currentDataObj.convertPhySorting2tIc(tIcPath);
+    stims = SA.getStimTriggers;
+    trial = reshape(stims,[8,length(stims)/8])';
+    firstTrig=stims(1:8:end-2);
+    startTimes = round(firstTrig-pre);
+    curstims = (trial(1,:) -trial(1,1));
 
-[M]=BuildBurstMatrix(tIc.ic,round(tIc.t/bin),round(startTimes/bin),round(width/bin));
-% M is a matrix of size trials x Neurons x width
-% Burst window is from [startTimes(i) , startTimes(i)+width]
-% Where all variables are ROUNDED and given in the same units
-% Class is the variable class (optional): 1='uint8',2='double',3='logical' (Default 2))
-% If you want the bin size to be different than 1ms you should use:
-% [M]=BuildBurstMatrix(ic,round(t/bin),round(startTimes/bin),round(width/bin));
-% 
-figure;
-plot(squeeze(M(1,1,:)))
+    [M]=BuildBurstMatrix(tIc.ic,round(tIc.t/bin),round(startTimes/bin),round(width/bin));
+    meanT = squeeze(mean(M,1,'omitnan'));
+    meanAllRecs = [meanAllRecs;meanT];
+    
+nexttile;
+plot(meanT'); hold on
+    meanAll=mean(meanT,1);
+    plot(meanAll,'k',LineWidth=2)
+    xline(curstims/1000+20,'r','LineWidth',1.5);
+    title(recList{i})
+end
+
+% save
+save([analysisFolder filesep 'meanSpikeRate1000msbin.mat'],'meanAllRecs')
+%% get the pre-post stim spike rates.
+clearvars -except stimTable SA LMData meanAllRecs analysisFolder 
+% spiking recs:
+spikesInd = stimTable.spikes ==1& (strcmp(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'));
+animals =stimTable.Animal(spikesInd);recnames = stimTable.recNames(spikesInd);
+recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
+SA.setCurrentRecording(recList{1});
+stims = SA.getStimTriggers;
+trial = reshape(stims,[8,length(stims)/8])';
+curstims = (trial(1,:) -trial(1,1))/1000;
+%parameters:
+bin=1000; 
+pre = 20*1000; %ms
+width = 150*1000; %150 sec in ms.
+spikeRateT = linspace(-pre/1000,(width-pre)/1000,width/bin);
+
+% timings for pre+post
+preStimI = find(spikeRateT> 9.5 & spikeRateT< 19.500);
+postStimI = find(spikeRateT> (curstims(end)+2) & spikeRateT< (curstims(end)+12));
+
+% cal data:
+preData=mean(meanAllRecs(:,preStimI),2);
+postData=mean(meanAllRecs(:,postStimI),2);
+
+save([analysisFolder filesep 'prePostSpikeData.mat'],"preData","postData");
+
+
+%% Eye movement data.
+
+% get data only for stimulation timings:
+stimTable.eyeMovPh = zeros(height(stimTable),1);
+stimTable.eyeMovPhDB= zeros(height(stimTable),1);
+for i = 1:height(stimTable)
+    if stimTable.eyeMov(i) ~= 1
+        disp('no Eye movement, moving to next recording.');
+        continue; % Skip to the next iteration;
+    end
+    recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName)
+    stims = SA.getStimTriggers;
+    SA.getDelta2BetaAC('overwrite',1,'tStart', stims(1),'win',(stims(end)-stims(1)+30*60*100))
+    SA.getSlowCycles('overwrite',1);
+    eye = SA.getSyncedDBEyeMovements('digitalVideoSyncCh',7,'useRobustFloatingAvg',0,'overwrite',1,'stimCyclesOnly',1);
+    stimTable.eyeMovPh(i) = eye.mPhaseMov;
+    stimTable.eyeMovPhDB(i) = eye.mPhaseDB;
+
+end

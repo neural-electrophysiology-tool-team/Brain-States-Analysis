@@ -16,6 +16,18 @@ WA.getBeta2GammaRatio;
 WA.plotTrailsBG;
 A = WA.getArenaCSVs;
 
+%% checking consistency between stimTable and SA.recTable
+
+stimInd = SA.recTable.Mani >0;
+% EMInd = stimTable.spikes ==1 & (strcmp(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'));
+animals =SA.recTable.Animal(stimInd);recnames = SA.recTable.recNames(stimInd);
+recListSA = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
+
+recListStimT =cellfun(@(x,y) ['Animal=' x ',recNames=' y], stimTable.Animal, stimTable.recNames, 'UniformOutput', false);
+
+
+strcmp(recListSA,recListStimT)
+
 
 %% run on all and do...?
 SA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
@@ -187,18 +199,18 @@ figure; plot(diff(t_clean),'.');title('after cleanup')
 
 
 %% run Eye movement analysis #1
-SA.setCurrentRecording('Animal=PV153,recNames=Night13');
+SA.setCurrentRecording('Animal=PV143,recNames=Night41');
 SA.plotDelta2BetaSlidingAC(stim=1);
-SA.getEyeMovements('startTime',3*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
+SA.getEyeMovements('startTime',4*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
 trigs = SA.getStimTriggers;
 % SA.getEyeMovements('startTime',trigs(1)/1000,'endTime',(trigs(end)/1000)+(30*60),'minTrackingPoints',25,'overwrite',1, 'opticFlowNoiseThreshold',0.002);
-SA.getCameraTriggers;
+SA.getCameraTriggers(1,500);
 SA.getSyncedDBEyeMovements('digitalVideoSyncCh',7,'useRobustFloatingAvg',0,'overwrite',1);
 SA.plotSyncedDBEyeMovementsRaster
 %% run Eye movement analysis #2
-SA.setCurrentRecording('Animal=PV153,recNames=Night15');
+SA.setCurrentRecording('Animal=PV143,recNames=Night37');
 SA.plotDelta2BetaSlidingAC(stim=1);
-SA.getEyeMovements('startTime',4*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
+SA.getEyeMovements('startTime',5*60*60,'endTime',10*60*60,'overwrite',1,'opticFlowNoiseThreshold',0.002,'loadInitialConditions',0);
 trigs = SA.getStimTriggers;
 % SA.getEyeMovements('startTime',trigs(1)/1000,'endTime',(trigs(end)/1000)+(30*60),'minTrackingPoints',25,'overwrite',1, 'opticFlowNoiseThreshold',0.002);
 SA.getCameraTriggers;
@@ -255,15 +267,20 @@ animals =SA.recTable.Animal(recInd);recnames = SA.recTable.recNames(recInd);
 subset2 = SA.recTable(recInd,["Animal","recNames","Remarks","spikes","folder"]);
 recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
 %% tStart=1000*60*60*5;
-figure; tiledlayout('flow'); 
+recInd = stimTable.eyeMov ==1&(contains(stimTable.Remarks,'red')); %|contains(stimTable.Remarks,'DayTime'));
+animals =stimTable.Animal(recInd);recnames = stimTable.recNames(recInd);
+recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
+
+% figure; tiledlayout('flow'); 
 for i = 1:length(recList)
     SA.setCurrentRecording(recList{i});
-    ax1 = nexttile; % left tile
-    SA.plotDelta2BetaRatio('h',ax1,saveFigure = 0,stim=1);clim(ax1,[0 450])
-    title(ax1,sprintf('%s, stimType = %s',recList{i},SA.recTable.Remarks{SA.currentPRec}))
+    % ax1 = nexttile; % left tile
+    % SA.plotDelta2BetaRatio('h',ax1,saveFigure = 0,stim=1);clim(ax1,[0 450])
+    SA.plotSyncedDBEyeMovements;
+    title(recList{i})
 
-    ax2 = nexttile;
-    SA.plotDelta2BetaSlidingAC('h',ax2,'saveFigures',0,stim=1);
+    % ax2 = nexttile;
+    % SA.plotDelta2BetaSlidingAC('h',ax2,'saveFigures',0,stim=1);
     % clim(ax2,[0 450]);
 end
 
