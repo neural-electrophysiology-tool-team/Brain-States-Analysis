@@ -28,16 +28,17 @@ function data = getStimSham(SA, overwrite)
     stimDuration=(endStim(1)-firstTrig(1));
 
      
-    pre=50000; %ms
-    post=100000; %ms
+    pre=30000; %ms
+    post=120000; %ms
 %     clear StimDB; %change to zeros
+    win = (pre+post)/1000;
     
-    StimDB = zeros(numel(firstTrig),150);
+    StimDB = zeros(numel(firstTrig),win);
     for i=1:numel(firstTrig)
         pTmp=find(DB.t_ms>(firstTrig(i)-pre) & DB.t_ms<=(firstTrig(i)+post));
         %StimDB(i,:)=1./DB.bufferedDelta2BetaRatio(pTmp);
-        if length(pTmp) ~=150
-            pTmp = ones([1,150]);
+        if length(pTmp) ~=win
+            pTmp = ones([1,win]);
         end
         StimDB(i,:)=DB.bufferedDelta2BetaRatio(pTmp);
     end

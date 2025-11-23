@@ -76,7 +76,7 @@ for type = 1:numType
 end
 
 % savefigure
-set(f,'PaperPosition',[1 1 4 2]);
+set(f,'PaperPosition',[1 5 6 2]);
 fileName=[analysisFolder filesep 'meanNormBDStimSham'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
@@ -221,7 +221,7 @@ for type = 1:numType
 end
  
 % savefigure
-set(gcf,'PaperPosition',[1 1 4.3 1.2]);
+set(gcf,'PaperPosition',[1 1 6 2]);
 fileName=[analysisFolder filesep 'ACperiodstimAll'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 save([analysisFolder filesep 'statsACperiodstimAll.mat'], "statsAC")

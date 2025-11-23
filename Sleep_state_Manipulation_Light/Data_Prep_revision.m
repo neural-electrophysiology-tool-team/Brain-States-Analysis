@@ -390,6 +390,10 @@ LMData = [LMData table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,Head
 save(fileName,"LMData",'-mat')
 
 %% Ploar data preperation:
+curTrials = (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'DayTime')) & ...
+    ~contains(stimTable.Remarks,'Ex');
+recsInd = find(curTrials);
+
 for i = 1:height(stimTable)
     if stimTable.LizMov(i) ~= 1
         disp('run Lizard movement on this recording. Moving to next rec.');
@@ -398,6 +402,10 @@ for i = 1:height(stimTable)
         mPhaseStim.movs(i) = NaN;
         mPhaseStim.DBs(i) = NaN;
         % continue; % Skip to the next iteration;
+    end
+    
+    if ~ismember(recsInd,i)
+        continue
     end
 
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
@@ -414,49 +422,51 @@ for i = 1:height(stimTable)
 
     nBins = 16;
 
-    % get AC for the pre:
-    SA.getDelta2BetaAC('tStart',sleepStartT ,'win',preWin , 'overwrite', 1);
-    SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
-    try
-    hOutPre = SA.plotLizardMovementDB('stim',1 ,'part',1,'tStartStim', ...
-        stimStartT,'tEndStim',stimEndT,'nBins',nBins);
-    mPhasePre.movs(i) = hOutPre.mPhaseMov;
-    mPhasePre.DBs(i) = hOutPre.mPhaseDB;
-    catch ME
-        disp('No cycles in pre part of the recording')
-    end
+    % % get AC for the pre:
+    % SA.getDelta2BetaAC('tStart',sleepStartT ,'win',preWin , 'overwrite', 1);
+    % SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
+    % try
+    % hOutPre = SA.plotLizardMovementDB('stim',1 ,'part',1,'tStartStim', ...
+    %     stimStartT,'tEndStim',stimEndT,'nBins',nBins);
+    % mPhasePre.movs(i) = hOutPre.mPhaseMov;
+    % mPhasePre.DBs(i) = hOutPre.mPhaseDB;
+    % catch ME
+    %     disp('No cycles in pre part of the recording')
+    % end
 
     % get AC for the stimulation:
     SA.getDelta2BetaAC('tStart',stimStartT+p,'win',stimWin,'overwrite', 1);
     SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
+    SA.plotSlowCycles;
+    SA.plotDelta2BetaSlidingAC(stim=1);
     try    
         hOutStim = SA.plotLizardMovementDB('stim',1 ,'part',2,'tStartStim', ...
-        stimStartT,'tEndStim',stimEndT,'nBins',nBins);
+        stimStartT+(60*60*1000),'tEndStim',stimEndT,'nBins',nBins);
         mPhaseStim.movs(i) = hOutStim.mPhaseMov;
         mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
     catch ME
         disp('No cycles in stim part of the recording')
         disp(ME.message);
     end
-
-    % get AC for the Post:
-    SA.getDelta2BetaAC('tStart',stimEndT+p,'win',postWin,'overwrite', 1);
-    SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
-    try
-    hOutPost = SA.plotLizardMovementDB('stim',1 ,'part',3,'tStartStim', ...
-        stimStartT,'tEndStim',stimEndT,'nBins',nBins);
-    mPhasePost.movs(i) = hOutPost.mPhaseMov;
-    mPhasePost.DBs(i) = hOutPost.mPhaseDB;
-    catch ME
-        disp('No cycles in post part of the recording')
-        disp(ME.message);
-    end
+    % 
+    % % get AC for the Post:
+    % SA.getDelta2BetaAC('tStart',stimEndT+p,'win',postWin,'overwrite', 1);
+    % SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
+    % try
+    % hOutPost = SA.plotLizardMovementDB('stim',1 ,'part',3,'tStartStim', ...
+    %     stimStartT,'tEndStim',stimEndT,'nBins',nBins);
+    % mPhasePost.movs(i) = hOutPost.mPhaseMov;
+    % mPhasePost.DBs(i) = hOutPost.mPhaseDB;
+    % catch ME
+    %     disp('No cycles in post part of the recording')
+    %     disp(ME.message);
+    % end
 
     close all
 end
 
 %% save histogram data
-fileName = [analysisFolder filesep 'polarhistoAllNights.mat'];
+fileName = [analysisFolder filesep 'polarhistoAllNightsNew.mat'];
 save(fileName,"mPhasePre" ,"mPhaseStim","mPhasePost")
 
 
@@ -496,6 +506,7 @@ bin=1000;
 pre = 20*1000; %ms
 width = 150*1000; %150 sec in ms.
 meanAllRecs = [];
+labelsAll= [];
 tiledlayout('flow')
 for i = 1:length(recList)
     SA.setCurrentRecording(recList{i});
@@ -510,17 +521,18 @@ for i = 1:length(recList)
     [M]=BuildBurstMatrix(tIc.ic,round(tIc.t/bin),round(startTimes/bin),round(width/bin));
     meanT = squeeze(mean(M,1,'omitnan'));
     meanAllRecs = [meanAllRecs;meanT];
-    
-nexttile;
-plot(meanT'); hold on
-    meanAll=mean(meanT,1);
-    plot(meanAll,'k',LineWidth=2)
-    xline(curstims/1000+20,'r','LineWidth',1.5);
-    title(recList{i})
+    labelsAll= [labelsAll;tIc.label];
+% 
+% nexttile;
+% plot(meanT'); hold on
+%     meanAll=mean(meanT,1);
+%     plot(meanAll,'k',LineWidth=2)
+%     xline(curstims/1000+20,'r','LineWidth',1.5);
+%     title(recList{i})
 end
 
 % save
-save([analysisFolder filesep 'meanSpikeRate1000msbin.mat'],'meanAllRecs')
+save([analysisFolder filesep 'meanSpikeRate1000msbin.mat'],'meanAllRecs','labelsAll')
 %% get the pre-post stim spike rates.
 clearvars -except stimTable SA LMData meanAllRecs analysisFolder 
 % spiking recs:
@@ -562,7 +574,6 @@ for i = 1:height(stimTable)
     SA.setCurrentRecording(recName)
     stims = SA.getStimTriggers;
     SA.getDelta2BetaAC('overwrite',1,'tStart', stims(1),'win',(stims(end)-stims(1)+30*60*100))
-    SA.getSlowCycles('overwrite',1);
     eye = SA.getSyncedDBEyeMovements('digitalVideoSyncCh',7,'useRobustFloatingAvg',0,'overwrite',1,'stimCyclesOnly',1);
     stimTable.eyeMovPh(i) = eye.mPhaseMov;
     stimTable.eyeMovPhDB(i) = eye.mPhaseDB;

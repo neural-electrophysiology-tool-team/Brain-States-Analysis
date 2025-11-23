@@ -27,7 +27,8 @@ recListStimT =cellfun(@(x,y) ['Animal=' x ',recNames=' y], stimTable.Animal, sti
 
 
 strcmp(recListSA,recListStimT)
-
+% 
+% stimTable.eyeMov = SA.recTable.eyeVideo(stimInd);
 
 %% run on all and do...?
 SA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
@@ -291,3 +292,60 @@ folders = string(recsFolders);          % convert to string array
 X = 17;
 folders = "W:/" + extractAfter(folders, X) + "/spikeSorting/ch1_32.bin";
 folders = replace(folders,'/','\');
+
+
+
+%% new idea for Figure 2C (head sd)
+
+%% Figure 2D
+% load([analysisFolder filesep 'LMData.mat'])
+headAngleSD = LMData.headAngleSD;
+
+wavelength = 'white';
+curTrials = (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'DayTime')) & ...
+    ~contains(stimTable.Remarks,'Ex') & ...
+    LMData.headAngleSD(:,2)<4.5;
+n = sum(curTrials);
+N = length(unique(stimTable.Animal(curTrials)));
+% groupNames = {'Pre', 'During', 'After'};
+curHeadSD = headAngleSD(curTrials,1:4);
+
+figure;
+x1 = 1:width(curHeadSD);
+[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+curColorMat = animalsColors(animalIndices, :); 
+for i= 1:height(curHeadSD)
+    plot(x1,curHeadSD(i,:),'Color',curColorMat(i,:),'Marker','.'); hold on;
+end
+plot(x1, mean(curHeadSD), 'Color','k','Marker','.','LineWidth',1.5)
+xlim([0.7,4.2]); xticks(x1); xticklabels(["Wake","Pre","Stim","post"])
+ylabel('Avg Head SD')
+title('Head Angle SD - white nights')
+
+%% stats:
+[p, tbl, stats] = friedman(curHeadSD, 1,'off'); % Here, 1 indicates within-subjects design
+fprintf('p-value for freidman ANOVA test: %.5f\n',p)
+% p-valure is very low, post hoc:
+if p<0.05
+    wakeSD = curHeadSD(:,1);
+    beforeSD = curHeadSD(:,2);
+    duringSD = curHeadSD(:,3);
+
+    % Pairwise Wilcoxon signed-rank tests
+    [p_wake_before, ~, stats_wake_before] = signrank(wakeSD, beforeSD);
+    [p_before_during, ~, stats_before_during] = signrank(beforeSD, duringSD);
+    [p_wake_during, ~, stats_wake_during] = signrank(wakeSD, duringSD);
+
+    raw_pvals = [p_wake_before,p_before_during,p_wake_during];
+    num_comparisons = length(raw_pvals);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    % Display results with Bonferroni correction
+    fprintf('Wilcoxon signed-rank test results with Bonferroni correction:\n');
+    fprintf('Wake vs pre: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('pre vs During: p-value = %.4f\n', corrected_pvals_bonferroni(2));
+    fprintf('Wake vs During: p-value = %.4f\n ', corrected_pvals_bonferroni(3));
+end
+% savefigure
+set(gcf,'PaperPosition',[1 4 2.2 1.6])
+saveas (gcf, [analysisFolder filesep 'HeadLiftswhiteNightsSDOpt2.pdf']);
+

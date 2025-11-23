@@ -9,18 +9,21 @@ function f = plotStimSham(SA)
 
     trialsham = height(StimDBSham)-70+1;
 
-    colorLim=[0 250];
+    colorLim=[0 600];
     f=figure;
     subplot(4,2,[1:2:6]);imagesc(StimDBSham(trialsham:end,:),colorLim);ylabel('Trial #');title('Sham');hold on;set(gca,'XTick',[]);
     cb=colorbar('Position',[0.47 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
     line([pre/1000 pre/1000],ylim,'color','r');
-    subplot(4,2,7);plot(ts-pre/1000,nanmean(StimDBSham));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);
-    line([0 0],ylim,'color','r');
+    line([(pre+stimDuration)/1000 (pre+stimDuration)/1000],ylim,'color','r');
+    subplot(4,2,7);plot(ts-pre/1000,mean(StimDBSham,'omitnan'),'k');xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/2);
+    line([0 0],ylim,'color','r');xlim([-pre/1000 post/1000])
     line([stimDuration/1000 stimDuration/1000],ylim,'color','r');
     subplot(4,2,[2:2:6]);imagesc(StimDB,colorLim);ylabel('Trial #');title('Stim');set(gca,'XTick',[]);
     cb=colorbar('Position',[ 0.91 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
     line([pre/1000 pre/1000],ylim,'color','r');
-    subplot(4,2,8);plot(ts-pre/1000,nanmean(StimDB));xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/3);
+    line([(pre+stimDuration)/1000 (pre+stimDuration)/1000],ylim,'color','r');
+    subplot(4,2,8);plot(ts-pre/1000,mean(StimDB,'omitnan'),'k');xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/2);
+    xlim([-pre/1000 post/1000])
     line([0 0],ylim,'color','r');
     line([stimDuration/1000 stimDuration/1000],ylim,'color','r');
 

@@ -97,7 +97,7 @@ xline(curstims/1000,'r','LineWidth',1.5);
 tdb = linspace(-pre/1000,post/1000,length(dbTmp));
 yyaxis right
 plot(tdb,dbTmp,'Color','b','LineWidth',2);
-ylim([-200 200]);                   % limit for left axis
+ylim([-300 300]);                   % limit for left axis
 ax = gca;
 ax.YColor = 'b';
 sgtitle(sprintf('Trial num: %i',j));
@@ -115,8 +115,8 @@ tEdges = linspace(-pre/1000,post/1000,nCols+1);
 h2 = imagesc(tEdges, 1:size(spikemat,1), spikemat); box on;
 colormap(flipud(gray));   % flip so 0 is white, max is black
 axis xy;
-% clim([0 max(spikemat(:))]);%box on;
-clim([0 1]);
+clim([0 max(spikemat(:))]);%box on;
+% clim([0 1]);
 % colorbar;
 set(h2, 'Interpolation','nearest');   % ?? Key line: prevents blending between pixels
 
@@ -127,7 +127,7 @@ curstims = trial(j,:) -trial(j,1);
 xline(curstims/1000,'r','LineWidth',1.5)
 linkaxes([ax1,ax2],'x')
 xlim([-pre/1000-0.5,post/1000]);
-% ylim([0.5 size(spikemat,1)+0.7])
+ylim([0.5 size(spikemat,1)+0.7])
 
 % % save figure:
 set(f,'PaperPositionMode','auto');
@@ -135,7 +135,7 @@ fileName=[analysisFolder filesep 'singleTrialRasterPV153N33t32'];
 print(fileName,'-depsc','-vector');
 
 %% Figure 1D
-i = 82;
+i = 90; %PV153, N31
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 stimShamFile=[SA.currentAnalysisFolder filesep  'stimSham.mat'];
@@ -143,7 +143,7 @@ load(stimShamFile); %load data
     
 trialsham = height(StimDBSham)-70+1;
     
-colorLim=[0 300];
+colorLim=[0 600];
 f=figure;
 subplot(4,2,[1:2:6]);
 imagesc(StimDBSham(trialsham:end,:),colorLim);
@@ -152,8 +152,9 @@ set(gca,'XTick',[]);
 cb=colorbar('Position',[0.47 0.76 0.013 0.17]);
 ylabel(cb,'\delta/\beta');
 line([pre/1000 pre/1000],ylim,'color','r');
-subplot(4,2,7);plot(ts-pre/1000,mean(StimDBSham,'omitnan'));% plot mean
-xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/2);
+line([(pre+stimDuration)/1000 (pre+stimDuration)/1000],ylim,'color','r');
+subplot(4,2,7);plot(ts-pre/1000,mean(StimDBSham,'omitnan'),'k');% plot mean
+xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/2);xlim([-pre/1000 post/1000])
 line([0 0],ylim,'color','r');
 line([stimDuration/1000 stimDuration/1000],ylim,'color','r');
 subplot(4,2,[2:2:6]);
@@ -161,13 +162,15 @@ imagesc(StimDB,colorLim);ylabel('Trial #');
 title('Stim');set(gca,'XTick',[]);
 cb=colorbar('Position',[ 0.91 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
 line([pre/1000 pre/1000],ylim,'color','r');
-subplot(4,2,8);plot(ts-pre/1000,mean(StimDB,'omitnan'));
+line([(pre+stimDuration)/1000 (pre+stimDuration)/1000],ylim,'color','r');
+subplot(4,2,8);plot(ts-pre/1000,mean(StimDB,'omitnan'),'k');
 xlabel(['Time [s]']);ylabel('Avg.');ylim(colorLim/2);
 line([0 0],ylim,'color','r');
 line([stimDuration/1000 stimDuration/1000],ylim,'color','r');
+xlim([-pre/1000 post/1000])
 
 %   savefigure
-fileName=[SA.currentPlotFolder filesep 'stim_sham_activationPV153N15.pdf'];
+fileName=[analysisFolder filesep 'stim_sham_activationPV153N31.pdf'];
 saveas (f, fileName);
 
 %% Figure 1F
@@ -444,7 +447,7 @@ for j = 1:3
     fAC = figure;
     %plot:
     lineHandles = plot(autocorrTimes/1000,real(xcf),'Color',PDPcolors(j,:),'LineWidth',4);
-    ylim([-0.4 1])
+    ylim([-0.5 1])
     set(lineHandles(1),'MarkerSize',4);
     % grid('on');
     xlabel('Period [s]');
@@ -455,7 +458,7 @@ for j = 1:3
     text(period/1000,0.05+real(xcf(pPeriod)),num2str(period/1000));
 
     a = axis;
-   plot([a(1) a(2)],[0 0],'-k');
+    plot([a(1) a(2)],[0 0],'-k');
     hold('off');
     title (labels{j})
    % save fig:
@@ -527,4 +530,4 @@ yline(156,'--',Color=[0.5 0.5 0.5])
 
 % savefigure
 set(gcf,'PaperPositionMode','auto')
-saveas (gcf, [analysisFolder filesep 'ACperiodReds.pdf']);
+saveas (gcf, [analysisFolder filesep 'ACperiodwhites.pdf']);

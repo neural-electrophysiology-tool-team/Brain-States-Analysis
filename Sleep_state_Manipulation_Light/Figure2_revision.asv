@@ -11,7 +11,7 @@ animalsColors = [
     0.819607843137255,0.286274509803922,0.356862745098039; %red-ish - PV143
     28/255, 144/255, 217/255;  % HEX: 1C90D9 - blue - PV149
     0.929411764705882,0.682352941176471,0.286274509803922; %yellow-ish - PV153
-    148/255, 120/255, 186/255; % HEX: 9478BA - perpule - PV157
+    148/255, 120/255, 186/255; % HEX: 9478BA - purple - PV157
     217/255, 62/255, 67/255; % HEX: D93E43 - red - PV159
     255/255, 202/255, 58/255; % HEX: FFCA3A - yellow -  PV161
     97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
@@ -21,7 +21,7 @@ uniqueAnimals = unique(stimTable.Animal);
 
 %% Figure 2B - one night: D/B decrease
 
-i =82 ; % PV161, N18
+i =74; % PV106,
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 
@@ -36,9 +36,9 @@ xswarm=[1*ones(1,length(stimTable.dbSW(i).Pre)), 2*ones(1,length(stimTable.dbSW(
 colorswarm = [repmat([0.2, 0.6, 0.8;], length(stimTable.dbSW(i).Pre), 1);  % Red for Array 1
     repmat([0.9, 0.4, 0.3], length(stimTable.dbSW(i).Stim), 1);  % Green for Array 2
     repmat([0.5, 0.8, 0.5], length(stimTable.dbSW(i).Post), 1)]; % Blue for Array 3
-swarmchart(xswarm,yswarm,20,colorswarm,"filled",'o','XJitterWidth',0.3)
+swarmchart(xswarm,yswarm,20,colorswarm,"filled",'o','XJitterWidth',0.5)
 ylabel('D/B power in SWS bouts')
-ylim([0 450])
+% ylim([0 450])
 set(gca, 'XTick', 1:numel(dbStimData), 'XTickLabel', groupNames);
 title('D/B power during SWS bouts - one night')
 
@@ -104,12 +104,12 @@ if pKruskal < 0.05
 end
 
 %savefigure
-set(fdbDec,'PaperPositionMode','auto');
+set(fdbDec,'PaperPosition',[1 5 2 2]);
 fileName=[analysisFolder filesep 'DBSWSpreStimPostOneNight'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% Figure 2C - D/B decrease all red nights
+%% Figure 2C - D/B decrease all white nights
 % plot all red nights 
 
 type = 'white';
@@ -169,7 +169,7 @@ annotation('textbox', [0.1, 0.8, 0.4, 0.1], 'String', ...
     'right', 'VerticalAlignment', 'middle');
 
 % savefigure
-set(fdb,'PaperPositionMode','auto');
+set(fdb,'PaperPosition',[1 5 2 2]);
 fileName=[analysisFolder filesep 'DBSWSwhiteNights'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
@@ -195,7 +195,7 @@ end
 plot(x1, mean(curHeadSD), 'Color','k','Marker','.','LineWidth',1.5)
 xlim([0.7,3.2]); xticks(x1); xticklabels(["Wake","Pre","Stim"])
 ylabel('Avg Head SD')
-title('Head Angle SD - red nights')
+title('Head Angle SD - white nights')
 
 % stats:
 [p, tbl, stats] = friedman(curHeadSD, 1,'off'); % Here, 1 indicates within-subjects design
@@ -231,22 +231,24 @@ close all
 clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder
 % load([analysisFolder filesep 'LMDataAll.mat'])
 % for one night:
-% i = 56;
-recInd = SA.recTable.spikes ==1 & SA.recTable.Mani==4;
-animals =SA.recTable.Animal(recInd);recnames = SA.recTable.recNames(recInd);
 
-recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
-for i = 1:length(recList)
-    SA.setCurrentRecording(recList{i})
+% recInd = (contains(stimTable.Remarks,"DayTime")|contains(stimTable.Remarks,"white"));
+% animals =stimTable.Animal(recInd);recnames = stimTable.recNames(recInd);
+% stimTableInd = find(recInd);
+% recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
+% for i = 1:length(recList)
+    
 
-% recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-% SA.setCurrentRecording(recName);
+% SA.setCurrentRecording(recList{i})
+recName = 'Animal=PV153,recNames=Night15';
+SA.setCurrentRecording(recName)
 DB = SA.getDelta2BetaRatio;
-
-curLMwake = LMData.LMwake(i);
-curLMpre = LMData.LMpre(i);
-curLMstim = LMData.LMstimbin{i};
-curLMpost = LMData.LMpost(i);
+% ind = stimTableInd(i);
+ind = 84;
+curLMwake = LMData.LMwake(ind);
+curLMpre = LMData.LMpre(ind);
+curLMstim = LMData.LMstimbin{ind};
+curLMpost = LMData.LMpost(ind);
 
 figure;
 
@@ -293,12 +295,13 @@ xticks(1); xticklabels('Sleep After');
 linkaxes([a1, a2, a3, a4], 'y'); %ylim([0 6.5]);
 
 % Add 4 shared title
-sgtitle(['Mean movement during stimulation,' recList{i}]);
-end
-% save fig
-% set(gcf,'PaperPositionMode','auto');
-% fileName=[analysisFolder filesep 'lizMovWholeNightPV153N11'];
-% print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+% sgtitle(['Mean movement during stimulation,' recList{i}]);
+sgtitle(['Mean movement during stimulation,' recName]);
+% end
+% % save fig
+set(gcf,'PaperPositionMode','auto');
+fileName=[analysisFolder filesep 'lizMovWholeNightPV153N15'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Figure 2G
 % plot head movements - Red nights!
@@ -354,7 +357,7 @@ end
 plot(x, mean(LMplotData),'Color','k','Marker','.')
 xticks(x), xticklabels(Groups); xlim([0.7 3.3]);
 ylabel('Mov/S')
-ylim([0 30]);
+ylim([0 37]);
 
 % savefigure
 set(fLMr,'PaperPosition',[1 1 3 2]);
@@ -365,19 +368,20 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Figure 3I
 %load data:
-load([analysisFolder filesep 'polarhistoAllNights.mat'])
+% load([analysisFolder filesep 'polarhistoAllNights.mat'])
 
 % plot polar histogram - red nights
 uniqueAnimals = unique(stimTable.Animal);
-relativePhasePre = mPhasePre.movs -mPhasePre.DBs;
-relativePhaseStim = mPhaseStim.movs -mPhaseStim.DBs;
-relativePhasePost = mPhasePost.movs -mPhasePost.DBs;
+relativePhasePre = (mPhasePre.movs -mPhasePre.DBs)';
+relativePhaseStim = (mPhaseStim.movs -mPhaseStim.DBs)';
+relativePhasePost = (mPhasePost.movs -mPhasePost.DBs)';
 
 wavelength = 'white';
-pVal = mPhaseStim.movs ~= 0 & ...
+pVal = mPhaseStim.movs' ~= 0 & ...
     (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'DayTime'))...
     & ~contains(stimTable.Remarks,'Ex');
 n=sum(pVal);
+N=length(unique(stimTable.Animal(pVal)));
 fMOVdbred=figure;
 h1=subplot(1,3,1,polaraxes);hold on;
 title('Pre Stimulations')
@@ -474,9 +478,10 @@ relativePhaseEye = stimTable.eyeMovPh-stimTable.eyeMovPhDB;
 
 wavelength = 'white';
 pVal = stimTable.eyeMov ==1 &...
-    ~contains(stimTable.Remarks,'Ex');
-    % (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'DayTime')) ...
+    ~contains(stimTable.Remarks,'Ex') &...
+    (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'DayTime'));
 n=sum(pVal);
+N = length(unique(stimTable.Animal(pVal)));
 figure;
 h1=polaraxes;hold on;
 title('eye Mov. white nights')
@@ -503,3 +508,5 @@ l1=legend([hP{1}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off
 l1.Position=[0.7386    0.8238    0.2125    0.1190];
 
 % save figure:
+fileName=[analysisFolder filesep 'EyeMovWhite'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);% clearvars -except stimTable SA analysisFolder LMdata
