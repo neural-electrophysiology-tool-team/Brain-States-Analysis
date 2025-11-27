@@ -390,6 +390,7 @@ LMData = [LMData table(LM_DBts, LMwake, LMpre, LMstimbin ,LMpost, LMallMean,Head
 save(fileName,"LMData",'-mat')
 
 %% Ploar data preperation:
+wavelength = 'white';
 curTrials = (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'DayTime')) & ...
     ~contains(stimTable.Remarks,'Ex');
 recsInd = find(curTrials);
@@ -418,7 +419,7 @@ for i = 1:height(stimTable)
     p = 30*60*1000; %some time diff for the cycle to change.
     preWin = stimStartT - sleepStartT; %all the time before stim start
     stimWin = stimEndT - (stimStartT+p); % stimulation period, not including first 30 min
-    postWin = sleepEndT - (stimEndT+p); %post stimulations sleep, not including first 30 mins.
+    postWin = sleepEndT - (stimEndT); %post stimulations sleep, not including first 30 mins.
 
     nBins = 16;
 
@@ -435,15 +436,16 @@ for i = 1:height(stimTable)
     % end
 
     % get AC for the stimulation:
-    SA.getDelta2BetaAC('tStart',stimStartT+p,'win',stimWin,'overwrite', 1);
+    SA.getDelta2BetaAC('tStart',stimStartT,'win',stimWin,'overwrite', 1);
     SA.getSlowCycles('excludeIrregularCycles',1,'overwrite',1);
     SA.plotSlowCycles;
     SA.plotDelta2BetaSlidingAC(stim=1);
     try    
         hOutStim = SA.plotLizardMovementDB('stim',1 ,'part',2,'tStartStim', ...
-        stimStartT+(60*60*1000),'tEndStim',stimEndT,'nBins',nBins);
-        mPhaseStim.movs(i) = hOutStim.mPhaseMov;
-        mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
+        stimStartT,'tEndStim',stimEndT,'nBins',nBins);
+        SA.plotLizardMovementRaster(stim=1,part=2,nBins=nBins);
+        % mPhaseStim.movs(i) = hOutStim.mPhaseMov;
+        % mPhaseStim.DBs(i) = hOutStim.mPhaseDB;
     catch ME
         disp('No cycles in stim part of the recording')
         disp(ME.message);
@@ -464,6 +466,7 @@ for i = 1:height(stimTable)
 
     close all
 end
+
 
 %% save histogram data
 fileName = [analysisFolder filesep 'polarhistoAllNightsNew.mat'];

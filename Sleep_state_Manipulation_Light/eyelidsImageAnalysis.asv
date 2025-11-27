@@ -512,14 +512,13 @@ function plotRelativeTransmitionAnimal(results, filterLabels, generalFolder)
     validIdx = ~contains(results.Type, 'no');
     results = results(validIdx, :);
 
-
     % Unique animals and types remaining
     Animals = unique(results.Animal);
     Types = unique(results.Type);
 
     % Create color map for all combinations
     numComb = numel(Animals) * numel(Types);
-    allColors = sky(numComb);
+    allColors = nebula(numComb);
 
     figure; hold on;
 
