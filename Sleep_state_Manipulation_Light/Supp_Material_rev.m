@@ -1,17 +1,21 @@
 %% Supplemental Materials
 % initiating stimTable and other essentials. 
 
-SA=sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
+SA=sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysisFiles';
-load([analysisFolder filesep 'stimTable.mat'])
-% load([analysisFolder filesep 'LMdata.mat'])
+load([analysisFolder filesep 'stimTableAll.mat'])
+load([analysisFolder filesep 'LMDataAll.mat'])
 animalsColors = [
+    0,0.474509803921569,0.549019607843137; % dark blue  - PV106
     255/255, 142/255, 71/255;% HEX:  FF8E47 - orange  - PV126
+    0.819607843137255,0.286274509803922,0.356862745098039; %red-ish - PV143
     28/255, 144/255, 217/255;  % HEX: 1C90D9 - blue - PV149
+    0.929411764705882,0.682352941176471,0.286274509803922; %yellow-ish - PV153
     148/255, 120/255, 186/255; % HEX: 9478BA - perpule - PV157
     217/255, 62/255, 67/255; % HEX: D93E43 - red - PV159
     255/255, 202/255, 58/255; % HEX: FFCA3A - yellow -  PV161
     97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
+    
 ];
 uniqueAnimals = unique(stimTable.Animal);
 
@@ -701,6 +705,219 @@ set(f,'PaperPositionMode','auto');
 fileName=[analysisFolder filesep 'headAnglesPV159N34'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% Supplementary Figure 6
+%% intensity supplamentry:
+
+%% figure 3J - intensity shifts: delta2beta in SW change
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder stimWaveL Animals
+
+couples = {"blue","white"};
+
+dbSWdata = [];
+groupNum = [];
+dbSWMeans = [];
+colorMat =[];
+psfromZero =[];
+ns = [];
+Ns = [];
+
+raw_pvals = zeros(1,length(couples));
+
+for i = 1:length(couples)
+    for j = 1:2
+        type = (i-1)*2 +j;
+        curType = stimWaveL(type);
+        curTrials = contains(stimTable.Remarks,curType) & ...
+            ~contains(stimTable.Remarks,'Ex') &...
+            all(~isnan(stimTable.dbSWMeans(:,1:2)), 2) & ...
+            ismember(stimTable.Animal,Animals);
+                        
+        n = sum(curTrials);
+        N = length(unique(stimTable.Animal(curTrials)));
+        ns = [ns; n];
+        Ns = [Ns; N];
+
+        curDBSWdata = stimTable.dbSWMeans(curTrials,2)-stimTable.dbSWMeans(curTrials,1);
+        dbSWdata = [dbSWdata;curDBSWdata];
+        groupNum = [groupNum; repmat(type,height(curDBSWdata),1)];
+        dbSWMeans = [dbSWMeans, mean(curDBSWdata,'omitmissing')];
+        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+        curColorMat = animalsColors(animalIndices, :);
+        colorMat = [colorMat; curColorMat];
+        pfromZero = signrank(curDBSWdata,0);
+        psfromZero = [psfromZero,pfromZero];
+        
+    end
+    %statistics
+    curCoupleNum = [(i*2-1),(i*2)];
+    data1 = dbSWdata(groupNum==curCoupleNum(1));
+    data2 = dbSWdata(groupNum==curCoupleNum(2));
+    p = ranksum(data1,data2);
+    raw_pvals(i) = p;
+
+
+end
+    num_comparisons = length(couples);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('DBSW: Wilcoxon rank-sum (Mann-Whitney) test results with Bonferroni correction:\n');
+    fprintf('blueCouple: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('whiteCouple: p-value = %.4f', corrected_pvals_bonferroni(2));
+    fprintf('\n ns:');fprintf('%d,',ns); fprintf('\n Ns:');fprintf('%d,',Ns); fprintf('\n')
+    fprintf('diff from 0:');fprintf('%.4f,',psfromZero);fprintf('\n');
+%plot:
+f=figure;
+swarmchart(groupNum,dbSWdata,20,colorMat,'filled','XJitterWidth',0.6);
+hold on; scatter(1:type,dbSWMeans,'k','Marker','+')
+labels = {'Blue','Strong Blue','White','Strong White'};
+xticks(1:length(stimWaveL));xticklabels(labels)
+ylabel('DBdiff in SW Stim-Pre')
+yline(0,'--', 'Color',[0.4 0.4 0.4])
+
+% savefigure
+set(f,'PaperPosition',[1 5 4 3]);
+fileName=[analysisFolder filesep 'IntensityDBSWdiffStimPre'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+%% figure 3K - intensity shifts: head angle SD:
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder stimWaveL Animals
+headAngleSD = LMData.headAngleSD;
+
+couples = {"blue","white"};
+
+headAngleSDdata = [];
+groupNum = [];
+headAngleMeans = [];
+colorMat =[];
+ns = [];
+Ns = [];
+
+raw_pvals = zeros(1,length(couples));
+psfromZero = [];
+for i = 1:length(couples)
+    for j = 1:2
+        type = (i-1)*2 +j;
+        curType = stimWaveL(type);
+        curTrials = contains(stimTable.Remarks,curType) & ...
+            ~contains(stimTable.Remarks,'Ex') &...
+            ismember(stimTable.Animal,Animals);
+                        
+        n = sum(curTrials);
+        N = length(unique(stimTable.Animal(curTrials)));
+        ns = [ns; n];
+        Ns = [Ns; N];
+
+        curHeadAngleSD = headAngleSD(curTrials,3)-headAngleSD(curTrials,2);
+        headAngleSDdata = [headAngleSDdata;curHeadAngleSD];
+        groupNum = [groupNum; repmat(type,height(curHeadAngleSD),1)];
+        headAngleMeans = [headAngleMeans, mean(curHeadAngleSD,'omitmissing')];
+        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+        curColorMat = animalsColors(animalIndices, :);
+        colorMat = [colorMat; curColorMat];
+        pFromZero = signrank(curHeadAngleSD,0);
+        psfromZero = [psfromZero,pFromZero];
+    end
+    %statistics
+    curCoupleNum = [(i*2-1),(i*2)];
+    data1 = headAngleSDdata(groupNum==curCoupleNum(1));
+    data2 = headAngleSDdata(groupNum==curCoupleNum(2));
+    p = ranksum(data1,data2);
+    raw_pvals(i) = p;
+
+
+end
+    num_comparisons = length(couples);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('headAngle: Wilcoxon rank-sum (Mann-Whitney) test results with Bonferroni correction:\n');
+    fprintf('blueCouple: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('whiteCouple: p-value = %.4f', corrected_pvals_bonferroni(2));
+    fprintf('\n ns:');fprintf('%d,',ns); fprintf('\n Ns:');fprintf('%d,',Ns); fprintf('\n')
+    fprintf('diff from 0:');fprintf('%.4f,',psfromZero);fprintf('\n');
+
+%plot:
+f=figure;
+swarmchart(groupNum,headAngleSDdata,20,colorMat,'filled','XJitterWidth',0.6);
+hold on; scatter(1:type,headAngleMeans,'k','Marker','+')
+labels = {'Blue','Strong Blue','White','Strong White'};
+xticks(1:length(stimWaveL));xticklabels(labels)
+ylabel('delta headAngle SD Stim-Pre')
+yline(0,'--', 'Color',[0.4 0.4 0.4])
+
+% savefigure
+set(f,'PaperPosition',[1 5 4 3]);
+fileName=[analysisFolder filesep 'IntensityHeadAngleSD'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+
+%% figure 3L - intensity shifts: head mov:
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder stimWaveL Animals
+
+couples = {"blue","white"};
+
+headMovDdata = [];
+groupNum = [];
+headMovMeans = [];
+colorMat =[];
+ns = [];
+Ns = [];
+
+LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
+raw_pvals = zeros(1,length(couples));
+psfromZero = [];
+for i = 1:length(couples)
+    for j = 1:2
+        type = (i-1)*2 +j;
+        curType = stimWaveL(type);
+        curTrials = contains(stimTable.Remarks,curType) & ...
+            ~contains(stimTable.Remarks,'Ex') &...
+            ismember(stimTable.Animal,Animals);
+                        
+        n = sum(curTrials);
+        N = length(unique(stimTable.Animal(curTrials)));
+        ns = [ns; n];
+        Ns = [Ns; N];
+        LMpre = LMData.LMpre(curTrials);
+        LMstimbintrialM = mean(LMstimbinM(curTrials,:),2); % mean for each night
+        curDiffStimPre = LMstimbintrialM-LMpre;
+        headMovDdata = [headMovDdata;curDiffStimPre];
+        groupNum = [groupNum; repmat(type,height(curDiffStimPre),1)];
+        headMovMeans = [headMovMeans, mean(curDiffStimPre,'omitmissing')];
+        [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
+        curColorMat = animalsColors(animalIndices, :);
+        colorMat = [colorMat; curColorMat];
+        pFromZero = signrank(curDiffStimPre,0);
+        psfromZero= [psfromZero,pFromZero];
+    end
+    %statistics
+    curCoupleNum = [(i*2-1),(i*2)];
+    data1 = headMovDdata(groupNum==curCoupleNum(1));
+    data2 = headMovDdata(groupNum==curCoupleNum(2));
+    p = ranksum(data1,data2);
+    raw_pvals(i) = p;
+end
+    num_comparisons = length(couples);
+    corrected_pvals_bonferroni = min(raw_pvals * num_comparisons, 1);
+    fprintf('headMov: Wilcoxon rank-sum (Mann-Whitney) test results with Bonferroni correction:\n');
+    fprintf('blueCouple: p-value = %.4f \n', corrected_pvals_bonferroni(1));
+    fprintf('whiteCouple: p-value = %.4f', corrected_pvals_bonferroni(2));
+    fprintf('\n ns:');fprintf('%d,',ns); fprintf('\n Ns:');fprintf('%d,',Ns); fprintf('\n')
+    fprintf('diff from 0:');fprintf('%.4f,',psfromZero);fprintf('\n');
+
+%plot:
+f=figure;
+swarmchart(groupNum,headMovDdata,20,colorMat,'filled','XJitterWidth',0.6);
+hold on; scatter(1:type,headMovMeans,'k','Marker','+')
+labels = {'Blue','Strong Blue','White','Strong White'};
+xticks(1:length(stimWaveL));xticklabels(labels)
+ylabel('delta movement Stim-Pre')
+yline(0,'--', 'Color',[0.4 0.4 0.4])
+
+% savefigure
+set(f,'PaperPosition',[1 5 4 3]);
+fileName=[analysisFolder filesep 'IntensityHeadMov'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+%% eyelid supplamentry:
 
 

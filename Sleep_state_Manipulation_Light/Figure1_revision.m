@@ -5,17 +5,29 @@ analysisFolder = '/media/sil1/Data/Nitzan/Light Manipulation paper/NitzanAnalysi
 load([analysisFolder filesep 'stimTableAll.mat'])
 load([analysisFolder filesep 'LMDataAll.mat'])
 animalsColors = [
-    0,0.474509803921569,0.549019607843137; % dark blue  - PV106
+    0/255,124/255,143/255; % Hex: 00798C- dark blue  - PV106
     255/255, 142/255, 71/255;% HEX:  FF8E47 - orange  - PV126
-    0.819607843137255,0.286274509803922,0.356862745098039; %red-ish - PV143
+    % 121/255, 67/255, 157/255;% HEX: 79439D- dark purple -PV142
+    156/255,44/255,58/255; % HEX: 9C2C3A red-ish - PV143
     28/255, 144/255, 217/255;  % HEX: 1C90D9 - blue - PV149
-    0.929411764705882,0.682352941176471,0.286274509803922; %yellow-ish - PV153
-    148/255, 120/255, 186/255; % HEX: 9478BA - perpule - PV157
+    237/255,174/255,73/255; % HEX:edae49 - yellow-ish - PV153
+    % 77/255, 147/255, 57/255; %HEX: 4D9339 dark green- PV88
+    148/255, 120/255, 186/255; % HEX: 9478BA - purple - PV157
     217/255, 62/255, 67/255; % HEX: D93E43 - red - PV159
     255/255, 202/255, 58/255; % HEX: FFCA3A - yellow -  PV161
     97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
-    
-];
+    ];
+% animalsColors = [
+%     0,0.474509803921569,0.549019607843137; % dark blue  - PV106
+%     255/255, 142/255, 71/255;% HEX:  FF8E47 - orange  - PV126
+%     0.819607843137255,0.286274509803922,0.356862745098039; %red-ish - PV143
+%     28/255, 144/255, 217/255;  % HEX: 1C90D9 - blue - PV149
+%     0.929411764705882,0.682352941176471,0.286274509803922; %yellow-ish - PV153
+%     148/255, 120/255, 186/255; % HEX: 9478BA - perpule - PV157
+%     217/255, 62/255, 67/255; % HEX: D93E43 - red - PV159
+%     255/255, 202/255, 58/255; % HEX: FFCA3A - yellow -  PV161
+%     97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
+%     ];
 uniqueAnimals = unique(stimTable.Animal);
 %% Figure 1 A, C, E
 % parameters calculations for next plots:

@@ -890,9 +890,9 @@ animalsColorsEL = [
     ];
 
 
-corrected_pvals =plotRelativeTransmitionAnimal(results,filterLabels, analysisFolder,animalsColorsEL,2:5)
+plotRelativeTransmitionAnimal(results,filterLabels, analysisFolder,animalsColorsEL,2:5)
 
-function [corrected_pvals] = plotRelativeTransmitionAnimal(results, filterLabels, generalFolder,colors, whichFilt)
+function plotRelativeTransmitionAnimal(results, filterLabels, generalFolder,colors, whichFilt)
     
     % Remove the "noEyelid" type
     validIdx = ~contains(results.Type, 'no');
