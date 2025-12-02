@@ -18,18 +18,7 @@ animalsColors = [
     255/255, 202/255, 58/255; % HEX: FFCA3A - yellow -  PV161
     97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
     ];
-% animalsColors = [
-%     0,0.474509803921569,0.549019607843137; % dark blue  - PV106
-%     255/255, 142/255, 71/255;% HEX:  FF8E47 - orange  - PV126
-%     0.819607843137255,0.286274509803922,0.356862745098039; %red-ish - PV143
-%     28/255, 144/255, 217/255;  % HEX: 1C90D9 - blue - PV149
-%     0.929411764705882,0.682352941176471,0.286274509803922; %yellow-ish - PV153
-%     148/255, 120/255, 186/255; % HEX: 9478BA - purple - PV157
-%     217/255, 62/255, 67/255; % HEX: D93E43 - red - PV159
-%     255/255, 202/255, 58/255; % HEX: FFCA3A - yellow -  PV161
-%     97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
-% 
-% ];
+
 uniqueAnimals = unique(stimTable.Animal);
 
 %% Figure 2A - one night: D/B decrease
@@ -504,7 +493,16 @@ figure;
 h1=polaraxes;hold on;
 title('eye Mov. white nights')
 Rlim=0.5;
+% stats:
 relativeMean = circ_mean(relativePhaseEye(pVal));
+[p, z] = circ_rtest(relativePhaseEye(pVal));
+fprintf('Rayleigh''s test p-value: %f\n', p);
+if p < 0.05
+    fprintf('The data is significantly non-uniform.\n');
+else
+    fprintf('The data uniformly distributed.\n');
+end
+
 
 hP={};
 for i=1:numel(uniqueAnimals)
