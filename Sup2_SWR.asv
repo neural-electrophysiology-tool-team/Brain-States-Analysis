@@ -178,10 +178,12 @@ for i = 1:height(stimTable)
     boundsLong(i,:) =  curBoundsL;
 
 end
+fName = [analysisFolder filesep 'ShWcrossCorrData.mat'];
+save(fName,"cShort","cLong","boundsLong","boundsShort","lagTimeS","lagTimeL",'-mat')
 
 %% SHW save and load
 fName = [analysisFolder filesep 'ShWcrossCorrDataAll.mat'];
-save(fName,"cShort","cLong","boundsLong","boundsShort","lagTimeS","lagTimeL","lagTimeL",'-mat')
+save(fName,"cShort","cLong","boundsLong","boundsShort",,'-mat')
 % load(fName)
 %% plot: only red nights:
 
