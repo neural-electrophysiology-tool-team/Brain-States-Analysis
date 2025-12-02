@@ -169,7 +169,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 %% Sup 2B
 % plot all raw traces, 1 nights:
 
-i = 56;%(17 before). not PV106,N20
+i = 54;%(17 before). not PV106,N20
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
     
@@ -186,12 +186,13 @@ post = 1000;
 
 % plot
 fraw = figure;
+% subplot(2,1,1)
 x = linspace(-pre,post,length(mV_t));
 mV1 = squeeze(mV);
 [d,h] = hist2(repmat(x,height(mV1),1),mV1,'dX1',3,'dX2',5);
 hold on
 plot(downsample(x,100),downsample(mean(mV1,1),100),'Color','r','LineWidth',2)
-ylims =[-600 400];
+ylims =[-1000 700];
 ylim(ylims)
 % title('Raw traces for 1 night')
 x_shade = [0 200 200 0];  % X-coordinates of the shaded region
@@ -201,10 +202,10 @@ xlabel('Time(ms)');ylabel('Voltage[uV]')
 
 % subplot(2,1,2)
 % x = linspace(-pre,post,length(mV_t));
-% mAn1 = squeeze(mAn);
-% [d,h] = hist2(repmat(x,height(mAn1),1),mAn1,'dX1',3,'dX2',5);
+% mV1 = squeeze(mV);
+% [d,h] = hist2(repmat(x,height(mV1),1),mV1,'dX1',3,'dX2',5);
 % hold on
-% plot(downsample(x,100),downsample(mean(mAn1,1),100),'Color','r','LineWidth',2)
+% plot(downsample(x,100),downsample(mean(mV1,1),100),'Color','r','LineWidth',2)
 % ylims =[-1000 700];
 % ylim(ylims)
 % % title('Raw traces for 1 night')
@@ -212,7 +213,7 @@ xlabel('Time(ms)');ylabel('Voltage[uV]')
 % y_shade = [ylims(1) ylims(1) ylims(2) ylims(2)]; % Y-coordinates covering the full y-range
 % patch(x_shade, y_shade, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
 % xlabel('Time(ms)');ylabel('Voltage[uV]')
-% 
+
 
 % save figure
 set(fraw ,'PaperPosition',[1 2 4.3 1.7]);
@@ -225,7 +226,7 @@ print(fileName, '-dpdf', '-r300');
 % detect SWR using SWR detection method.
 
 % for 1 night first:
-i = 56;
+i = 88;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 SA.getSharpWaves('detectOnlyDuringSWS',false)
