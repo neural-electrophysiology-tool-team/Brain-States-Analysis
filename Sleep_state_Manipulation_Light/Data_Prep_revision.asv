@@ -576,8 +576,8 @@ for i = 1:height(stimTable)
     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
     SA.setCurrentRecording(recName)
     stims = SA.getStimTriggers;
-    SA.getDelta2BetaAC('overwrite',1,'tStart', stims(1),'win',(stims(end)-stims(1)+30*60*100))
-    SA.getSlowCycles('overwrite',1);
+    SA.getDelta2BetaAC('overwrite',1,'tStart', stims(1)+(60*60*1000),'win',(stims(end)-stims(1)+30*60*100))
+    SA.get
     eye = SA.getSyncedDBEyeMovements('digitalVideoSyncCh',7,'useRobustFloatingAvg',0,'overwrite',1,'stimCyclesOnly',1);
     stimTable.eyeMovPh(i) = eye.mPhaseMov;
     stimTable.eyeMovPhDB(i) = eye.mPhaseDB;
