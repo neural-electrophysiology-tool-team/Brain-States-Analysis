@@ -484,36 +484,40 @@ relativePhaseEye = stimTable.eyeMovPh-stimTable.eyeMovPhDB;
 
 
 wavelength = 'white';
-pVal = stimTable.eyeMov ==1 &...
+trials = stimTable.eyeMov ==1 &...
     ~contains(stimTable.Remarks,'Ex') &...
     (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'DayTime'));
-n=sum(pVal);
-N = length(unique(stimTable.Animal(pVal)));
+n=sum(trials);
+N = length(unique(stimTable.Animal(trials)));
 figure;
 h1=polaraxes;hold on;
 title('eye Mov. white nights')
 Rlim=0.5;
 % stats:
-relativeMean = circ_mean(relativePhaseEye(pVal));
-[p, z] = circ_rtest(relativePhaseEye(pVal));
-fprintf('Rayleigh''s test p-value: %f\n', p);
-if p < 0.05
-    fprintf('The data is significantly non-uniform.\n');
-else
-    fprintf('The data uniformly distributed.\n');
-end
+relativeMean = circ_mean(relativePhaseEye(trials));
+dir = circ_ang2rad(180);
+    [pval, v] = circ_vtest(relativePhaseEye(trials), dir);
+fprintf('v test p-value: %f\n', pval);
+
+% [p, z] = circ_rtest(relativePhaseEye(pVal));
+% fprintf('Rayleigh''s test p-value: %f\n', p);
+% if p < 0.05
+%     fprintf('The data is significantly non-uniform.\n');
+% else
+%     fprintf('The data uniformly distributed.\n');
+% end
 
 
 hP={};
 for i=1:numel(uniqueAnimals)
-    p=find(pVal & strcmp(stimTable.Animal,uniqueAnimals(i)));
+    p=find(trials & strcmp(stimTable.Animal,uniqueAnimals(i)));
     hP{i}=polarplot([relativePhaseEye(p)';relativePhaseEye(p)'],[zeros(1,numel(p));Rlim*ones(1,numel(p))],'color',animalsColors(i,:),'LineWidth',1);
 end
 hold on;
 hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
 hP3=polarplot([relativeMean relativeMean],[0,Rlim],'color','k','LineWidth',3);
 
-hRose=polarhistogram(h1,relativePhaseEye(pVal),12,'Normalization','probability');
+hRose=polarhistogram(h1,relativePhaseEye(trials),12,'Normalization','probability');
 hRose.FaceColor=[0.7 0.7 0.7];
 hRose.FaceAlpha=0.5;
 
@@ -524,7 +528,7 @@ l1=legend([hP{1}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off
 l1.Position=[0.7386    0.8238    0.2125    0.1190];
 
 % save figure:
-fileName=[analysisFolder filesep 'EyeMovWhite'];
+fileName=[analysisFolder filesep 'EyeMovWhite2'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);% clearvars -except stimTable SA analysisFolder LMdata
 
 
