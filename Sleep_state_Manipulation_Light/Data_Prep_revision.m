@@ -484,7 +484,7 @@ animals =SA.recTable.Animal(recInd);recnames = SA.recTable.recNames(recInd);
 recList = cellfun(@(x,y) ['Animal=' x ',recNames=' y], animals, recnames, 'UniformOutput', false);
 for i = 1:length(recList)
     SA.setCurrentRecording(recList{i})
-    SA.currentDataObj.generateChannelMapFile('40_16x2_FlexLin'); % 120_32x1_H4_CamNeuro for PV24. all layouts in TSV/electrode layouts
+    SA.currentDataObj.generateChannelMapFile('layout_25_32x1_FlexLinear'); % 120_32x1_H4_CamNeuro for PV24. all layouts in TSV/electrode layouts
     binaryileName = [SA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'ch1_32.bin'];
     SA.currentDataObj.convert2Binary(binaryileName);
 end

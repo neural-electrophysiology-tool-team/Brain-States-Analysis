@@ -148,6 +148,8 @@ groupNum=[];
 colorMat = [];
 Ns = [];
 ns = [];
+stimMean = [];
+stimSD= [];
 x=1:3;
 
 
@@ -169,6 +171,8 @@ for type = 1:numType
     Ns = [Ns; N];
     curData = stimTable.ACcomPer(curTrials,:);
     curMean = mean(curData,1,'omitnan');
+    curStimMean = mean(curData(:,2))/1000;curStimSD=std(curData(:,2))/1000;
+    stimMean=[stimMean curStimMean];stimSD=[stimSD curStimSD];
     stimData = [stimData; curData(:,2)];
     groupNum = [groupNum; repmat(type, length(curData), 1)];
 
@@ -334,9 +338,9 @@ end
 %% Figure 3D - D/B decrease
 % close all
 clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder LMData stimType stimWaveL
+stimType = ["Blue","Green","Red","white"];%"strongBlue","DayTime"];
+stimWaveL = ["blue","green","red","white"];%, "strongBlue","DayTime"];
 
-% stimType = ["Blue","Green","Red","WhiteEx"];
-% stimWaveL = ["blue","green","red","white"];
 numType = length(stimType);
 DBdiff = [];
 groupNum = [];
@@ -891,12 +895,12 @@ animalsColorsEL = [
     ];
 
 
-corrected_pvals =plotRelativeTransmitionAnimal(results,filterLabels, analysisFolder,animalsColorsEL,2:5)
+[corrected_pvals,avgResults] =plotRelativeTransmitionAnimal(results,filterLabels, analysisFolder,animalsColorsEL,2:5)
 
-function [corrected_pvals] = plotRelativeTransmitionAnimal(results, filterLabels, generalFolder,colors, whichFilt)
+function [corrected_pvals,avgResults] = plotRelativeTransmitionAnimal(results, filterLabels, generalFolder,colors, whichFilt)
     
     % Remove the "noEyelid" type
-    validIdx = ~contains(results.Type, 'no');
+    validIdx = ~contains(results.Type, 'no') & results.transmision>0;
     results = results(validIdx, :);
     
     %which filter:
@@ -906,55 +910,52 @@ function [corrected_pvals] = plotRelativeTransmitionAnimal(results, filterLabels
     end
     % Unique animals and types remaining
     Animals = unique(results.Animal);
-    % Types = unique(results.Type);
-
+    Types = unique(results.Type);
+    
     figure; hold on;
-
+    avgResults = [];
+    colorMat=[];
     % Loop through each animal
     for a = 1:numel(Animals)
-        % Loop through each type
-            idx = strcmp(results.Animal, Animals(a));
-            subData = results(idx, :);
-            thisColor = colors(a,:);
+        for t = 1:length(Types)
 
-            % Swarm plot
-            swarmchart( ...
-                subData.Filter, ...
-                subData.transmision * 100, ...
-                40, ...           % marker size
-                thisColor, ...     % color
-                'filled',...
-                'XJitterWidth',0.8);         % filled markers
+        idx = strcmp(results.Animal, Animals(a)) & strcmp(results.Type,Types{t});
+        subData = results(idx, :);
+        thisColor = colors(a,:);
+        % average for each type and animal, for each filter.
+        avgTrans = groupsummary(subData, "Filter", "mean", "transmision");
+        avgTrans.animal = repmat(Animals(a), height(avgTrans), 1);
+        avgTrans.type   = repmat(Types(t),   height(avgTrans), 1);
+        avgResults = [avgResults; avgTrans];
+        curColor = repmat(colors(a,:),height(avgTrans), 1);
+        colorMat = [colorMat;curColor];
+        end
     end
+
+    % Swarm plot
+    swarmchart( ...
+        avgResults.Filter, ...
+        avgResults.mean_transmision * 100, ...
+        40, ...           % marker size
+        colorMat, ...     % color
+        'filled',...
+        'XJitterWidth',0.8);         % filled markers
 
     % MEAN PER FILTER 
-    uniqueFilters = unique(results.Filter);
-    means = [];
-    data = [];
-    groupNum = [];
-    for f = 1:numel(uniqueFilters)
-        filterVal = uniqueFilters(f);
-
-        % uses only the rows in the ALREADY-FILTERED table
-        fIdx = results.Filter == filterVal &...
-                results.transmision>0;
-        curData = results.transmision(fIdx) *100;
-        data = [data;curData];
-        groupNum = [groupNum; repmat(f,height(curData),1)];
-        groupMean = mean(results.transmision(fIdx) * 100);
-        means = [means,groupMean];
-    end
+    avgFilter = groupsummary(avgResults, "Filter", "mean", "mean_transmision");
     hold on;
-    scatter(2:length(filterLabels)+1,means,'k','Marker','+')
+    scatter(2:length(filterLabels)+1,avgFilter.mean_mean_transmision*100,'k','Marker','+')
 
     ylabel('% Transmission');
     xticks(2:length(filterLabels)+1)
     xticklabels(filterLabels)
-    xlim([0.7 6.3])
+    xlim([1.7 5.3])
     ylim([0 5])
 
+
+
     %STATISTICS:
-    [pKW, tbl, stats] = kruskalwallis(data,groupNum,'off');
+    [pKW, tbl, stats] = kruskalwallis(avgResults.mean_transmision,avgResults.Filter,'off');
 
     if pKW < 0.05
         % Get unique group names
@@ -969,8 +970,8 @@ function [corrected_pvals] = plotRelativeTransmitionAnimal(results, filterLabels
         for i = 1:numGroups-1
             for j = i+1:numGroups
                 % Extract data for group i and j
-                data_i = data(groupNum == i);
-                data_j = data(groupNum == j);
+                data_i = avgResults.mean_transmision(avgResults.Filter == i+1);
+                data_j = avgResults.mean_transmision(avgResults.Filter == i+2);
 
                 % Wilcoxon rank-sum (Mann-Whitney U)
                 [p, ~] = ranksum(data_i, data_j);
