@@ -1,13 +1,14 @@
 %% check new nights recording:
 SA = sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
-SA.setCurrentRecording('Animal=PV208,recNames=Night5');
-% trig = SA.getStimDiodeTrig;
-% stims = SA.getStimTrigger;
+SA.setCurrentRecording('Animal=PV208,recNames=Night6');
+trig = SA.getStimDiodeTrig;
+stims = SA.getStimTriggers;
 
+%%
 SA.getDelta2BetaRatio;
 SA.getDelta2BetaAC;
-SA.plotDelta2BetaRatio;%(stim=1);
-SA.plotDelta2BetaSlidingAC;%(stim=1);
+SA.plotDelta2BetaRatio(stim=1);
+SA.plotDelta2BetaSlidingAC(stim=1);
 %% check new hunter rec:
 WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 WA.setCurrentRecording('Animal=PV106,recNames=Hunter17');

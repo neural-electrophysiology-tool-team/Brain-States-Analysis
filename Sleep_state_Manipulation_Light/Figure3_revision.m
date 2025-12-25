@@ -873,10 +873,10 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Eyelids analysis:
 Animals = {'PV88','PV106','PV142','PV143','PV153'};
-generalFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
+EyelidFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
 % results = getDataFromAll(generalFolder,Animals);
 % results = readtable([generalFolder '/PV143_noFresh/results.csv']);
-results=readtable([generalFolder filesep 'results.csv']);
+results=readtable([EyelidFolder filesep 'results.csv']);
 % filterLabels = ["BF","DAPI-460","GFP-525","mCherry-630","iRFP-700","YFP-540"];
 filterLabels = {'Blue','Green','LightRed','Red'};
 

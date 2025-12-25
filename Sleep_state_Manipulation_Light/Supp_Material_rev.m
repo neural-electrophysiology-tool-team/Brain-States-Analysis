@@ -13,14 +13,84 @@ animalsColors = [
     28/255, 144/255, 217/255;  % HEX: 1C90D9 - blue - PV149
     237/255,174/255,73/255; % HEX:edae49 - yellow-ish - PV153
     % 77/255, 147/255, 57/255; %HEX: 4D9339 dark green- PV88
-    148/255, 120/255, 186/255; % HEX: 9478BA - 
-    % purple - PV157
+    148/255, 120/255, 186/255; % HEX: 9478BA - purple - PV157
     217/255, 62/255, 67/255; % HEX: D93E43 - red - PV159
     255/255, 202/255, 58/255; % HEX: FFCA3A - yellow -  PV161
     97/255, 184/255, 68/255;  % HEX:61B844 - Green -PV162
     ];
 
 uniqueAnimals = unique(stimTable.Animal);
+
+%% Supplementary Figure 1
+%% all stimualtions raw data one night.
+SA.setCurrentRecording('Animal=PV153,recNames=Night15');
+stims = SA.getStimTriggers;
+ch = SA.recTable.defaulLFPCh(SA.currentPRec);
+pre = 20*1000;
+tStart = stims(1)-pre; win = stims(end)-tStart+50*1000;
+[LFP,LFP_t] = SA.currentDataObj.getData(ch,tStart,win);
+LFP = squeeze(LFP);
+dsLFP = downsample(LFP,200);
+dsLFP_t = downsample(LFP_t,200);
+
+%% plot
+chunkDur_s = 158.2;                 % seconds per row
+chunkDur_ms = chunkDur_s * 1000;  % ms
+gap = 1200;                       % vertical spacing
+
+t = dsLFP_t;   % time in ms
+y = dsLFP;
+
+dt = median(diff(t));                 % ms
+chunkSamples = round(chunkDur_ms / dt);
+nChunks = ceil(length(y) / chunkSamples);
+
+% height of stim marker within each row (in signal units)
+stimHalfHeight = gap * 0.5;          % adjust if you want taller/shorter lines
+%
+f=figure; hold on
+
+for k = 1:nChunks
+    idx1 = (k-1)*chunkSamples + 1;
+    idx2 = min(k*chunkSamples, length(y));
+
+    % time within chunk (ms)
+    t0 = t(idx1);
+    tChunk = t(idx1:idx2) - t0;
+
+    % vertical offset (top -> bottom)
+    yOffset = (nChunks - k) * gap;
+
+    % plot chunk
+    yChunk = y(idx1:idx2) + yOffset;
+    plot(tChunk/1000, yChunk, 'k')  % x-axis in seconds
+
+    % ---- stim markers ONLY for this row ----
+    stimRel = (stims - tStart);   % ms in same reference as t
+    stimIdx = stimRel >= t(idx1) & stimRel <= t(idx2);
+
+    if any(stimIdx)
+        x = (stimRel(stimIdx) - t0) / 1000;   % seconds within chunk
+
+        % draw short vertical segments centered around this row's offset
+        y0 = yOffset - stimHalfHeight;
+        y1 = yOffset + stimHalfHeight;
+
+        for xi = x(:)'
+            line([xi xi], [y0 y1], 'Color', 'r', 'LineWidth', 1.5);
+        end
+    end
+end
+
+xlabel('Time (s)')
+set(gca,'YTick',[]); xlim([0,chunkDur_s])
+box on
+
+% save figue
+set(f,'PaperPosition', [1 1 7 9]);
+% set(f,"PaperPositionMode","auto")
+fileName=[analysisFolder filesep 'AllNightRawLFPPV153N12'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Supplementary Figure 1
 %% Sup 1 C, D,E
@@ -166,10 +236,33 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% Supplementary Figure 2 - SWR
+%% Sup 2A
+i = 63;%(17 before). not PV106,N20
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+stims = SA.getStimTriggers; %stimulations timimng in ms
+firstTrig = stims(1:8:end);
+
+j=2;
+pre = 5000;
+ch = SA.recTable.defaulLFPCh(SA.currentPRec);
+tStart = firstTrig(j)-pre;
+win = pre+40*1000;
+[rawLFP,rawLFP_t] = SA.currentDataObj.getData(ch,tStart,win);
+%plot
+figure;
+plot((rawLFP_t-pre)/1000,squeeze(rawLFP),'k');hold on;
+xline((stims(8*j-7:8*j)-stims(8*j-7))/1000,'r');
+%save
+set(gcf ,'PaperPosition',[1 2 4.3 1.7]);
+fileName=[analysisFolder filesep 'SWRraw_rev'];
+% print(fileName,'-depsc','-vector');
+print(fileName, '-dpdf', '-r300');
+
 %% Sup 2B
 % plot all raw traces, 1 nights:
 
-i = 56;%(17 before). not PV106,N20
+i = 63;%(17 before). not PV106,N20
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
     
@@ -216,7 +309,7 @@ xlabel('Time(ms)');ylabel('Voltage[uV]')
 
 % save figure
 set(fraw ,'PaperPosition',[1 2 4.3 1.7]);
-fileName=[analysisFolder filesep 'SWRraw_rev'];
+fileName=[analysisFolder filesep 'SWRhist_rev'];
 % print(fileName,'-depsc','-vector');
 print(fileName, '-dpdf', '-r300');
 
@@ -225,7 +318,7 @@ print(fileName, '-dpdf', '-r300');
 % detect SWR using SWR detection method.
 
 % for 1 night first:
-i = 56;
+i = 63;
 recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 SA.getSharpWaves('detectOnlyDuringSWS',false)
@@ -730,6 +823,8 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% figure 3J - intensity shifts: delta2beta in SW change
 clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder stimWaveL Animals
+stimWaveL = ["blue","strongBlue","white","DayTime"];
+Animals = unique(stimTable.Animal);
 
 couples = {"blue","white"};
 
@@ -940,5 +1035,108 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% eyelid supplamentry:
+EyelidFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption/TAMS Scan_PV143';
+eyelidfilename1 =[EyelidFolder filesep 'eyelid1_pv143.Sample.Raw.csv'];
+spectro1= readtable(eyelidfilename1);
+eyelidfilename2 =[EyelidFolder filesep 'eyelid2_pv143.Sample.Raw.csv'];
+spectro2= readtable(eyelidfilename2);
+means = mean([spectro1.x_T, spectro2.x_T]);
+nspectro1 = spectro1.x_T/means(1);
+nspectro2 = spectro2.x_T/means(2);
+avgTrans = mean([spectro1.x_T, spectro2.x_T],2);
+nAvgTrans = mean([nspectro1, nspectro2],2);
+%% plot
+% figure; plot(spectro1.nm,spectro1.x_T,color=[0.5 0.5 0.5])
+% hold on; plot(spectro2.nm,spectro2.x_T,color=[0.5 0.5 0.5]);
+% plot(spectro2.nm,avgTrans,'k')
+
+figure; plot(spectro1.nm,nspectro1,color=[0.8 0.8 0.8])
+hold on; plot(spectro2.nm,nspectro2,color=[0.5 0.5 0.5]);
+plot(spectro2.nm,nAvgTrans,'k')
+
+
+xlabel('Wavelength (nm)'); ylabel('% Transmission');
+
+% X regions to shade
+xRanges = [ ...
+    435   485;
+    500   550;
+    592   667;
+    662  737];
+
+% Colors (RGBA)
+colors = [ ...
+    0 0 1;   % blue
+    0 1 0;   % green
+    1 0.5 0;   % orange
+    1 0 0]; % red
+
+alphaVal = 0.15;
+
+% Get y limits
+yl = ylim;
+
+for i = 1:size(xRanges,1)
+    patch( ...
+        [xRanges(i,1) xRanges(i,2) xRanges(i,2) xRanges(i,1)], ...
+        [yl(1) yl(1) yl(2) yl(2)], ...
+        colors(i,:), ...
+        'FaceAlpha',alphaVal, ...
+        'EdgeColor','none');
+end
+
+uistack(findobj(gca,'Type','line'),'top')  % keep line on top
+% savefigure;
+set(gcf,'PaperPosition',[1 5 4 3]);
+fileName=[analysisFolder filesep 'NspectrometerEyelidSup'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+
+
+%% Third eye Supplamentary figure:
+animalsThird = ["PV157","PV161"];
+
+i = 25;
+recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+SA.setCurrentRecording(recName);
+plotStimSham(SA);
+SA.plotDelta2BetaSlidingAC(stim=1)
+%% plot the data
+% plot nights without :
+isThird = ismember(string(stimTable.Animal), animalsThird);   % Nx1, always
+withEyeTrials   = stimTable.Mani==1 & isThird;
+withoutETrials  = stimTable.Mani==2 & isThird;
+nwith = sum(withEyeTrials);
+Nwith= length(unique(stimTable.Animal(withEyeTrials)));
+nWO = sum(withoutETrials);
+NWO = length(unique(stimTable.Animal(withoutETrials)));
+ 
+% Statistics:
+[pMW_sham,h_sham] = ranksum(stimTable.dbDiffShamM(withoutETrials), stimTable.dbDiffShamM(withEyeTrials));
+    fprintf('Mann-Whitney Signed-Rank Test p-value - sham: %.4f\n', pMW_sham);
+    fprintf('h = %i\n',h_sham)
+
+[pMW_stim, h_stim] = ranksum(stimTable.dbDiffStimM(withoutETrials), stimTable.dbDiffStimM(withEyeTrials));
+    fprintf('Mann-Whitney Signed-Rank Test p-value - stim: %.4f\n', pMW_stim);
+    fprintf('h = %i\n',h_stim)
+
+%plot
+x = 1:2;
+f=figure;
+h1 = plot(x,[stimTable.dbDiffShamM(withEyeTrials) stimTable.dbDiffStimM(withEyeTrials)], ...
+    'Marker','.','LineStyle','-','Color',[1 0.65 0]);
+hold on
+h2 = plot(x,[stimTable.dbDiffShamM(withoutETrials) stimTable.dbDiffStimM(withoutETrials)], ...
+    'Marker','.','LineStyle','-','Color',[11/255 102/255 35/255]);
+xlim([0.9 2.1])
+xticks([x]);xticklabels(["Sham","Stim"])
+
+legend([h1(1), h2(1)],["Trials with Third Eye","Trials without Third Eye"],'Location','northwest')
+
+
+% save figue
+% 
+set(f,'PaperPosition',[1 1 2 3]);
+fileName=[analysisFolder filesep 'ThirdEye'];
+print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 

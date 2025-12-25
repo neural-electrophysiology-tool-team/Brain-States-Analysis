@@ -9,7 +9,7 @@ function f = plotStimSham(SA)
 
     trialsham = height(StimDBSham)-70+1;
 
-    colorLim=[0 600];
+    colorLim=[0 400];
     f=figure;
     subplot(4,2,[1:2:6]);imagesc(StimDBSham(trialsham:end,:),colorLim);ylabel('Trial #');title('Sham');hold on;set(gca,'XTick',[]);
     cb=colorbar('Position',[0.47 0.76 0.013 0.17]);ylabel(cb,'\delta/\beta');
