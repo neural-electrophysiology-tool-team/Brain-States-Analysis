@@ -517,14 +517,14 @@ hold on;
 hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
 hP3=polarplot([relativeMean relativeMean],[0,Rlim],'color','k','LineWidth',3);
 
-hRose=polarhistogram(h1,relativePhaseEye(trials),12,'Normalization','probability');
-hRose.FaceColor=[0.7 0.7 0.7];
-hRose.FaceAlpha=0.5;
+% hRose=polarhistogram(h1,relativePhaseEye(trials),12,'Normalization','probability');
+% hRose.FaceColor=[0.7 0.7 0.7];
+% hRose.FaceAlpha=0.5;
 
 text(0.2, Rlim/2, '\delta/\beta');
 h1.ThetaTick=[0:90:330];
 h1.RTick=[0.1:0.1:0.4];
-l1=legend([hP{1}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off');
+l1=legend([hP{1}(1),hP3,hRose],{'singleNight','\delta/\beta'},'box','off');
 l1.Position=[0.7386    0.8238    0.2125    0.1190];
 
 % save figure:

@@ -225,9 +225,6 @@ for i = 1:length(recList)
 end%
 
 %% plot
-meanAllRecsPath = [analysisFolder filesep 'meanSpikeRate1000msbin.mat'];
-load(meanAllRecsPath)
-goodUnitsInd = find(contains(labelsAll,'good'));
 
 f= figure;
 %figrue1: one unit from 1 nights/
@@ -241,6 +238,22 @@ title('one unit mean across all trials')
 hold off
 
 
+% %figure 3: all units - all nights
+% ax2=subplot(2,1,2);
+% title('Mean all units, all Red Nights')
+% plot(t,mean(meanAllRecs,1,'omitnan'),'Color','k', 'LineWidth',1); hold on;
+% xline(curstims,'r','LineWidth',1)
+% xlabel('Time[s]'); 
+% ylabel('Spike/s')
+% n= size(meanAllRecs,1);
+% spikesInd = stimTable.spikes ==1& (strcmp(stimTable.Remarks,'white')|contains(stimTable.Remarks,'DayTime'));
+% N = sum(spikesInd);
+% annotation('textbox', [0.8, 0.2, 0.03, 0.1], 'String', ...
+%     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
+% 
+% % 
+%figure 3: good units - all nights
 ax2=subplot(2,1,2);
 title('Mean good units, all white Nights')
 data = meanAllRecs(goodUnitsInd,:);
@@ -264,7 +277,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 %% Figure 1G
 %% get the pre-post stim spike rates.
-clearvars -except stimTable SA LMData meanAllRecs analysisFolder animalsColors uniqueAnimals
+clearvars -except stimTable SA LMData meanAllRecs analysisFolder 
 meanAllRecsPath = [analysisFolder filesep 'meanSpikeRate1000msbin.mat'];
 load(meanAllRecsPath)
 
@@ -290,7 +303,48 @@ postStimI = find(spikeRateT> (curstims(end)+2) & spikeRateT< (curstims(end)+12))
 preData=mean(meanAllRecs(:,preStimI),2);
 postData=mean(meanAllRecs(:,postStimI),2);
 
-% plot only good units:
+% %% plot
+% 
+% fall = figure;
+% subplot(1,2,1)
+% IIdata = [preData, postData];
+% plot([1,2] ,IIdata,'Color',[0.7 0.7 0.7],'Marker','.','MarkerSize',4);
+% hold on;
+% plot([1,2] ,mean(IIdata),'Color','k', 'LineWidth',2,'Marker','.','MarkerSize',4);
+% xticks([1,2]);xticklabels(["Before Stims", "After Stims"]);xlim([0.7 2.3])
+% % grid on;
+% ylabel('Spikes/S')
+% sgtitle ('all units')
+% n = length(IIdata); 
+% N= length(recList);
+% 
+% subplot(1,2,2)
+% diff= preData- postData; %ISI = after, ITI =before
+% x = [ones(length(IIdata),1)];
+% colors = [ 0.5 0.7 0.8];
+% swarmchart(x,diff,10,colors,'filled','XJitterWidth',0.8);
+% ylabel('Spikes/S')
+% xticks(1);xticklabels("Before-After");
+% xlim([0.5 1.5])
+% yline(0,'--','Color',[0.4 0.4 0.4])
+% percent = (sum(diff<0)/length(diff))*100; % how many units are bellow zero in percent
+% [pWilcoxon, ~, statsWilcoxon] = signrank(preData, postData);
+% 
+% annotation('textbox', [0.8, 0.85, 0.03, 0.1], 'String', ...
+%     sprintf('n=%i,N=%i',n,N), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
+% annotation('textbox', [0.8, 0.7, 0.03, 0.1], 'String', ...
+%     sprintf('Wilcoxon p-val: %.4f\n', pWilcoxon), 'EdgeColor', 'none', 'HorizontalAlignment', ...
+%     'right', 'VerticalAlignment', 'middle');
+% % avefigures
+%     set(fall,'PaperPosition',[1 1 2.1 2]);
+%     fileName=[analysisFolder filesep 'ITIISIallunits'];
+%     print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+% 
+
+
+
+%% plot only good units:
 goodUnitsInd = find(contains(labelsAll,'good'));
 preDataG = preData(goodUnitsInd);
 postDataG= postData(goodUnitsInd);

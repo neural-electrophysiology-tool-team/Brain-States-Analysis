@@ -137,7 +137,7 @@ end
 %% Figure 3B - AC all colors
 % plot AC period time changes - According to color and animal
 % close all
-clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder stimType stimWaveL
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder stimType stimWaveL
 stimType = ["Blue","Green","Red","white"];%"strongBlue","DayTime"];
 stimWaveL = ["blue","green","red","white"];%, "strongBlue","DayTime"];
 % stimType = ["Blue","Green","Red","LED"];
@@ -237,7 +237,7 @@ save([analysisFolder filesep 'statsACperiodstimAll.mat'], "statsAC")
 
 %% Figure 3C - Pv2 at 156 s
 % close all
-clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder stimType stimWaveL
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder stimType stimWaveL
 stimType = ["Blue","Green","Red","white"];%"strongBlue","DayTime"];
 stimWaveL = ["blue","green","red","white"];%, "strongBlue","DayTime"];
 
@@ -337,7 +337,7 @@ end
 
 %% Figure 3D - D/B decrease
 % close all
-clearvars -except stimTable SA LMdata animalsColors uniqueAnimals analysisFolder LMData stimType stimWaveL
+clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder LMData stimType stimWaveL
 stimType = ["Blue","Green","Red","white"];%"strongBlue","DayTime"];
 stimWaveL = ["blue","green","red","white"];%, "strongBlue","DayTime"];
 
@@ -429,7 +429,7 @@ fileName=[analysisFolder filesep 'DBdecreaseDiffAllnigthscolors'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
-%% Figure 3E - headAngles SD diff Stim-pre
+%% Figure 3F - headAngles SD diff Stim-pre
 % load([analysisFolder filesep 'LMDataAll.mat'])
 % load([analysisFolder filesep 'StimTableAll.mat'])
 headAngleSD = LMData.headAngleSD;
@@ -536,7 +536,7 @@ set(fHL,'PaperPosition',[1 5 3.5 2]);
 fileName=[analysisFolder filesep 'headAngleSDalltypesDiffs'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% Figure 3F - movement diff all nights
+%% Figure 3E - movement diff all nights
 % close all
 clearvars -except stimTable SA LMData animalsColors uniqueAnimals analysisFolder
 
@@ -878,7 +878,7 @@ EyelidFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption';
 % results = readtable([generalFolder '/PV143_noFresh/results.csv']);
 results=readtable([EyelidFolder filesep 'results.csv']);
 % filterLabels = ["BF","DAPI-460","GFP-525","mCherry-630","iRFP-700","YFP-540"];
-filterLabels = {'Blue','Green','LightRed','Red'};
+filterLabels = {'Blue','Green','Red','LongRed'};
 
 animalsColorsEL = [
     0/255,124/255,143/255; % Hex: 00798C- dark blue  - PV106
@@ -895,7 +895,7 @@ animalsColorsEL = [
     ];
 
 
-[corrected_pvals,avgResults] =plotRelativeTransmitionAnimal(results,filterLabels, analysisFolder,animalsColorsEL,2:5)
+[corrected_pvals,avgResults] =plotRelativeTransmitionAnimal(results,filterLabels, analysisFolder,animalsColorsEL,2:5);
 
 function [corrected_pvals,avgResults] = plotRelativeTransmitionAnimal(results, filterLabels, generalFolder,colors, whichFilt)
     

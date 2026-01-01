@@ -295,7 +295,7 @@ ylim(ylims)
 
 % save figure:
 set(fr,'PaperPosition',[1 2 7 2]);
-fileName=[analysisFolder filesep 'SWRcroswhiteNights'];
+fileName=[analysisFolder filesep 'SWRcrosRedNights'];
 print(fileName,'-dpdf','-r300');
 
 %% Supplementary Figure 3 - head angle raw
@@ -586,7 +586,7 @@ set(f,'PaperPosition',[1 5 4 3]);
 fileName=[analysisFolder filesep 'IntensityHeadAngleSD'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% Supplementary Figure 5- Third eye Supplamentary figure:
+%% Supplementary Figure Third eye Supplamentary figure:
 animalsThird = ["PV157","PV161"];
 
 i = 25;
@@ -594,7 +594,7 @@ recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 plotStimSham(SA);
 SA.plotDelta2BetaSlidingAC(stim=1)
-% plot the data
+%% plot the data
 % plot nights without :
 isThird = ismember(string(stimTable.Animal), animalsThird);   % Nx1, always
 withEyeTrials   = stimTable.Mani==1 & isThird;
@@ -636,12 +636,27 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 
-%% Suuplementary Figure 6- eyelid supplamentry:
+%% eyelid supplamentry:
 EyelidFolder = '/media/sil1/Data/Nitzan/Experiments/Eyelids_obsorption/TAMS Scan_PV143';
 eyelidfilename1 =[EyelidFolder filesep 'eyelid1_pv143.Sample.Raw.csv'];
 spectro1= readtable(eyelidfilename1);
-% plot
-figure; plot(spectro1.nm,nspectro1,color='k')
+eyelidfilename2 =[EyelidFolder filesep 'eyelid2_pv143.Sample.Raw.csv'];
+spectro2= readtable(eyelidfilename2);
+means = mean([spectro1.x_T, spectro2.x_T]);
+nspectro1 = spectro1.x_T/means(1);
+nspectro2 = spectro2.x_T/means(2);
+avgTrans = mean([spectro1.x_T, spectro2.x_T],2);
+nAvgTrans = mean([nspectro1, nspectro2],2);
+%% plot
+% figure; plot(spectro1.nm,spectro1.x_T,color=[0.5 0.5 0.5])
+% hold on; plot(spectro2.nm,spectro2.x_T,color=[0.5 0.5 0.5]);
+% plot(spectro2.nm,avgTrans,'k')
+
+figure; plot(spectro1.nm,nspectro1,color=[0.8 0.8 0.8])
+hold on; plot(spectro2.nm,nspectro2,color=[0.5 0.5 0.5]);
+plot(spectro2.nm,nAvgTrans,'k')
+
+
 xlabel('Wavelength (nm)'); ylabel('% Transmission');
 
 % X regions to shade
@@ -678,194 +693,9 @@ set(gcf,'PaperPosition',[1 5 4 3]);
 fileName=[analysisFolder filesep 'NspectrometerEyelidSup'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
-%% Supplementary Figure 8 - internal red SWR
-%% Sup 8A
-i = 17;%(17 before). not PV106,N20
-recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-SA.setCurrentRecording(recName);
-stims = SA.getStimTriggers; %stimulations timimng in ms
-firstTrig = stims(1:8:end);
-
-j=2;
-pre = 5000;
-ch = SA.recTable.defaulLFPCh(SA.currentPRec);
-tStart = firstTrig(j)-pre;
-win = pre+40*1000;
-[rawLFP,rawLFP_t] = SA.currentDataObj.getData(ch,tStart,win);
-%plot
-figure;
-plot((rawLFP_t-pre)/1000,squeeze(rawLFP),'k');hold on;
-xline((stims(8*j-7:8*j)-stims(8*j-7))/1000,'r');
-%save
-set(gcf ,'PaperPosition',[1 2 4.3 1.7]);
-fileName=[analysisFolder filesep 'SWRraw_rev_red'];
-% print(fileName,'-depsc','-vector');
-print(fileName, '-dpdf', '-r300');
-
-%% Sup 8B
-% plot all raw traces, 1 nights:
-
-i = 17;
-recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-SA.setCurrentRecording(recName);
-    
-% get the stimualtions time stamps:
-% t_ch = stimTable.StimTrighCh(i);
-% T=SA.getDigitalTriggers;
-stims = SA.getStimTriggers; %stimulations timimng in ms
-    
-% get the raw data for the second around each stim:
-pre = 200; 
-post = 1000;
-[mV, mV_t] = SA.currentDataObj.getData(SA.recTable.defaulLFPCh(SA.currentPRec),stims-pre,(pre+post));
-% [mAn, mAn_t] = SA.currentDataObj.getAnalogData(SA.recTable.stimDiodeCh(SA.currentPRec),stims-pre,(pre+post));
-
-% plot
-fraw = figure;
-x = linspace(-pre,post,length(mV_t));
-mV1 = squeeze(mV);
-[d,h] = hist2(repmat(x,height(mV1),1),mV1,'dX1',3,'dX2',5);
-hold on
-plot(downsample(x,100),downsample(mean(mV1,1),100),'Color','r','LineWidth',2)
-ylims =[-600 400];
-ylim(ylims)
-% title('Raw traces for 1 night')
-x_shade = [0 200 200 0];  % X-coordinates of the shaded region
-y_shade = [ylims(1) ylims(1) ylims(2) ylims(2)]; % Y-coordinates covering the full y-range
-patch(x_shade, y_shade, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none');
-xlabel('Time(ms)');ylabel('Voltage[uV]')
-% save figure
-set(fraw ,'PaperPosition',[1 2 4.3 1.7]);
-fileName=[analysisFolder filesep 'SWRhist_rev_red'];
-% print(fileName,'-depsc','-vector');
-print(fileName, '-dpdf', '-r300');
-
-%% Sup 8C+D
-% plot cros corr 1 night:
-% detect SWR using SWR detection method.
-
-% for 1 night first:
-i = 22;
-recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
-SA.setCurrentRecording(recName);
-SA.getSharpWaves('detectOnlyDuringSWS',false)
-SW = SA.getSharpWaves('detectOnlyDuringSWS',false);
-swrT = SW.tSW'; %SWR timings in ms
-swrN = length(swrT); 
 
 
 
-% get the stimualtions time stamps:
-% t_ch = stimTable.StimTrighCh(i);
-% T=SA.getDigitalTriggers;
-% stims = T.tTrig{t_ch}; %stimulations timimng in ms
-stims= SA.getStimTriggers;
-first_stims = stims(1:8:end-2);
-% cross cor: Short, one night 
-% Convert Timestamps to Binary Time Series:
-bin_size = 200; % ms 
-winShort = 10*1000; % ten seconds
-
-ylims = [-0.05 0.1];
-t_min = min([stims swrT]);
-t_max = max([stims swrT]);
-time_bins = t_min:bin_size:t_max;
-
-% Convert timestamps to binary spike trains
-swrBin = histcounts(swrT, [time_bins, time_bins(end)+bin_size]);
-stimsBin = histcounts(stims, [time_bins, time_bins(end)+bin_size]);
-max_lag = winShort/bin_size;
-[c, lags,bounds] = crosscorr(stimsBin,swrBin,"NumLags",max_lag); % Normalized cross-correlation. remove 'coeff' for not-normalized
-
-% plt:
-lag_times = (lags * bin_size)/1000; % Convert lag indices to time (and moving from ms to s
-f = figure;
-subplot (1,2,1)
-plot(lag_times, c,'Color','k','Marker','.');
-yline(bounds,'Color',[0.7 0.7 0.7],'LineStyle','--')
-yline(0,'Color',[0.7 0.7 0.7])
-xlabel(['Lag (s)']);
-ylim(ylims)
-ylabel('Cross-correlation');
-title('Cross-Correlation SWR and stimulations');
-
-% cross cor: Long, one night 
-% Convert Timestamps to Binary Time Series:
-bin_size = 5000; % ms 
-winLong = 200*1000; % ten seconds
-
-t_min = min([stims swrT]);
-t_max = max([stims swrT]);
-time_bins = t_min:bin_size:t_max;
-
-% Convert timestamps to binary spike trains
-swrBin = histcounts(swrT, [time_bins, time_bins(end)+bin_size]);
-% stimsBin = histcounts(stims, [time_bins, time_bins(end)+bin_size]);
-firstStimsBin = histcounts(first_stims, [time_bins, time_bins(end)+bin_size]);
-max_lag = winLong/bin_size;
-[c, lags,bounds] = crosscorr(firstStimsBin,swrBin,"NumLags",max_lag); % Normalized cross-correlation. remove 'coeff' for not-normalized
-
-% plt:
-lag_times = (lags * bin_size)/1000; % Convert lag indices to time (and moving from ms to s
-% figure;
-subplot(1,2,2)
-plot(lag_times, c,'Color','k','Marker','.');
-yline(bounds,'Color',[0.7 0.7 0.7],'LineStyle','--')
-yline(0,'Color',[0.7 0.7 0.7])
-xlabel(['Lag (s)']);
-ylim(ylims)
-% ylabel('Cross-correlation');
-title('Cross-Correlation SWR and stimulations');
-
-% save figure:
-set(f,'PaperPosition',[1 2 7 2]);
-fileName=[analysisFolder filesep 'SWRcrosPV161N18'];
-print(fileName,'-dpdf','-r300');
- 
-%% Sup 8E+F
-fName = [analysisFolder filesep 'ShWcrossCorrDataAll.mat'];
-load(fName)
-
-wavelength = '635';
-curTrials = contains(stimTable.Remarks,wavelength)...
-            & ~contains(stimTable.Remarks,'Ex');
-n = sum(curTrials);
-N = length(unique(stimTable.Animal(curTrials)));
-curDataShort = cShort(curTrials,:);
-curDataLong = cLong(curTrials,:);
-
-fr = figure;
-% plot Short according to animaL
-subplot(1,2,1)
-[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-curColorMat = animalsColors(animalIndices, :); 
-hold on; 
-for i = 1:height(curDataShort)
-    plot(lagTimeS, curDataShort(i,:),'Color',curColorMat(i,:))%,'Marker','.','MarkerSize',4)
-end
-plot(lagTimeS, mean(curDataShort,1)','Color','k','LineWidth',1.5)%,'Marker','.','MarkerSize',5)
-yline(mean(boundsShort(curTrials,:)),'Color',[0.4 0.4 0.4],'LineStyle','--')
-yline(0,'Color',[0.4 0.4 0.4])
-ylims = [-0.02 .12];
-ylim(ylims)
-
-% plot Long according to animaL
-subplot(1,2,2)
-[~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-curColorMat = animalsColors(animalIndices, :); 
-hold on; 
-for i = 1:height(curDataLong)
-    plot(lagTimeL, curDataLong(i,:),'Color',curColorMat(i,:))%,'Marker','.','MarkerSize',4)
-end
-plot(lagTimeL, mean(curDataLong,1)','Color','k','LineWidth',1.5)%,'Marker','.','MarkerSize',5)
-yline(mean(boundsLong(curTrials,:)),'Color',[0.4 0.4 0.4],'LineStyle','--')
-yline(0,'Color',[0.4 0.4 0.4])
-ylim(ylims)
-
-% save figure:
-set(fr,'PaperPosition',[1 2 7 2]);
-fileName=[analysisFolder filesep 'SWRcrosRedNights'];
-print(fileName,'-dpdf','-r300');
 
 
 %% Supplementary Figure 9
