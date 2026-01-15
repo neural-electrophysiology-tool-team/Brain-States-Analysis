@@ -28,10 +28,11 @@ stims = SA.getStimTriggers;
 ch = SA.recTable.defaulLFPCh(SA.currentPRec);
 pre = 20*1000;
 tStart = stims(1)-pre; win = stims(end)-tStart+50*1000;
+
 [LFP,LFP_t] = SA.currentDataObj.getData(ch,tStart,win);
 LFP = squeeze(LFP);
-dsLFP = downsample(LFP,200);
-dsLFP_t = downsample(LFP_t,200);
+dsLFP = downsample(LFP,800);
+dsLFP_t = downsample(LFP_t,800);
 
 % plot
 chunkDur_s = 158.2;                 % seconds per row
@@ -86,11 +87,16 @@ xlabel('Time (s)')
 set(gca,'YTick',[]); xlim([0,chunkDur_s])
 box on
 
-% save figue
-set(f,'PaperPosition', [1 1 7 9]);
-% set(f,"PaperPositionMode","auto")
-fileName=[analysisFolder filesep 'AllNightRawLFPPV153N12'];
-print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+% % save figue
+% set(f,'PaperPosition', [1 1 7 9]);
+% % set(f,"PaperPositionMode","auto")
+% fileName=[analysisFolder filesep 'AllNightRawLFPPV153N12'];
+% print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
+set(f,'PaperPosition',[1 1 7 9]);
+set(f,'Renderer','painters');   % important for vector
+
+fileBase = fullfile(analysisFolder,'AllNightRawLFPPV153N12');
+print(f, fileBase, '-depsc2', '-painters');   % creates .eps
 
 
 %% Supplementary Figure 2 - external white SWR
