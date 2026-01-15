@@ -17,14 +17,13 @@ analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 % *** Maybe show long epoch with zoom in on 3 segments.
 
 % experiment : PV126, Hunter54
-WA.setCurrentRecording('Animal=PV126,recNames=Hunter54');
+WA.setCurrentRecording('Animal=PV157,recNames=Hunter5');
 ArenaCSV = WA.getArenaCSVs(WA.recTable.camTriggerCh(WA.currentPRec));
-
 
 % Trial timings:
 pre = 2000;
 post = 8000;
-trialNum = 15;
+trialNum = 1;
 bugApp = ArenaCSV.startTrigSh(trialNum);
 bugDis = ArenaCSV.endTrigSh(trialNum);
 start_t = bugApp-pre;

@@ -1,0 +1,39 @@
+%% Spontaneous Wake analysis, wakefulness, 06.01.2026
+WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
+
+%% all wake trials 
+wakeTrials = contains(WA.recTable.recNames,'Wake') & ...
+             cellfun(@isempty,WA.recTable.Remarks);
+wakeTable = WA.recTable(wakeTrials,:);
+
+%% subset to analyse for the effect:
+rng('shuffle')   % optional: for randomness
+
+animals = unique(wakeTable.Animal);
+rowsToKeep = [];
+
+for i = 1:numel(animals)
+    idx = find(strcmp(wakeTable.Animal,animals{i}));   % rows of this animal
+    nPick = min(3, numel(idx));   % in case some animals have < 3 rows
+    rowsToKeep = [rowsToKeep; idx(randperm(numel(idx), nPick))];
+end
+
+wakeSubset = wakeTable(rowsToKeep, :);
+
+
+l%% checking correlogram and freq bands:
+figure; t= tiledlayout(9,6);
+for i = 1:height(wakeSubset)
+    recName = ['Animal=' wakeSubset.Animal{i} ',recNames=' wakeSubset.recNames{i}];
+    WA.setCurrentRecording(recName);
+    WA.getFreqBandDetection(fMax=80)
+    WA.plotFreqBandDetection
+    % k1 = 2*i-1; k2=2*1;
+    % ax1 = nexttile(t,k1);   % dendrogram tile
+    % % ax2 = nexttile(t,k2);   % spectra tile
+    % WA.plotFreqBandDetection('plotDendrogram',true,'plotSpectralBands',true, ...
+    %                      'hDendro',ax1,'hSpectra',ax2, ...
+    %                      'savePlots',false);
+
+end
