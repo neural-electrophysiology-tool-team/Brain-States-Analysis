@@ -75,8 +75,8 @@ xlabel('Time[s]')
 ax2 = gca;
 ax2.YAxis(1).Color = 'k';
 ax2.YAxis(2).Color = 'blue';
-ax2.YAxis(1).Limits = [-500 500]; % Get left y-axis limits
-ax2.YAxis(2).Limits = [-300, 300];
+ax2.YAxis(1).Limits = [-1000 500]; % Get left y-axis limits
+ax2.YAxis(2).Limits = [-600, 300];
 
 %save figure:
 set(f,'PaperPositionMode','auto');
@@ -109,7 +109,7 @@ xline(curstims/1000,'r','LineWidth',1.5);
 tdb = linspace(-pre/1000,post/1000,length(dbTmp));
 yyaxis right
 plot(tdb,dbTmp,'Color','b','LineWidth',2);
-ylim([-300 300]);                   % limit for left axis
+ylim([-600 300]);                   % limit for left axis
 ax = gca;
 ax.YColor = 'b';
 sgtitle(sprintf('Trial num: %i',j));

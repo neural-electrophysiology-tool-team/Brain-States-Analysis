@@ -121,32 +121,32 @@ curTrials = (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'
     & ~any(isnan(stimTable.dbSWMeans),2); 
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
-groupNames = {'Pre-Stim', 'Post-Stim'};
-diffPreStim = stimTable.dbSWMeans(curTrials,1)-stimTable.dbSWMeans(curTrials,2);
-diffPostStim = stimTable.dbSWMeans(curTrials,3)-stimTable.dbSWMeans(curTrials,2);
-plotdata = [diffPreStim;diffPostStim];
+groupNames = {'Stim-Pre', 'Stim-Post'};
+diffStimPre = stimTable.dbSWMeans(curTrials,2)-stimTable.dbSWMeans(curTrials,1);
+diffStimPost = stimTable.dbSWMeans(curTrials,2)-stimTable.dbSWMeans(curTrials,3);
+plotdata = [diffStimPre;diffStimPost];
 x=[repmat(1,[n,1]);repmat(2,[n,1])];
 
 %plot
 fdb = figure;
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-plotdata = [diffPreStim;diffPostStim];
+plotdata = [diffStimPre;diffStimPost];
 x=[repmat(1,[n,1]);repmat(2,[n,1])];
 curColorMat = repmat(animalsColors(animalIndices, :),[length(groupNames),1]); 
 swarmchart(x,plotdata,30,curColorMat,'filled','XJitter','randn','XJitterWidth',0.8)
 hold on; scatter([1:length(groupNames)],[mean(plotdata(x==1)),mean(plotdata(x==2))],50,'k','Marker','+');
 yline(0,'Color',[0.4 0.4 0.4],'LineStyle','--')
 xlim([0.5, 2.5])
-% ylim([0 450])
+% ylim([-300 100])
 xticks(1:2);xticklabels(groupNames); ylabel('D/B means during SWS')
 
 %statistics 
 % check if different from zero, 
-[pfromZeroPre, h] = signrank(diffPreStim, 0);
-[pfromZeroPost, h] = signrank(diffPostStim, 0);
+[pfromZeroPre, h] = signrank(diffStimPre, 0);
+[pfromZeroPost, h] = signrank(diffStimPost, 0);
 
-fprintf('pre-stim diff:\t p = %.4f\n', pfromZeroPre)
-fprintf('post-stim diff:\t p = %.4f\n', pfromZeroPost)
+fprintf('stim-pre diff:\t p = %.4f\n', pfromZeroPre)
+fprintf('stim-post diff:\t p = %.4f\n', pfromZeroPost)
 
 % savefigure
 set(fdb,'PaperPosition',[1 5 2 2]);
@@ -398,12 +398,12 @@ N = length(unique(stimTable.Animal(curTrials)));
 
 groupNames = {'Wake-Stim', 'Post-Stim'};
 diffWakeStim = headAngleSD(curTrials,1)-headAngleSD(curTrials,3);
-diffPreStim = headAngleSD(curTrials,2)-headAngleSD(curTrials,3);
+diffStimPre = headAngleSD(curTrials,2)-headAngleSD(curTrials,3);
 
 %plot
 fdb = figure;
 [~, animalIndices] = ismember(stimTable.Animal(curTrials), uniqueAnimals);
-plotdata = [diffWakeStim;diffPreStim];
+plotdata = [diffWakeStim;diffStimPre];
 x=[repmat(1,[n,1]);repmat(2,[n,1])];
 curColorMat = repmat(animalsColors(animalIndices, :),[length(groupNames),1]); 
 swarmchart(x,plotdata,30,curColorMat,'filled','XJitter','randn','XJitterWidth',0.8)
@@ -416,7 +416,7 @@ xticks(1:2);xticklabels(groupNames); ylabel('D/B means during SWS')
 %statistics 
 % check if different from zero, 
 [pfromZeroWake, h] = signrank(diffWakeStim, 0);
-[pfromZeroPre, h] = signrank(diffPreStim, 0);
+[pfromZeroPre, h] = signrank(diffStimPre, 0);
 
 fprintf('Wake-stim diff:\t p = %.4f\n', pfromZeroWake)
 fprintf('pre-stim diff:\t p = %.4f\n', pfromZeroPre)
