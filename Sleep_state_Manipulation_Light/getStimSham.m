@@ -28,8 +28,8 @@ function data = getStimSham(SA, overwrite)
     stimDuration=(endStim(1)-firstTrig(1));
 
      
-    pre=30000; %ms
-    post=120000; %ms
+    pre=50000; %ms
+    post=100000; %ms
 %     clear StimDB; %change to zeros
     win = (pre+post)/1000;
     

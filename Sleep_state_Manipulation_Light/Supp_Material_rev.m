@@ -203,7 +203,7 @@ first_stims = stims(1:8:end-2);
 bin_size = 200; % ms 
 winShort = 10*1000; % ten seconds
 
-ylims = [-0.05 0.1];
+ylims = [-0.05 0.05];
 t_min = min([stims swrT]);
 t_max = max([stims swrT]);
 time_bins = t_min:bin_size:t_max;
@@ -250,7 +250,7 @@ plot(lag_times, c,'Color','k','Marker','.');
 yline(bounds,'Color',[0.7 0.7 0.7],'LineStyle','--')
 yline(0,'Color',[0.7 0.7 0.7])
 xlabel(['Lag (s)']);
-ylim(ylims)
+ylim([-0.07 0.1])
 % ylabel('Cross-correlation');
 title('Cross-Correlation SWR and stimulations');
 
@@ -1179,7 +1179,7 @@ print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
 %% Supplementary Figure 12 - virus
-%% Sup 1 C, D,E
+%% Sup 12 C, D,E
 % Traces of stimulations with virus:
 
 i = 6;
@@ -1268,7 +1268,7 @@ ch = 17;
 set(f,'PaperPosition', [1 1 4 2.5]);
 fileName=[analysisFolder filesep 'tracesVirusNovirus'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
-%% Sup 1F
+%% Sup 12F
 
 viAnimals = ["161","149"];
 curType = "47";
@@ -1317,3 +1317,202 @@ fileName=[analysisFolder filesep 'virusChangeStimShamBlue'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);
 
 
+%% check for speed of changing in the states - internal vs. external. 
+
+wavelength = 'white';
+curTrialsWhite = (contains(stimTable.Remarks,wavelength) |  contains(stimTable.Remarks,"DayTime"))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+wavelength = 'red';
+curTrialsRedEx = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+wavelength = '635';
+curTrialsRedInt = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+     
+pre=50000; %ms
+post=100000; %ms
+time=-pre/1000:1:(post/1000)-1;
+
+
+dataWh = cell2mat(stimTable.StimAvg(curTrialsWhite))';
+normWhiteEx = dataWh./mean(dataWh,1);
+dataRedEx = cell2mat(stimTable.StimAvg(curTrialsRedEx))';
+normRedEx = dataRedEx./mean(dataRedEx,1);
+dataRedInt = cell2mat(stimTable.StimAvg(curTrialsRedInt))';
+normRedInt = dataRedInt./mean(dataRedInt,1);
+figure;
+subplot(3,3,3)
+plot(time,normWhiteEx);
+hold on; xline([0,38],'r')
+title("Normalized White")
+
+subplot(3,3,6)
+plot(time,normRedEx);
+hold on; xline([0,38],'r')
+title("Normalized External Red")
+
+subplot(3,3,9)
+plot(time,normRedInt);
+hold on; xline([0,38],'r')
+title("Normalized Internal Red")
+
+% green
+wavelength = 'green';
+curTrialsGreenEx = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+wavelength = '532';
+curTrialsGreenInt = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+dataGEx = cell2mat(stimTable.StimAvg(curTrialsGreenEx))';
+normGEx = dataGEx./mean(dataGEx,1);
+dataGInt = cell2mat(stimTable.StimAvg(curTrialsGreenInt))';
+normGInt = dataGInt./mean(dataGInt,1);
+
+subplot(3,3,5)
+plot(time,normGEx);
+hold on; xline([0,38],'r')
+title("Normalized External Green")
+
+subplot(3,3,8)
+plot(time,normGInt);
+hold on; xline([0,38],'r')
+title("Normalized Internal Green")
+
+% Blue
+wavelength = 'blue';
+curTrialsBlueEx = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+wavelength = '47';
+curTrialsBlueInt = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+dataBEx = cell2mat(stimTable.StimAvg(curTrialsBlueEx))';
+normBEx = dataBEx./mean(dataBEx,1);
+dataBInt = cell2mat(stimTable.StimAvg(curTrialsBlueInt))';
+normBInt = dataBInt./mean(dataBInt,1);
+
+subplot(3,3,4)
+plot(time,normBEx);
+hold on; xline([0,38],'r')
+title("Normalized External Blue")
+
+subplot(3,3,7)
+plot(time,normBInt);
+hold on; xline([0,38],'r')
+title("Normalized Internal Blue")
+
+
+%% get beta avg for stimulations. 
+stimBetaAvg = cell(height(stimTable),1);
+
+for i  = 1:height(stimTable)
+     recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
+    SA.setCurrentRecording(recName);
+    b = getBetaStim(SA);
+    stimBetaAvg(i) = {mean(b.stimBeta,1,"omitnan")};
+    
+end
+
+save([analysisFolder filesep 'stimBetaAvgAll.mat'],'stimBetaAvg')
+
+%% check for speed of changing in the states - internal vs. external. 
+
+wavelength = 'white';
+curTrialsWhite = (contains(stimTable.Remarks,wavelength) |  contains(stimTable.Remarks,"DayTime"))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+wavelength = 'red';
+curTrialsRedEx = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+wavelength = '635';
+curTrialsRedInt = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+     
+pre=50000; %ms
+post=100000; %ms
+time=-pre/1000:1:(post/1000)-1;
+
+
+dataWh = cell2mat(stimBetaAvg(curTrialsWhite))';
+normWhiteEx = dataWh./mean(dataWh,1);
+dataRedEx = cell2mat(stimBetaAvg(curTrialsRedEx))';
+normRedEx = dataRedEx./mean(dataRedEx,1);
+dataRedInt = cell2mat(stimBetaAvg(curTrialsRedInt))';
+normRedInt = dataRedInt./mean(dataRedInt,1);
+figure;
+title('Beta ratio!')
+subplot(3,3,3)
+plot(time,normWhiteEx);
+% plot(time,dataWh);
+hold on; xline([0,38],'r')
+title("Normalized White")
+
+subplot(3,3,6)
+plot(time,normRedEx);
+% plot(time,dataRedEx);
+hold on; xline([0,38],'r')
+title("Normalized External Red")
+
+subplot(3,3,9)
+plot(time,normRedInt);
+% plot(time,dataRedInt);
+hold on; xline([0,38],'r')
+title("Normalized Internal Red")
+
+% green
+wavelength = 'green';
+curTrialsGreenEx = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+wavelength = '532';
+curTrialsGreenInt = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+dataGEx = cell2mat(stimBetaAvg(curTrialsGreenEx))';
+normGEx = dataGEx./mean(dataGEx,1);
+dataGInt = cell2mat(stimBetaAvg(curTrialsGreenInt))';
+normGInt = dataGInt./mean(dataGInt,1);
+
+subplot(3,3,5)
+plot(time,normGEx);
+% plot(time,dataGEx);
+hold on; xline([0,38],'r')
+title("Normalized External Green")
+
+subplot(3,3,8)
+% plot(time,dataGInt);
+plot(time,normGInt);
+hold on; xline([0,38],'r')
+title("Normalized Internal Green")
+
+% Blue
+wavelength = 'blue';
+curTrialsBlueEx = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+wavelength = '47';
+curTrialsBlueInt = (contains(stimTable.Remarks,wavelength))...
+            & ~contains(stimTable.Remarks,'Ex');
+
+dataBEx = cell2mat(stimBetaAvg(curTrialsBlueEx))';
+normBEx = dataBEx./mean(dataBEx,1);
+dataBInt = cell2mat(stimBetaAvg(curTrialsBlueInt))';
+normBInt = dataBInt./mean(dataBInt,1);
+
+subplot(3,3,4)
+plot(time,normBEx);
+% plot(time,dataBEx);
+hold on; xline([0,38],'r')
+title("Normalized External Blue")
+
+subplot(3,3,7)
+plot(time,normBInt);
+% plot(time,dataBInt);
+hold on; xline([0,38],'r')
+title("Normalized Internal Blue")
