@@ -394,7 +394,24 @@ classdef wakeAnalysis < sleepAnalysis
                
         end
         
-        
+        % %% plot ACCtoDB
+        % function [] = plotDBtoACC(obj)
+        %     bin = 1000;
+        %     convWin = 60;
+        %     th= 100;
+        % 
+        %     [counts, edges] =  histcounts(LM.t_mov_ms,BinWidth=bin);
+        %     h_thresh= counts>th;
+        %     % h_times = h.BinEdges;
+        %     y = ones(1,convWin);
+        %     conv = convn(h_thresh,y,'same');
+        %     figure; plot(conv);hold on;plot(DB.bufferedDelta2BetaRatio)
+        %     figure; scatter(conv(1:length(DB.bufferedDelta2BetaRatio)),DB.bufferedDelta2BetaRatio,'.');
+        %     xlabel('Movement');ylabel("D/B")
+        % 
+        % end 
+
+
         %% plotTrialsGB
         function [] = plotTrailsBG(obj,varargin)
           % parameter and settings
