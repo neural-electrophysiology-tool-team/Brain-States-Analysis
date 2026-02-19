@@ -212,6 +212,7 @@ for i = 1:height(wakeData)
     
 end
 save([analysisFolderWake filesep 'PCAallPxx.mat'],'PxxDataAll','clustersAll','nPxxDataAll')
+save([analysisFolderWake filesep 'wakeData.mat'],'wakeData')
 
 %% calc and plot PCA for all same PC
 %rmove outliers: 
@@ -233,7 +234,7 @@ clustersAllc = clustersAll(idx);
 PxxDataAllz = zscore(PxxDataAllc);
 [coeff, score, latent, explained] = pca(PxxDataAllz);
 
-%% tnormPxx 
+%%  run the PCA on the normPxx 
 tp = sum(nPxxDataAll,2);
 idx = ~isoutlier(tp,'median');
 nPxxDataAllc = nPxxDataAll(idx,:);
@@ -373,6 +374,7 @@ alphaOuter = 0.05;
 alphaInner = 0.25;           % inner core opacity
 
 % ---- common grid ----
+pad = 0.05;
 xlimAll = [min(pc1) max(pc1)];
 ylimAll = [min(pc2) max(pc2)];
 xr = diff(xlimAll); yr = diff(ylimAll);
@@ -485,51 +487,85 @@ end
 title(sprintf('All segments (n=%d)', size(score,1)));
 
 
-%% plot PCA for each experiments - missing. 
+%% Plot transient point for the states. (high/low)
+crossFreqsAll=[];
+S1avg = [];
+S3avg = [];
+freqdete = WA.getFreqBandDetection;
+freqHz = freqdete.freqHz;
+for i= 1:height(wakeData)
+    curClusters=wakeData.pxxDataAll{i,3};
+    curNormsPxx= wakeData.pxxDataAll{i,2}';
+    S1= mean(curNormsPxx(:,curClusters==1),2);
+    S3= mean(curNormsPxx(:,curClusters==3),2);
+    % figure; plot(freqHz,S1); hold on; plot(freqHz,S3)
+    if mean(S1(1:3))>mean(S3(1:3))
+        crossFreq=freqHz(find(S3-S1>=0,1,'first'));
+    else
+        crossFreq=freqHz(find(S1-S3>=0,1,'first'));
+    end
+    crossFreqsAll = [crossFreqsAll;crossFreq];
 
-% [coeff, score, latent, explained] = pca(PCAdataz);
-% 
-%     % plot
-%     labels = curfreqData.clusters; %labels according to the freq clustering
-%     subplot(5,6,i)
-% 
-%     hold on
-%     colors = lines(length(unique(labels)));
-% 
-%     for curClust = 1:length(colors)
-%         idx = labels == curClust;
-%         scatter(score(idx,1), score(idx,2),30, colors(curClust,:), 'filled');
-%     end
-% 
-%     xlabel('PC1')
-%     ylabel('PC2')
-%     legend('Clust1','Clust2','Clust3')
-%     title(recName)
-
-%% one PCA for all experiments
-% preping the data:
-[nReps, nCond] = size(normPxxs);
-
-X = [];
-
-for curClust = 1:nCond
-    mat = cell2mat(normPxxs(:,curClust)');  % 328 � 27
-    X = [X; mat'];                  % now 27 � 328 appended
+    % get the avg of values above 1
+    curS1Avg = mean(freqHz(S1>1));
+    curS3Avg = mean(freqHz(S3>1));
+    S1avg = [S1avg;curS1Avg];
+    S3avg = [S3avg;curS3Avg];
 end
+%% plot crossFreq
+figure('Color','w');
+colors = lines(4);
+ax1=subplot(1,3,1:2);
+x = ones(length(S1avg),1);
+swarmchart(x,S1avg,'filled',color= colors(1,:));
+hold on;
+swarmchart(x*2,S3avg,'filled',color=repmat(colors(3,:),[length(S1avg),1]));
+ylabel("Frequency (Hz)")
+xlim([0.5 2.5])
+xticks([1,2]); 
+xticklabels({'','Cluster 1','','Cluster 2',''})
+ax1.XTickLabelRotation=0;
+ylims=[0,60];
+box(ax1,'off');
+ylim(ylims);box(ax1,'off');
+title('Clusters Avgs above 1')
 
-[coeff, score, latent, explained] = pca(X);
-%%
-labels = repelem(1:3, 27)';
-figure; hold on
-colors = lines(3);
+ax2=subplot(1,3,3);
+swarmchart(ones(size(crossFreqsAll)),crossFreqsAll,'filled','k');
+ylim(ylims)
+xticks(1);
+xticklabels({'',"Cross Freq",''})
+xlim([0.5 1.5]);
+title('Cross Freq')
+box(ax2,'off');
+ax2.XTickLabelRotation=0;
 
-for curClust = 1:3
-    idx = labels == curClust;
-    scatter(score(idx,1), score(idx,2), ...
-        30, colors(curClust,:), 'filled');
-end
+% linkaxes([ax1,ax2],'y')
 
-xlabel('PC1')
-ylabel('PC2')
-legend('Cond1','Cond2','Cond3')
-box off
+
+%% plot crossFreq
+figure('Color','w');
+colors = lines(4);
+ax1=subplot(1,3,1:2);
+plot([1:2],[S1avg,S3avg],'-','Marker','.','MarkerSize',10)
+ylabel("Frequency (Hz)")
+xlim([0.5 2.5])
+xticks([1,2]); 
+xticklabels({'','Cluster 1','','Cluster 2',''})
+ax1.XTickLabelRotation=0;
+ylims=[0,60];
+box(ax1,'off');
+ylim(ylims);box(ax1,'off');
+title('Clusters Avgs above 1')
+
+ax2=subplot(1,3,3);
+swarmchart(ones(size(crossFreqsAll)),crossFreqsAll,'filled','k');
+ylim(ylims)
+xticks(1);
+xticklabels({'',"Cross Freq",''})
+xlim([0.5 1.5]);
+title('Cross Freq')
+box(ax2,'off');
+ax2.XTickLabelRotation=0;
+
+% linkaxes([ax1,ax2],'y')
