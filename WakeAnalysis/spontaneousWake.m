@@ -238,27 +238,53 @@ tp = sum(nPxxDataAll,2);
 idx = ~isoutlier(tp,'median');
 nPxxDataAllc = nPxxDataAll(idx,:);
 clustersAllc = clustersAll(idx);
-[coeff, score, latent, explained] = pca(nPxxDataAllc);
+[coeff, score, latent, explained,mu] = pca(nPxxDataAllc);
 
 
-%% plot
+%% add sleep trials?
+%get the data from 1 trial 
+WA.setCurrentRecording('Animal=PV106,recNames=Night1');
+curfreqData = WA.getFreqBandDetection(fMax=80,maxDendroClusters=2,overwrite=1);
+nPxx = curfreqData.normsPxx';
+clusters=curfreqData.clusters;
+% cleaning:
+tp = sum(nPxx,2);
+idx = ~isoutlier(tp,'median');
+nPxxc = nPxx(idx,:);
+clustersc = clusters(idx);
+% calculate the score acording to the PCA
+sleepscore = (nPxxc - mu') * coeff;
+sleepclusters=1;
+%% scatter plot
 labels = clustersAllc; %labels according to the freq clustering
 figure;
 hold on
-colors = lines(length(unique(labels)));
+colors = lines(length(unique(labels))+2); %adding the sleep colors. 
 
     for curClust = 1:length(colors)
         idx = labels == curClust;
-        % scatter(score(idx,1), score(idx,2),20,colors(curClust,:), 'filled','MarkerFaceAlpha',0.5);
-        hist2(score(idx,1), score(idx,2))
+        scatter(score(idx,1), score(idx,2),20,colors(curClust,:), 'filled','MarkerFaceAlpha',0.5);
+        % hist2(score(idx,1), score(idx,2))
     end
+
+
+hold on
+if sleepclusters ==1
+    numsleepcluster = unique(clustersc);
+    for i = 1:length(numsleepcluster)
+        idx = i == clustersc;
+        scatter(sleepscore(idx,1), sleepscore(idx,2),20,colors(i+3,:), 'filled','MarkerFaceAlpha',0.5);
+        % hist2(score(idx,1), score(idx,2))
+    end
+end
 
     xlabel('PC1')
     ylabel('PC2')
-    legend('HighD','MiddleD','LowD')
-    title('All experiments, all segemnst, Pxx,clean(tp),zscore before PCA')
+    legend('HighD','MiddleD','LowD', 'sleep1','sleep2')
+    title('All experiments, all segemnst, normPxx,clean(tp) before PCA')
 
-%%
+
+%% trying to plot in density plots
 labels = clustersAllc; %labels according to the freq clustering
 colors = lines(length(unique(labels)));
 % Inputs:
@@ -331,7 +357,7 @@ end
 
 axis tight
 legend(legH, legLbl, 'Location','northeast');
-   %%
+   %% another density plot
 pc1 = score(:,1);
 pc2 = score(:,2);
 
@@ -399,6 +425,64 @@ end
 
 axis tight
 legend(legH, legLbl, 'Location','northeast');
+%% plot all in one grey blob
+ind= labels==1 |labels==3;
+pc1 = score(ind,1);
+pc2 = score(ind,2);
+
+% --- Parameters ---
+nGrid = 220;
+pad = 0.05;
+
+nLevels = 9;                         % number of density bands
+qLevels = linspace(0.75,0.999,nLevels); % outer -> inner quantiles
+alphaOuter = 0.03;
+alphaInner = 0.45;                    % strong core contrast
+
+grayColor = [0.5 0.5 0.5];            % medium gray
+
+% ---- Common grid ----
+xlimAll = [min(pc1) max(pc1)];
+ylimAll = [min(pc2) max(pc2)];
+xr = diff(xlimAll); 
+yr = diff(ylimAll);
+
+xg = linspace(xlimAll(1)-pad*xr, xlimAll(2)+pad*xr, nGrid);
+yg = linspace(ylimAll(1)-pad*yr, ylimAll(2)+pad*yr, nGrid);
+[Xg,Yg] = meshgrid(xg,yg);
+gridPts = [Xg(:) Yg(:)];
+
+% ---- KDE over ALL data ----
+data = [pc1 pc2];
+f = ksdensity(data, gridPts);
+F = reshape(f, size(Xg));
+
+figure; hold on
+xlabel('PC1');
+ylabel('PC2');
+box off
+
+% ---- Draw density bands ----
+thr = quantile(F(:), qLevels);
+
+for j = 1:nLevels
+    
+    mask = F >= thr(j);
+    
+    RGB = zeros([size(mask) 3]);
+    RGB(:,:,1) = grayColor(1);
+    RGB(:,:,2) = grayColor(2);
+    RGB(:,:,3) = grayColor(3);
+    
+    a = alphaOuter + (alphaInner-alphaOuter) * (j-1)/(nLevels-1);
+    A = a * double(mask);
+    
+    h = image(xg, yg, RGB);
+    set(h, 'AlphaData', A);
+end
+
+% axis tight
+title(sprintf('All segments (n=%d)', size(score,1)));
 
 
 %% plot PCA for each experiments - missing. 

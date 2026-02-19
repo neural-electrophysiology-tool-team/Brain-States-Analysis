@@ -29,8 +29,16 @@ wakeTable = WA.recTable(wakeTrials,:);
 % caliTable = unique(subT, 'rows');
 load(["Brain-States-Analysis/WakeAnalysis/calibrationTable.mat"])
 % load([analysisFolderWake filesep "calibrationTable.mat"])
+wakeSubset = readtable([analysisFolderWake filesep 'wakeSubset.xlsx']);
+% save([analysisFolderWake filesep 'wakeSubset.xlsx'],"wakeSubset")
+%%
+A = wakeSubset(:, {'Animal','recNames'});
+B = WA.recTable(:, {'Animal','recNames'});
 
-
+% Find matching rows
+[isMatch, idx] = ismember(A, B, 'rows');
+wakeSubsetAll = WA.recTable(idx,:);
+% writetable(wakeSubsetAll,[analysisFolderWake filesep 'wakeSubsetAll.xlsx'])
 %% Build job list for python loop: one row per video folder with its calib_dir
 % Inputs:
 %   wakeSubset : table with variables {'Animal','system','folder'}
@@ -50,7 +58,7 @@ load(["Brain-States-Analysis/WakeAnalysis/calibrationTable.mat"])
 % caliTable.caliPath = string(caliTable.caliPath);
 
 % --- 1) Keep only the needed columns (avoid accidental extra vars) ---
-leftT  = wakeSubset(:, {'Animal','system','folder'});
+leftT  = wakeSubsetAll(:, {'Animal','system','folder'});
 rightT = caliTable(:, {'Animal','system','caliPath'});
 
 % --- 2) Join on Animal+system to attach caliPath to each row in wakeSubset ---
@@ -64,25 +72,23 @@ jobsTable.folder = string(fileparts(jobsTable.folder));
 % Rename to what python expects
 jobsTable.Properties.VariableNames{'caliPath'} = 'calib_dir';
 
-% --- 3) Validate: detect missing calibration dirs ---
-missingCalib = ismissing(jobsTable.calib_dir) | strlength(jobsTable.calib_dir)==0;
-if any(missingCalib)
-    warning("Some rows are missing calib_dir (no match in caliTable). Showing first 10:");
-    % disp(jobsTable(missingCalib, {'Animal','system','folder','calib_dir'})(1:min(10,sum(missingCalib)),:))
-    % If you want to stop hard:
-    % error("Missing calib_dir for %d rows. Fix caliTable or keys.", sum(missingCalib));
-end
-
-% --- 4) Optional: remove rows missing calib_dir (recommended before running) ---
-jobsTableClean = jobsTable(~missingCalib, :);
+jobsTable.folder    = string(jobsTable.folder);
+jobsTable.calib_dir = string(jobsTable.calib_dir);
+% add folder paths for hpc: 
+jobsTable.folder_hpc    = arrayfun(@fixHPCpath, jobsTable.folder);
+jobsTable.calib_dir_hpc = arrayfun(@fixHPCpath, jobsTable.calib_dir);
 
 % --- 5) Save as CSV for python ---
 outCsv = fullfile(analysisFolderWake, 'deeplabcut_jobs.csv');
-writetable(jobsTableClean, outCsv);
+writetable(jobsTable, outCsv);
+
+% --- 5.5) Save as CSV for python in sil3 ---
+outCsv = fullfile("/media/sil3/Data/Nitzan/hpc_dlc/deeplabcut_jobs_hpc.csv");
+writetable(jobsTable, outCsv);
 
 % --- 6) Also save the MATLAB table (optional) ---
 filename = fullfile(analysisFolderWake, 'deeplabcut_jobs.mat');
-save(filename, 'jobsTable', 'jobsTableClean');
+save(filename, 'jobsTable');
 
 fprintf("Wrote %d jobs to %s\n", height(jobsTableClean), outCsv);
 fprintf("saved in: %s\n",outCsv)
@@ -91,3 +97,16 @@ fprintf("saved in: %s\n",outCsv)
 
 %% check prediction file:
 %first clean:
+%%
+
+function out = fixHPCpath(in)
+
+    parts = split(in, filesep);
+
+    % Remove 3rd folder
+    parts(4) = [];
+
+    % Rebuild path
+    out = "/a/home/cc/lifesci/nitzanalbeck" + strjoin(parts, filesep);
+
+end
