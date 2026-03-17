@@ -238,10 +238,11 @@ recName = ['Animal=' stimTable.Animal{i} ',recNames=' stimTable.recNames{i}];
 SA.setCurrentRecording(recName);
 DB = SA.getDelta2BetaRatio;
 
-curLMwake = LMData.LMwake(i);
-curLMpre = LMData.LMpre(i);
-curLMstim = LMData.LMstimbin{i};
-curLMpost = LMData.LMpost(i);
+curLMwake = LMData.LMwake(i)/(1000)*(100);
+curLMpre = LMData.LMpre(i)/(1000)*(100);
+curLMstim = LMData.LMstimbin{i}/(1000)*(100);
+curLMpost = LMData.LMpost(i)/(1000)*(100);
+
 
 figure;
 
@@ -285,7 +286,7 @@ plot(1, curLMpost, '.', 'Color', 'black', 'MarkerSize', 20);
 xticks(1); xticklabels('Sleep After');
 
 % Link y-axes and set limits
-linkaxes([a1, a2, a3, a4], 'y'); ylim([0 6.5]);
+linkaxes([a1, a2, a3, a4], 'y'); ylim([0 0.65]);
 
 % Add 4 shared title
 sgtitle('Mean movement during stimulation, PV161, Night18');

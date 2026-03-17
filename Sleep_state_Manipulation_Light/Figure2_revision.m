@@ -227,10 +227,10 @@ SA.setCurrentRecording(recName)
 DB = SA.getDelta2BetaRatio;
 % ind = stimTableInd(i);
 ind = 69;
-curLMwake = LMData.LMwake(ind);
-curLMpre = LMData.LMpre(ind);
-curLMstim = LMData.LMstimbin{ind};
-curLMpost = LMData.LMpost(ind);
+curLMwake = LMData.LMwake(ind)/(1000)*(100);
+curLMpre = LMData.LMpre(ind)/(1000)*(100);
+curLMstim = LMData.LMstimbin{ind}/(1000)*(100);
+curLMpost = LMData.LMpost(ind)/(1000)*(100);
 
 figure;
 
@@ -274,7 +274,7 @@ plot(1, curLMpost, '.', 'Color', 'black', 'MarkerSize', 20);
 xticks(1); xticklabels('Sleep After');
 
 % Link y-axes and set limits
-linkaxes([a1, a2, a3, a4], 'y'); %ylim([0 6.5]);
+linkaxes([a1, a2, a3, a4], 'y'); ylim([0 1.6]);
 
 % Add 4 shared title
 % sgtitle(['Mean movement during stimulation,' recList{i}]);
@@ -295,7 +295,7 @@ curTrials = (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 
-LMstim = cell2mat(LMData.LMstimbin(curTrials));
+LMstim = cell2mat(LMData.LMstimbin(curTrials))/(1000)*(100);
 stimMov = mean(LMstim(:,1:4),2);
 notStimMov = mean(LMstim(:,5:end),2);
 plotdata = [stimMov,notStimMov];
@@ -338,9 +338,9 @@ curTrials = (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'
 n = sum(curTrials);
 N = length(unique(stimTable.Animal(curTrials)));
 
-LMpre = LMData.LMpre(curTrials, :);
-LMwake = LMData.LMwake(curTrials, :);
-LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
+LMpre = LMData.LMpre(curTrials, :)/(1000)*(100);
+LMwake = LMData.LMwake(curTrials, :)/(1000)*(100);
+LMstimbinM = cell2mat(LMData.LMstimbin)/(1000)*(100); % takes out the nan val
 LMstimbintrialM = mean(LMstimbinM(curTrials,:),2); % mean for each night
 
 LMplotData = [LMwake, LMpre, LMstimbintrialM];
@@ -379,7 +379,7 @@ end
 plot(x, mean(LMplotData),'Color','k','Marker','.')
 xticks(x), xticklabels(Groups); xlim([0.7 3.3]);
 ylabel('Mov/S')
-ylim([0 37]);
+ylim([0 3.7]);
 
 % savefigure
 set(fLMr,'PaperPosition',[1 1 3 2]);
@@ -531,101 +531,3 @@ l1.Position=[0.7386    0.8238    0.2125    0.1190];
 fileName=[analysisFolder filesep 'EyeMovWhite2'];
 print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);% clearvars -except stimTable SA analysisFolder LMdata
 
-
-%% Figure 3I
-% %load data:
-% load([analysisFolder filesep 'polarhistoAllNights.mat'])
-% 
-% % plot polar histogram - red nights
-% uniqueAnimals = unique(stimTable.Animal);
-% relativePhasePre = (mPhasePre.movs -mPhasePre.DBs);
-% relativePhaseStim = (mPhaseStim.movs -mPhaseStim.DBs);
-% relativePhasePost = (mPhasePost.movs -mPhasePost.DBs);
-% 
-% wavelength = 'white';
-% pVal = mPhaseStim.movs ~= 0 & ...
-%     (contains(stimTable.Remarks,wavelength)|contains(stimTable.Remarks,'DayTime'))...
-%     & ~contains(stimTable.Remarks,'Ex');
-% n=sum(pVal);
-% N=length(unique(stimTable.Animal(pVal)));
-% fMOVdbred=figure;
-% h1=subplot(1,3,1,polaraxes);hold on;
-% title('Pre Stimulations')
-% Rlim=0.5;
-% relativePreMean = circ_mean(relativePhasePre(pVal));
-% 
-% hP={};
-% for i=1:numel(uniqueAnimals)
-%     p=find(pVal & strcmp(stimTable.Animal,uniqueAnimals(i)));
-%     hP{i}=polarplot([relativePhasePre(p)';relativePhasePre(p)'],[zeros(1,numel(p));Rlim*ones(1,numel(p))],'color',animalsColors(i,:),'LineWidth',1);
-% end
-% hold on;
-% hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
-% hP3=polarplot([relativePreMean relativePreMean],[0,Rlim],'color','k','LineWidth',3);
-% 
-% hRose=polarhistogram(h1,relativePhasePre(pVal),12,'Normalization','probability');
-% hRose.FaceColor=[0.7 0.7 0.7];
-% hRose.FaceAlpha=0.5;
-% 
-% text(0.2, Rlim/2, '\delta/\beta');
-% h1.ThetaTick=[0:90:330];
-% h1.RTick=[0.1:0.1:0.4];
-% l1=legend([hP{2}(1),hP3,hRose],{'singleNight','\delta/\beta','Prob.'},'box','off');
-% l1.Position=[0.7386    0.8238    0.2125    0.1190];
-% 
-% %figure 2 : during stim:
-% h2=subplot(1,3,2,polaraxes);hold on;% Stimulation time
-% title('During Stimulations')
-% Rlim=0.5;
-% relativeStimMean = circ_mean(relativePhaseStim(pVal));
-% hP={};
-% for i=1:numel(uniqueAnimals)
-%     p=find(pVal & strcmp(stimTable.Animal,uniqueAnimals(i)));
-%     hP{i}=polarplot([relativePhaseStim(p)';relativePhaseStim(p)'],[zeros(1,numel(p));Rlim*ones(1,numel(p))],'color',animalsColors(i,:),'LineWidth',1);
-% end
-% hold on;
-% hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
-% hP3=polarplot([relativeStimMean relativeStimMean],[0,Rlim],'color','k','LineWidth',3);
-% 
-% hRose=polarhistogram(h2,relativePhaseStim(pVal),12,'Normalization','probability');
-% hRose.FaceColor=[0.7 0.7 0.7];
-% hRose.FaceAlpha=0.5;
-% 
-% text(0.2, Rlim/2, '\delta/\beta');
-% h2.ThetaTick=[0:90:330];
-% h2.RTick=[0.1:0.1:0.4];
-% 
-% %figure 3 : post stim:
-% h3=subplot(1,3,3,polaraxes);hold on;% Stimulation time
-% title('Post Stimulations')
-% Rlim=0.5;
-% relativePostMean = circ_mean(relativePhasePost(pVal));
-% 
-% hP={};
-% for i=1:numel(uniqueAnimals)
-%     p=find(pVal & strcmp(stimTable.Animal,uniqueAnimals(i)));
-%     hP{i}=polarplot([relativePhasePost(p)';relativePhasePost(p)'],[zeros(1,numel(p));Rlim*ones(1,numel(p))],'color',animalsColors(i,:),'LineWidth',1);
-% end
-% hold on;
-% hP3=polarplot([0 0],[0 Rlim],'color','k','linewidth',3);
-% hP3=polarplot([relativePostMean relativePostMean],[0,Rlim],'color','k','LineWidth',3);
-% 
-% hRose=polarhistogram(h3,relativePhasePost(pVal),12,'Normalization','probability');
-% hRose.FaceColor=[0.7 0.7 0.7];
-% hRose.FaceAlpha=0.5;
-% 
-% text(0.2, Rlim/2, '\delta/\beta');
-% h3.ThetaTick=[0:90:330];
-% h3.RTick=[0.1:0.1:0.4];
-% 
-% 
-% % savefigure
-% set(gcf, 'PaperUnits', 'inches');         % Set paper units to inches
-% set(gcf, 'PaperSize', [6,4]);            % Set the paper size (width x height in inches)
-% set(gcf, 'PaperPosition', [0, 0, 6,4]);  % Set position on paper to match size exactly
-% 
-% % Print to PDF
-% % set(f,'PaperPositionMode','auto');
-% fileName=[analysisFolder filesep 'PolarMovDBwhiteNightold'];
-% print(fileName,'-dpdf',['-r' num2str(SA.figResJPG)]);% clearvars -except stimTable SA analysisFolder LMdata
-% 

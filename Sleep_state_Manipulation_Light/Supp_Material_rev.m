@@ -466,7 +466,7 @@ colorMat =[];
 ns = [];
 Ns = [];
 
-LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
+LMstimbinM = cell2mat(LMData.LMstimbin)/1000*100; % takes out the nan val
 raw_pvals = zeros(1,length(couples));
 psfromZero = [];
 for i = 1:length(couples)
@@ -481,7 +481,7 @@ for i = 1:length(couples)
         N = length(unique(stimTable.Animal(curTrials)));
         ns = [ns; n];
         Ns = [Ns; N];
-        LMpre = LMData.LMpre(curTrials);
+        LMpre = LMData.LMpre(curTrials)/1000*100;
         LMstimbintrialM = mean(LMstimbinM(curTrials,:),2); % mean for each night
         curDiffStimPre = LMstimbintrialM-LMpre;
         headMovDdata = [headMovDdata;curDiffStimPre];
