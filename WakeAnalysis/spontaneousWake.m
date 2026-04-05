@@ -142,7 +142,7 @@ curSens = cali_result.(hs).sensetivity';
 curZeroG = cali_result.(hs).zeroGbais';
 LM = WA.getLizardMovements(overwrite=1,sensitivity=curSens,zeroGBias=curZeroG);
 
-%%
+ %%
 bin = 1000;
 convWin = 60;
 th= 100;
@@ -487,7 +487,7 @@ end
 title(sprintf('All segments (n=%d)', size(score,1)));
 
 
-%% Plot transient point for the states. (high/low)
+%% Plot transient point for the states - 3 states: (high/low)
 crossFreqsAll=[];
 S1avg = [];
 S3avg = [];
@@ -569,3 +569,200 @@ box(ax2,'off');
 ax2.XTickLabelRotation=0;
 
 % linkaxes([ax1,ax2],'y')
+%% Plot transient point for the states.2 states.  (high/low)
+crossFreqsAll=zeros(height(wakeData),1);
+S1avg = zeros(height(wakeData),1);
+S2avg = zeros(height(wakeData),1);
+% freqdete = WA.getFreqBandDetection;
+% freqHz = freqdete.freqHz;
+for i= 1:height(wakeData)
+    recName = ['Animal=' wakeData.Animal{i} ',recNames=' wakeData.recNames{i}];
+    WA.setCurrentRecording(recName);
+    % re-calc the 2 states:
+    curFreq = WA.getFreqBandDetection(fMax=80,overwrite=1);
+    crossFreqsAll(i) = curFreq.crossFreq;
+    S1= mean(curFreq.normsPxx(:,curFreq.clusters==1),2);
+    S2= mean(curFreq.normsPxx(:,curFreq.clusters==2),2);
+    % get the avg of values above 1
+    S1avg(i) = mean(curFreq.freqHz(S1>1));
+    S2avg(i) = mean(curFreq.freqHz(S2>1));
+end
+
+%% plot - transition and avg for both states:
+%% plot crossFreq
+figure('Color','w');
+colors = lines(4);
+ax1=subplot(1,3,1:2);
+x = ones(length(S1avg),1);
+swarmchart(x,S1avg,'filled',color= colors(1,:));
+hold on;
+swarmchart(x*2,S2avg,'filled',color=colors(2,:));
+ylabel("Frequency (Hz)")
+xlim([0.5 2.5])
+xticks([1,2]); 
+xticklabels({'','Cluster 1','','Cluster 2',''})
+ax1.XTickLabelRotation=0;
+ylims=[0,60];
+box(ax1,'off');
+ylim(ylims);box(ax1,'off');
+title('Clusters Avgs above 1')
+
+ax2=subplot(1,3,3);
+swarmchart(ones(size(crossFreqsAll)),crossFreqsAll,'filled','k');
+ylim(ylims)
+xticks(1);
+xticklabels({'',"Cross Freq",''})
+xlim([0.5 1.5]);
+title('Cross Freq')
+box(ax2,'off');
+ax2.XTickLabelRotation=0;
+
+% linkaxes([ax1,ax2],'y')
+
+
+%% evalute the clustering
+KList = 2:6;
+expNum = height(wakeData);
+% i = 1;
+
+evaSilAll=zeros(expNum,length(KList));
+evaCHAll=zeros(expNum,length(KList));
+evaGapAll=zeros(expNum,length(KList));
+evaDBAll=zeros(expNum,length(KList));
+
+for i = 1:expNum
+    curNormPxx=wakeData.pxxDataAll{i,2}; % all segments normPxx (nSegXnFreq)
+    curCorrMat=corrcoef(curNormPxx);
+
+    curEvaSil=zeros(size(KList));
+    curEvaCH=zeros(size(KList));
+    curEvaDC=zeros(size(KList));
+    curEvaGap=zeros(size(KList));
+    for ii=1:numel(KList)
+        K = KList(ii);
+        % idx = cluster(Z,'maxclust',K);
+        [DC,order,clusters]=DendrogramMatrix(curCorrMat,'linkMetric','euclidean','linkMethod','ward','maxClusters',K);
+
+        s = silhouette(curCorrMat, clusters);  % or just silhouette(Xeval,idx)
+        curEvaSil(ii) = mean(s);
+
+        evaCH  = evalclusters(curCorrMat,clusters,'CalinskiHarabasz');
+        curEvaCH(ii) = evaCH.CriterionValues;
+
+        evaDB  = evalclusters(curCorrMat,clusters,'DaviesBouldin');
+        curEvaDC(ii) = evaCH.CriterionValues;
+        
+  
+    end
+
+    % clustFun = @(X,k) DendrogramMatrix(X,'linkMetric','euclidean','linkMethod','ward','maxclust',k);
+    % E = evalclusters(curCorrMat, clustFun, 'gap', 'KList', KList);
+
+    % save
+    evaSilAll(i,:)=curEvaSil;
+    evaCHAll(i,:)=curEvaCH;
+    evaDBAll(i,:)=curEvaDC;
+    % evaGapAll(i,:)=curEvaGap;
+end
+
+%%
+figure
+subplot(2,2,1)
+plot(KList, evaSilAll,'-','Marker','.');
+hold on; plot(KList, mean(evaSilAll),'-','Color','k','Marker','.','LineWidth',2)
+ylabel('Mean Silhouette')
+xlim([1.5 6.5])
+xlabel('K');xticks(KList);xticklabels(KList)
+
+% subplot(2,2,2)
+% plot(KList, evaGapAll,'-o')
+% hold on; plot(KList, mean(evaGapAll),'-','Color','k','Marker','.','LineWidth',2)
+% ylabel('Gap Statistic')
+% xlim([1.5 6.5])
+% xlabel('K');xticks(KList);xticklabels(KList)
+
+
+subplot(2,2,3)
+plot(KList, evaCHAll,'-o')
+hold on; plot(KList, mean(evaCHAll),'-','Color','k','Marker','.','LineWidth',2)
+ylabel('Calinski-Harabasz Statistic')
+xlim([1.5 6.5])
+xlabel('K');xticks(KList);xticklabels(KList)
+
+subplot(2,2,4)
+plot(KList, evaDBAll,'-o')
+hold on; plot(KList, mean(evaDBAll),'-','Color','k','Marker','.','LineWidth',2)
+ylabel('Davies-Bouldin Statistic')
+xlim([1.5 6.5])
+xlabel('K');xticks(KList);xticklabels(KList)
+
+%% optimal values:
+[~,bestSil] = max(evaSilAll,[],2);
+[~,bestGap] = max(evaGapAll,[],2);
+[~,bestCH] = max(evaCHAll,[],2);
+[~,bestDB] = min(evaDBAll,[],2);
+binedges = (1.5:1:6.5);
+figure;
+subplot(2,2,1)
+histogram(bestSil+1,BinEdges=binedges); xlabel('K'); title('Optimal Silhouette clustering num');
+ylabel('Exp num'); xticks(KList);xticklabels(KList)
+
+subplot(2,2,2)
+histogram(bestGap+1,BinEdges=binedges); xlabel('K'); title('Optimal Gap clustering num');
+ylabel('Exp num'); xticks(KList);xticklabels(KList)
+
+subplot(2,2,3)
+histogram(bestCH+1,BinEdges=binedges); xlabel('K'); title('Optimal CH clustering num');
+ylabel('Exp num');xticks(KList);xticklabels(KList)
+
+subplot(2,2,4); 
+histogram(bestDB+1,BinEdges=binedges); xlabel('K'); title('Optimal DB clustering num');
+ylabel('Exp num'); xticks(KList);xticklabels(KList)
+
+
+%%
+KList = 2:6;
+expNum = height(wakeData);
+% i = 1;
+
+evaSilcorr=zeros(expNum,length(KList));
+evaGapcorr=zeros(expNum,length(KList));
+
+for i = 1:expNum
+    curNormPxx=wakeData.pxxDataAll{i,2}; % all segments normPxx (nSegXnFreq)
+    % curCorrMat=corrcoef(curNormPxx)
+    evaSilc  = evalclusters(curNormPxx,'linkage','silhouette','KList',KList,'Distance','correlation');
+    % evaDB  = evalclusters(curCorrMat,'linkage','DaviesBouldin',   'KList',KList);
+    evaGapc = evalclusters(curNormPxx,'linkage','gap','KList',KList,'Distance','correlation');
+    % save
+    evaSilcorr(i,:)=evaSilc.CriterionValues;
+    % evaCHAll(i,:)=evaCH.CriterionValues;
+    evaGapcorr(i,:)=evaGapc.CriterionValues;
+    % evaDBAll(i,:)=evaDB.CriterionValues;
+end
+%%
+figure
+subplot(2,2,1)
+plot(KList, evaSilcorr,'-','Marker','.');
+hold on; plot(KList, mean(evaSilcorr),'-','Color','k','Marker','.','LineWidth',2)
+ylabel('Mean Silhouette - corre. dist.')
+xlim([1.5 6.5])
+xlabel('K');xticks(KList);xticklabels(KList)
+
+subplot(2,2,2)
+plot(KList, evaGapcorr,'-o')
+hold on; plot(KList, mean(evaGapcorr),'-','Color','k','Marker','.','LineWidth',2)
+ylabel('Gap Statistic  - corre. dist.')
+xlim([1.5 6.5])
+xlabel('K');xticks(KList);xticklabels(KList)
+
+[~,bestSilC] = max(evaSilcorr,[],2);
+[~,bestGapC] = max(evaGapcorr,[],2);
+
+subplot(2,2,3)
+histogram(bestSilC+1,BinEdges=binedges); xlabel('K'); title('Optimal Silhouette clustering num');
+ylabel('Exp num'); xticks(KList);xticklabels(KList)
+
+subplot(2,2,4)
+histogram(bestGapC+1,BinEdges=binedges); xlabel('K'); title('Optimal Gap clustering num');
+ylabel('Exp num'); xticks(KList);xticklabels(KList)
