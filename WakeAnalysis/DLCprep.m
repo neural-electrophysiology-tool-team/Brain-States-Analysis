@@ -29,7 +29,7 @@ wakeTable = WA.recTable(wakeTrials,:);
 % caliTable = unique(subT, 'rows');
 load(["Brain-States-Analysis/WakeAnalysis/calibrationTable.mat"])
 % load([analysisFolderWake filesep "calibrationTable.mat"])
-wakeSubset = readtable([analysisFolderWake filesep 'wakeSubset.xlsx']);
+% wakeSubset = readtable([analysisFolderWake filesep 'wakeSubset.xlsx']);
 % save([analysisFolderWake filesep 'wakeSubset.xlsx'],"wakeSubset")
 %%
 A = wakeSubset(:, {'Animal','recNames'});
@@ -58,7 +58,8 @@ wakeSubsetAll = WA.recTable(idx,:);
 % caliTable.caliPath = string(caliTable.caliPath);
 
 % --- 1) Keep only the needed columns (avoid accidental extra vars) ---
-leftT  = wakeSubsetAll(:, {'Animal','system','folder'});
+% leftT  = wakeSubsetAll(:, {'Animal','system','folder'});
+leftT  = wakeTable(:, {'Animal','system','folder'});
 rightT = caliTable(:, {'Animal','system','caliPath'});
 
 % --- 2) Join on Animal+system to attach caliPath to each row in wakeSubset ---
@@ -79,11 +80,10 @@ jobsTable.folder_hpc    = arrayfun(@fixHPCpath, jobsTable.folder);
 jobsTable.calib_dir_hpc = arrayfun(@fixHPCpath, jobsTable.calib_dir);
 
 % --- 5) Save as CSV for python ---
-outCsv = fullfile(analysisFolderWake, 'deeplabcut_jobs.csv');
 writetable(jobsTable, outCsv);
 
 % --- 5.5) Save as CSV for python in sil3 ---
-outCsv = fullfile("/media/sil3/Data/Nitzan/hpc_dlc/deeplabcut_jobs_hpc.csv");
+outCsv = fullfile("/media/sil3/Data/Nitzan/hpc_dlc/deeplabcut_jobs_hpc_all.csv");
 writetable(jobsTable, outCsv);
 
 % --- 6) Also save the MATLAB table (optional) ---

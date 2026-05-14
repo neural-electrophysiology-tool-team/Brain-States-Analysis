@@ -22,7 +22,7 @@ end
 wakeSubset = wakeTable(rowsToKeep, :);
 %%
 
-% wakeSubset = readtable([analysisFolderWake filesep 'wakeSubset.xlsx']);
+% wakeSubset = readtable([analysisFolderWake filesep 'wakeSubset.csv']);
 wakeSubsetAll = readtable([analysisFolderWake filesep 'wakeSubsetAll.xlsx']);
 wakeData = wakeSubsetAll(:,["spikes","videoSync","Animal","recNames","Headstage"]);
 %% checking correlogram and freq bands:
@@ -70,6 +70,8 @@ fileName=[analysisFolderWake filesep 'clusters_all'];
 print(fileName,'-dpdf',['-r300']);
 
 %% ACC to D/B
+
+
     hs = WA.recTable.Headstage{WA.currentPRec};
     curSens = cali_result.(hs).sensetivity';
     curZeroG = cali_result.(hs).zeroGbais';
@@ -85,7 +87,7 @@ print(fileName,'-dpdf',['-r300']);
     dbratio = DB.bufferedDelta2BetaRatio(dbInd);
     binSize = DB.parDBRatio.movWin -DB.parDBRatio.movOLWin;
     edges = [dbtimes-(binSize/2), dbtimes(end)+(binSize/2)];
-    [counts,e] =  histcounts(curLM.t_mov_ms,edges);
+    [counts,e] =  wakecounts(curLM.t_mov_ms,edges);
     
     h_thresh= counts>th;
     y = ones(1,convWin);
@@ -133,30 +135,121 @@ title('normelized pxx');xlabel('Freq[Hz]'),ylabel('nPower')
 % [V_uV,t_ms] = WA.currentDataObj.getAnalogData(channels,startT,win);
 % V_uV = squeeze(V_uV)';
 
-
-%
-cali_result = load(['/media/sil3/Data/accelerometer_calibrations/' ...
+% for i=4:height(wakeData)
+i = 1;
+    recName=['Animal=' wakeData.Animal{i} ',recNames=' pData.recNames{i}];
+    WA.setCurrentRecording(recName);
+    cali_result = load(['/media/sil3/Data/accelerometer_calibrations/' ...
     'headtagse_cali_recs/calibration_results.mat']).cali_result;
-hs = WA.recTable.Headstage{WA.currentPRec};
-curSens = cali_result.(hs).sensetivity';
-curZeroG = cali_result.(hs).zeroGbais';
-LM = WA.getLizardMovements(overwrite=1,sensitivity=curSens,zeroGBias=curZeroG);
+    hs = WA.recTable.Headstage{WA.currentPRec};
+    curSens = cali_result.(hs).sensetivity';
+    curZeroG = cali_result.(hs).zeroGbais';
+    LM = WA.getLizardMovements(sensitivity=curSens,zeroGBias=curZeroG);
+    DB = WA.getDelta2BetaRatio;
 
- %%
-bin = 1000;
-convWin = 60;
-th= 100;
-[counts, edges] =  histcounts(LM.t_mov_ms,BinWidth=bin);
-h_thresh= counts>th;
-% h_times = h.BinEdges;
-y = ones(1,convWin);
-conv = convn(h_thresh,y,'same');
-figure; plot(conv);hold on;plot(DB.bufferedDelta2BetaRatio)
-figure; scatter(conv(1:length(DB.bufferedDelta2BetaRatio)),DB.bufferedDelta2BetaRatio,'.');
-xlabel('Movement');ylabel("D/B")
-% move_conv = conv>0;
-% db_stativ = DB.bufferedDelta2BetaRatio;
+   %%
+   % % DB=WA.getDelta2BetaRatio;
+    % bin = 1000;
+    bin = DB.parDBRatio.movWin - DB.parDBRatio.movOLWin;
+    % convWin = DB.parDBRatio.movWin/1000;
+    convWin=60;
+    th= 0;
+    nonNanDBt = DB.t_ms(~isnan(DB.bufferedBetaRatio));
+    edges = [nonNanDBt-bin/2, nonNanDBt(end)+bin/2];
+    [counts, edges] =  histcounts(LM.t_mov_ms,edges);
+    % h_thresh= counts>th;
 
+    h_thresh=zeros(size(counts));
+    h_thresh(counts>th)= counts(counts>th);
+
+    % h_times = h.BinEdges;
+    y = ones(1,convWin);
+    conv = convn(h_thresh,y,'same');
+    % figure; plot(conv);hold on;plot(DB.bufferedDelta2BetaRatio)
+    
+    xdata=conv;
+    ydata=rmmissing(DB.bufferedDelta2BetaRatio);
+    
+%% %     % plot 1: scatter + density
+    xy=[xdata(:),ydata(:)];
+    % [f,~] = ksdensity(xy,xy);
+    figure; swarmchart(xdata,ydata,20,'filled');
+    % colormap("parula"); colorbar;
+    xlabel('Movement');ylabel("D/B")
+    title(sprintf('Movement density plot,%s',recName))
+
+% plot 2: imagesc density 
+yEdges = linspace(min(ydata), max(ydata), 40);   % 50 bins
+
+% x bins are the unique integer values
+xVals = unique(xdata);
+xEdges = [xVals-0.5 xVals(end)+0.5];
+xEdges = xEdges(:)';
+
+% 2D histogram: rows = x bins, columns = y bins
+N = histcounts2(xdata, ydata', xEdges, yEdges);
+
+% Plot as an image
+figure
+imagesc(xVals, ...
+    (yEdges(1:end-1)+yEdges(2:end))/2, ...
+    N')
+
+axis xy
+xlabel('Mov Count')
+ylabel('D/B')
+colorbar
+colormap(parula)
+title(sprintf('Movement density plot,%s',recName))
+
+%% plot 3: 2d hist
+figure;
+[d,h] = hist2(xdata,ydata,'dX1',50,'dX2',10);
+% colorbar
+colormap(parula)
+xlabel('Mov Count')
+ylabel('D/B')
+% 
+% Inputs:
+% xdata = movement
+% ydata = D/B
+%
+% Set thresholds:
+% xThr = 5;   % example threshold for movement
+% yThr = 40;    % example threshold for D/B
+% 
+% % plot 3) Divide to low/high movement and plot swarm of D/B
+% lowX  = ydata(xdata <  xThr);
+% highX = ydata(xdata >= xThr);
+% 
+% figure;
+% 
+% subplot(1,2,1)
+% hold on
+% swarmchart(ones(size(lowX)),  lowX,  'filled')
+% swarmchart(2*ones(size(highX)), highX, 'filled')
+% xlim([0.5 2.5])
+% xticks([1 2])
+% xticklabels({'Low movement','High movement'})
+% ylabel('D/B')
+% title('D/B by movement threshold')
+% 
+% % 2) Divide to low/high D/B and plot swarm of movement
+% lowY  = xdata(ydata <  yThr);
+% highY = xdata(ydata >= yThr);
+% 
+% subplot(1,2,2)
+% hold on
+% swarmchart(ones(size(lowY)),  lowY,  'filled')
+% swarmchart(2*ones(size(highY)), highY, 'filled')
+% xlim([0.5 2.5])
+% xticks([1 2])
+% xticklabels({'Low D/B','High D/B'})
+% ylabel('Movement')
+% title('Movement by D/B threshold')
+% sgtitle(recName)
+% 
+% end
 %% PCA
 % running on a single trial, power spec
 PxxDataAll=[];
@@ -211,7 +304,7 @@ for i = 1:height(wakeData)
 
     
 end
-save([analysisFolderWake filesep 'PCAallPxx.mat'],'PxxDataAll','clustersAll','nPxxDataAll')
+save([analysisFolderWake filesep 'PCAallPhis.mat'],'PxxDataAll','clustersAll','nPxxDataAll')
 save([analysisFolderWake filesep 'wakeData.mat'],'wakeData')
 
 %% calc and plot PCA for all same PC
@@ -766,3 +859,4 @@ ylabel('Exp num'); xticks(KList);xticklabels(KList)
 subplot(2,2,4)
 histogram(bestGapC+1,BinEdges=binedges); xlabel('K'); title('Optimal Gap clustering num');
 ylabel('Exp num'); xticks(KList);xticklabels(KList)
+
