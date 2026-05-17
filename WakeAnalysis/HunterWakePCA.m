@@ -2,7 +2,7 @@
 
 WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
-wakeSubsetAll = readtable([analysisFolderWake filesep 'wakeSubsetAll.xlsx']);
+% wakeSubsetAll = readtable([analysisFolderWake filesep 'wakeSubsetAll.xlsx']);
 
 %% get hunter subset
 hunTrials = contains(WA.recTable.recNames,'Hunter') & ~contains(WA.recTable.Animal,'PV8');
@@ -11,8 +11,6 @@ animals= unique(hunterTable.Animal);
 trialsNames = ["Hunter1","Hunter2","Hunter3"];
 hunterSubsetAll = hunterTable(ismember(hunterTable.recNames,trialsNames),:);
 
-%% get the data for wake
-load([analysisFolderWake filesep 'wakeData.mat'])
 
 %% get the data for the pCA - hunter:
 % running on a single trial, power spec
@@ -58,7 +56,8 @@ for i = 1:height(hunterSubsetAll)
 end
 
 % Save everything needed for PCA
-save([analysisFolderWake filesep 'allSpectraHunter.mat'], 'PxxDataAllHun','nPxxDataAllHun', 'clustersHun','freqHzAllHun', 'timesAllHun', 'recLabelsHun', 'hunterSubsetAll');
+save([analysisFolderWake filesep 'allSpectraHunter.mat'], 'PxxDataAllHun','nPxxDataAllHun','animalLabelHun', 'clustersHun' ...
+    ,'freqHzAllHun', 'timesAllHun', 'recLabelsHun', 'hunterSubsetAll');
 
 %% get the data for the pCA - Wake:
 % running on a single trial, power spec
@@ -108,8 +107,9 @@ end
 % Save everything needed for PCA
 save([analysisFolderWake filesep 'allSpectraWake.mat'], 'PxxDataAllWake','nPxxDataAllWake', 'freqHzAllWake','clustersWake', 'timesAllWake', ...
     'recLabelsWake', 'animalLabelWake');
-
-
+%% load data
+load([analysisFolderWake filesep 'allSpectraWake.mat'])
+load([analysisFolderWake filesep 'allSpectraHunter.mat'])
 %% run the PCA:
 PxxDataAll = [PxxDataAllHun ;PxxDataAllWake];
 [coeff, scores, ~, ~, explained] = pca(PxxDataAll);
@@ -568,22 +568,30 @@ for a = 1:numel(animals)
         h2_r.XLim = xlim_r; h2_r.YLim = ylim_r;
 
         %-- Col 4: Overlaid hist2
-        subplot(3, 5, (r-1)*5 + 4);
-        ax = gca;
-        edges1_r = xlim_r(1):dx1_r:(xlim_r(2)+dx1_r);  edges1_r = edges1_r + dx1_r/2;
-        edges2_r = ylim_r(1):dx2_r:(ylim_r(2)+dx2_r);  edges2_r = edges2_r + dx2_r/2;
+           subplot(3, 5, (r-1)*5 + 4);
+            ax = gca;
+            edges1_r = xlim_r(1):dx1_r:(xlim_r(2)+dx1_r);  edges1_r = edges1_r + dx1_r/2;
+            edges2_r = ylim_r(1):dx2_r:(ylim_r(2)+dx2_r);  edges2_r = edges2_r + dx2_r/2;
 
-        rgb1 = cat(3, zeros(size(d1_r)), zeros(size(d1_r)), ones(size(d1_r)));
-        h_d1 = imagesc(ax, edges1_r, edges2_r, rgb1);
-        h_d1.AlphaData = mat2gray(log10(1+d1_r));
-        set(ax, 'YDir', 'normal');
-        hold on;
-        rgb2 = cat(3, ones(size(d2_r)), zeros(size(d2_r)), zeros(size(d2_r)));
-        h_d2 = imagesc(ax, edges1_r, edges2_r, rgb2);
-        h_d2.AlphaData = mat2gray(log10(1+d2_r));
-        ax.XLim = xlim_r; ax.YLim = ylim_r;
-        xlabel('PC1'); ylabel('PC2');
-        title([rowLabel ' - Overlap']);
+            % Normalize each to [0 1]
+            n1 = mat2gray(log10(1+d1_r));  % Hunter -> blue
+            n2 = mat2gray(log10(1+d2_r));  % Wake   -> red
+
+            % White background: where both are zero, set to white (1,1,1)
+            % Blend: start from white and subtract toward color
+            R = 1 - n1;          % blue pulls red channel down
+            G = 1 - n1 - n2;     % both pull green down
+            B = 1 - n2;          % red pulls blue channel down
+            G = max(G, 0);       % clamp to avoid negative values
+
+            rgbCombined = cat(3, R, G, B);
+
+            h_rgb = imagesc(ax, edges1_r, edges2_r, rgbCombined);
+            set(ax, 'YDir', 'normal', 'Color', 'white');
+            ax.XLim = xlim_r; ax.YLim = ylim_r;
+            xlabel('PC1'); ylabel('PC2');
+            title([rowLabel ' - Overlap (red=Wake, blue=Hunter)']);
+            
 
         %-- Col 5: Scatter colored by cluster
         subplot(3, 5, (r-1)*5 + 5);
@@ -607,7 +615,6 @@ for a = 1:numel(animals)
         hold off;
     end
 end
-
 
 
 %%
@@ -634,7 +641,18 @@ end
 %% run on PCA and plot hunter on top of it.
 animals={'PV162'};
 % animals = unique(animalLabelWake);
+% Parameters for each PCA type: [dx1, dx2, xlim, ylim]
+dx1_raw = 500;  dx2_raw = 500;
+dx1_nt  = 1;  dx2_nt  = 1;
+dx1_ns  = 1;  dx2_ns  = 1;
 
+pcaXlim_raw = [-0.5 4.5]*10000; pcaYlim_raw = [-1.5 3]*10000;
+pcaXlim_nt  = [-40 120];    pcaYlim_nt  = [-50 50];
+pcaXlim_ns  = [-40 40];    pcaYlim_ns  = [-30 30];
+
+if all(freqHzAllWake==freqHzAllHun)
+    freqHzAll = freqHzAllWake;
+end
 
 for a = 1:numel(animals)
     thisAnimal = animals{a};
@@ -733,14 +751,16 @@ for a = 1:numel(animals)
             n1 = mat2gray(log10(1+d1_r));  % Hunter -> blue
             n2 = mat2gray(log10(1+d2_r));  % Wake   -> red
 
-            % Build single RGB image: R=Wake, G=0, B=Hunter
-            rgbCombined = cat(3, n2, zeros(size(n1)), n1);
+            % White background: where both are zero, set to white (1,1,1)
+            % Blend: start from white and subtract toward color
+            R = 1 - n1;          % blue pulls red channel down
+            G = 1 - n1 - n2;     % both pull green down
+            B = 1 - n2;          % red pulls blue channel down
+            G = max(G, 0);       % clamp to avoid negative values
 
-            % Alpha = max of both � empty bins fully transparent, occupied bins opaque
-            alphaMap = max(n1, n2);
+            rgbCombined = cat(3, R, G, B);
 
             h_rgb = imagesc(ax, edges1_r, edges2_r, rgbCombined);
-            h_rgb.AlphaData = alphaMap;
             set(ax, 'YDir', 'normal', 'Color', 'white');
             ax.XLim = xlim_r; ax.YLim = ylim_r;
             xlabel('PC1'); ylabel('PC2');
@@ -772,3 +792,342 @@ for a = 1:numel(animals)
         end
 
 end
+
+%% 3D PCA =
+
+% animals={'PV162'};
+animals = unique(animalLabelWake);
+% Parameters for each PCA type: [dx1, dx2, xlim, ylim]
+dx1_raw = 500;  dx2_raw = 500;
+dx1_nt  = 1;  dx2_nt  = 1;
+dx1_ns  = 1;  dx2_ns  = 1;
+
+pcaXlim_raw = [-0.5 4.5]*10000; pcaYlim_raw = [-1.5 3]*10000;
+pcaXlim_nt  = [-40 120];    pcaYlim_nt  = [-50 50];
+pcaXlim_ns  = [-40 40];    pcaYlim_ns  = [-30 30];
+
+if all(freqHzAllWake==freqHzAllHun)
+    freqHzAll = freqHzAllWake;
+end
+
+for a = 1:numel(animals)
+    thisAnimal = animals{a};
+    maskHun  = strcmp(animalLabelHun,  thisAnimal);
+    maskWake = strcmp(animalLabelWake, thisAnimal);
+
+    % Data for this animal
+    pxxHun  = PxxDataAllHun(maskHun,:);
+    pxxWake = PxxDataAllWake(maskWake,:);
+    % pxxAnimal = [pxxHun; pxxWake];
+    nPxxWake = nPxxDataAllWake(maskWake,:);
+    nPxxHun = nPxxDataAllHun(maskHun,:);
+    % nPxxAnimal = [nPxxWake; nPxxHun];
+    idxAnimal  = [ones(size(pxxHun,1),1); 2*ones(size(pxxWake,1),1)];
+
+    % Clusters for this animal
+    clustHun  = clustersHun(maskHun);
+    clustWake = clustersWake(maskWake);
+    nClusters = max([clustHun; clustWake]);
+    clusterColors = lines(nClusters);
+
+    % --- Run 3 PCAs on Wake only ---
+    [coeffA,   scoresA_wake,   ~, ~, explainedA]   = pca(pxxWake);
+    [coeffAnt, scoresAnt_wake, ~, ~, explainedAnt] = pca(nPxxWake);
+    [coeffAns, scoresAns_wake, ~, ~, explainedAns] = pca(normalize(pxxWake, 2));
+
+    % --- Project Hunter data onto Wake PCA space ---
+    % For raw:
+    scoresA_hun   = (pxxHun - mean(pxxWake)) * coeffA;
+
+    % For norm to trial:
+    scoresAnt_hun = (nPxxHun - mean(nPxxWake)) * coeffAnt;
+
+    % For norm to segment:
+    pxxWake_norm  = normalize(pxxWake, 2);
+    pxxHun_norm   = normalize(pxxHun,  2);
+    scoresAns_hun = (pxxHun_norm - mean(pxxWake_norm)) * coeffAns;
+
+    pcaData = {
+        coeffA,   scoresA_wake,   scoresA_hun,   explainedA,   'Raw',              dx1_raw, dx2_raw, pcaXlim_raw, pcaYlim_raw;
+        coeffAnt, scoresAnt_wake, scoresAnt_hun, explainedAnt, 'Norm. to trial',   dx1_nt,  dx2_nt,  pcaXlim_nt,  pcaYlim_nt;
+        coeffAns, scoresAns_wake, scoresAns_hun, explainedAns, 'Norm. to segment', dx1_ns,  dx2_ns,  pcaXlim_ns,  pcaYlim_ns;
+        };
+
+    figure('Name', ['3D PCA - ' thisAnimal]);
+    for r = 1:3
+        scoresWake_r = pcaData{r,2};
+        scoresHun_r  = pcaData{r,3};
+        rowLabel     = pcaData{r,5};
+
+        subplot(1,3,r);
+        hold on;
+        % according to origin:
+        scatter3(scoresWake_r(:,1), scoresWake_r(:,2), scoresWake_r(:,3), ...
+            20, 'filled');
+        scatter3(scoresHun_r(:,1), scoresHun_r(:,2), scoresHun_r(:,3), ...
+            20, clusterColors(c,:), 'o');
+        % 
+        % for c = 1:nClusters
+        %     maskC_wake = clustWake == c;
+        %     scatter3(scoresWake_r(maskC_wake,1), scoresWake_r(maskC_wake,2), scoresWake_r(maskC_wake,3), ...
+        %         20, clusterColors(c,:), 'filled', 'DisplayName', ['Wake C' num2str(c)]);
+        % 
+        %     maskC_hun = clustHun == c;
+        %     scatter3(scoresHun_r(maskC_hun,1), scoresHun_r(maskC_hun,2), scoresHun_r(maskC_hun,3), ...
+        %         20, clusterColors(c,:), 'o', 'DisplayName', ['Hun C' num2str(c)]);
+        % end
+        xlabel('PC1'); ylabel('PC2'); zlabel('PC3');
+        title(rowLabel);
+        legend('Location','best','FontSize',6);
+        grid on;
+        view(45, 30);
+        hold off;
+    end
+    sgtitle(['3D PCA - ' thisAnimal]);
+end
+
+
+%% Project all animals onto one reference animal's Wake PCA
+
+refAnimal = 'PV162'; % the animal whose Wake PCA is the reference
+
+% Parameters for each PCA type: [dx1, dx2, xlim, ylim]
+dx1_raw = 500;  dx2_raw = 500;
+dx1_nt  = 1;    dx2_nt  = 1;
+dx1_ns  = 1;    dx2_ns  = 1;
+
+pcaXlim_raw = [-0.5 4.5]*10000; pcaYlim_raw = [-1.5 3]*10000;
+pcaXlim_nt  = [-40 120];        pcaYlim_nt  = [-50 50];
+pcaXlim_ns  = [-40 40];         pcaYlim_ns  = [-30 30];
+
+if all(freqHzAllWake == freqHzAllHun)
+    freqHzAll = freqHzAllWake;
+end
+
+%% Step 1: Compute reference PCA from refAnimal Wake only
+maskRef = strcmp(animalLabelWake, refAnimal);
+
+pxxWake_ref   = PxxDataAllWake(maskRef,:);
+nPxxWake_ref  = nPxxDataAllWake(maskRef,:);
+pxxWake_ref_norm = normalize(pxxWake_ref, 2);
+
+[coeffA_ref,   ~, ~, ~, explainedA_ref]   = pca(pxxWake_ref);
+[coeffAnt_ref, ~, ~, ~, explainedAnt_ref] = pca(nPxxWake_ref);
+[coeffAns_ref, ~, ~, ~, explainedAns_ref] = pca(pxxWake_ref_norm);
+
+meanA_ref   = mean(pxxWake_ref);
+meanAnt_ref = mean(nPxxWake_ref);
+meanAns_ref = mean(pxxWake_ref_norm);
+
+%% Step 2: Loop over all animals and project onto reference PCA
+animals = unique(animalLabelWake);
+
+for a = 1:numel(animals)
+    thisAnimal = animals{a};
+    maskHun  = strcmp(animalLabelHun,  thisAnimal);
+    maskWake = strcmp(animalLabelWake, thisAnimal);
+
+    % Data for this animal
+    pxxHun  = PxxDataAllHun(maskHun,:);
+    pxxWake = PxxDataAllWake(maskWake,:);
+    nPxxWake = nPxxDataAllWake(maskWake,:);
+    nPxxHun  = nPxxDataAllHun(maskHun,:);
+    pxxWake_norm = normalize(pxxWake, 2);
+    pxxHun_norm  = normalize(pxxHun,  2);
+
+    % Clusters for this animal
+    clustHun  = clustersHun(maskHun);
+    clustWake = clustersWake(maskWake);
+    nClusters = max([clustHun; clustWake]);
+    clusterColors = lines(nClusters);
+
+    % --- Project both Wake and Hunter onto REFERENCE PCA space ---
+    scoresA_wake   = (pxxWake      - meanA_ref)   * coeffA_ref;
+    scoresA_hun    = (pxxHun       - meanA_ref)   * coeffA_ref;
+
+    scoresAnt_wake = (nPxxWake     - meanAnt_ref) * coeffAnt_ref;
+    scoresAnt_hun  = (nPxxHun      - meanAnt_ref) * coeffAnt_ref;
+
+    scoresAns_wake = (pxxWake_norm - meanAns_ref) * coeffAns_ref;
+    scoresAns_hun  = (pxxHun_norm  - meanAns_ref) * coeffAns_ref;
+
+    pcaData = {
+        coeffA_ref,   scoresA_wake,   scoresA_hun,   explainedA_ref,   'Raw',              dx1_raw, dx2_raw, pcaXlim_raw, pcaYlim_raw;
+        coeffAnt_ref, scoresAnt_wake, scoresAnt_hun, explainedAnt_ref, 'Norm. to trial',   dx1_nt,  dx2_nt,  pcaXlim_nt,  pcaYlim_nt;
+        coeffAns_ref, scoresAns_wake, scoresAns_hun, explainedAns_ref, 'Norm. to segment', dx1_ns,  dx2_ns,  pcaXlim_ns,  pcaYlim_ns;
+    };
+
+    figure('Name', ['Animal: ' thisAnimal ' (ref: ' refAnimal ')'], ...
+           'Units','normalized', 'Position',[0 0 1 1]);
+    sgtitle(['Animal: ' thisAnimal ' � projected onto ' refAnimal ' Wake PCA']);
+
+    for r = 1:3
+        coeff_r      = pcaData{r,1};
+        scoresWake_r = pcaData{r,2};
+        scoresHun_r  = pcaData{r,3};
+        explained_r  = pcaData{r,4};
+        rowLabel     = pcaData{r,5};
+        dx1_r        = pcaData{r,6};
+        dx2_r        = pcaData{r,7};
+        xlim_r       = pcaData{r,8};
+        ylim_r       = pcaData{r,9};
+
+        %-- Col 1: PC Loadings
+        subplot(3, 5, (r-1)*5 + 1);
+        hold on;
+        for pc = 1:3
+            plot(freqHzAll(1:size(coeff_r,1)), coeff_r(:,pc), 'DisplayName', ['PC' num2str(pc)]);
+        end
+        xlabel('Frequency (Hz)'); ylabel('Loading');
+        title([rowLabel ' - Loadings']); legend;
+
+        %-- Col 2: hist2 Hunter
+        subplot(3, 5, (r-1)*5 + 2);
+        [d1_r, h1_r] = hist2(scoresHun_r(:,1), scoresHun_r(:,2), ...
+            'dX1',dx1_r,'dX2',dx2_r,'h',gca, ...
+            'limits1',xlim_r,'limits2',ylim_r);
+        xlabel('PC1'); ylabel('PC2');
+        title([rowLabel ' - Hunter']);
+        h1_r.XLim = xlim_r; h1_r.YLim = ylim_r;
+
+        %-- Col 3: hist2 Wake
+        subplot(3, 5, (r-1)*5 + 3);
+        [d2_r, h2_r] = hist2(scoresWake_r(:,1), scoresWake_r(:,2), ...
+            'dX1',dx1_r,'dX2',dx2_r,'h',gca, ...
+            'limits1',xlim_r,'limits2',ylim_r);
+        xlabel('PC1'); ylabel('PC2');
+        title([rowLabel ' - Wake']);
+        h2_r.XLim = xlim_r; h2_r.YLim = ylim_r;
+
+        %-- Col 4: Overlaid hist2
+        subplot(3, 5, (r-1)*5 + 4);
+        ax = gca;
+        edges1_r = xlim_r(1):dx1_r:(xlim_r(2)+dx1_r);  edges1_r = edges1_r + dx1_r/2;
+        edges2_r = ylim_r(1):dx2_r:(ylim_r(2)+dx2_r);  edges2_r = edges2_r + dx2_r/2;
+
+        n1 = mat2gray(log10(1+d1_r));  % Hunter -> blue
+        n2 = mat2gray(log10(1+d2_r));  % Wake   -> red
+
+        R = 1 - n1;
+        G = max(1 - n1 - n2, 0);
+        B = 1 - n2;
+        rgbCombined = cat(3, R, G, B);
+
+        imagesc(ax, edges1_r, edges2_r, rgbCombined);
+        set(ax, 'YDir', 'normal', 'Color', 'white');
+        ax.XLim = xlim_r; ax.YLim = ylim_r;
+        xlabel('PC1'); ylabel('PC2');
+        title([rowLabel ' - Overlap (red=Wake, blue=Hunter)']);
+
+        %-- Col 5: Scatter colored by cluster
+        subplot(3, 5, (r-1)*5 + 5);
+        hold on;
+        for c = 1:nClusters
+            maskC_hun = clustHun == c;
+            scatter(scoresHun_r(maskC_hun,1), scoresHun_r(maskC_hun,2), ...
+                20, clusterColors(c,:), 'diamond', 'MarkerEdgeAlpha', 0.2, ...
+                'LineWidth', 1, 'DisplayName', ['Hun C' num2str(c)]);
+
+            maskC_wake = clustWake == c;
+            scatter(scoresWake_r(maskC_wake,1), scoresWake_r(maskC_wake,2), ...
+                20, clusterColors(c,:), '*', 'MarkerEdgeAlpha', 0.2, ...
+                'DisplayName', ['Wake C' num2str(c)]);
+        end
+        xlabel('PC1'); ylabel('PC2');
+        xlim(xlim_r); ylim(ylim_r);
+        legend('Location','best','FontSize',6);
+        title([rowLabel ' - Clusters']);
+        hold off;
+    end
+end
+
+
+
+%%
+saveDir = [analysisFolderWake filesep 'PCAeachAnimal'];
+if ~exist(saveDir, 'dir'); mkdir(saveDir); end
+
+% Get all open figures
+figHandles = findall(0, 'Type', 'figure');
+
+% Save each one
+for f = 1:numel(figHandles)
+    fig = figHandles(f);
+    figName = fig.Name;
+    
+    % Replace spaces/colons that are invalid in filenames
+    figName = strrep(figName, ' ', '_');
+    figName = strrep(figName, ':', '');
+    
+    % Save as both .fig and .png
+    % savefig(fig, fullfile(saveDir, [figName '.fig']));
+    exportgraphics(fig, fullfile(saveDir, [figName '.png']), 'Resolution', 300);
+end
+
+
+%% get the pre and post data from the hunters
+
+hunTrials = contains(WA.recTable.recNames,'Hunter') & ~contains(WA.recTable.Animal,'PV8');
+hunterTable = WA.recTable(hunTrials,:);
+animals= unique(hunterTable.Animal);
+trialsNames = ["Hunter1","Hunter2","Hunter3"];
+hunterSubsetAll = hunterTable(ismember(hunterTable.recNames,trialsNames),:);
+
+% PxxDataAllHun = [];
+% nPxxDataAllHun = [];
+% timesAllHun   = [];
+% freqHzAllHun  = [];
+% recLabelHun  = [];  % track which recording each row came from
+% animalLabelHun =[];
+% clustersHun = [];
+
+PPanimals=animals(~strcmp(animals,"PV149"));
+
+for i = 1:height(hunterSubsetAll)
+    animal = hunterSubsetAll.Animal(i);
+    if ismember(animal,PPanimals)
+        recName = ['Animal=' hunterSubsetAll.Animal{i} ',recNames=' hunterSubsetAll.recNames{i}];
+        WA.setCurrentRecording(recName);
+        arenaData = WA.getArenaCSVs;
+    
+        % get the data point for before and after each trial 
+        
+
+
+        % curfreqData = WA.getFreqBandDetection(...
+        %     'fMax',          80, ...
+        %     'segmentLength', 2000, ...
+        %     'binDuration',   4000, ...
+        %     'WelchOL',       0.75, ...
+        %     'dftPoints',     2^12 ...
+        % );
+
+        pxxData = curfreqData.sPxx'; % [nBins x nFreqs]
+        nPxx =curfreqData.normsPxx';
+        nBins   = size(pxxData, 1);
+
+        % Verify frequency axis is consistent across recordings
+        if isempty(freqHzAllHun)
+            freqHzAllHun = curfreqData.freqHz; % save once from first recording
+        else
+            assert(numel(curfreqData.freqHz) == numel(freqHzAllHun), ...
+                'Frequency axis mismatch in rec %s!', recName);
+        end
+
+        PxxDataAllHun = [PxxDataAllHun; pxxData];                         % [totalBins x nFreqs]
+        nPxxDataAllHun = [nPxxDataAllHun; nPxx];
+        clustersHun = [clustersHun; curfreqData.clusters];
+        timesAllHun   = [timesAllHun,   curfreqData.times];               % [1 x totalBins]
+        recLabelHun  = [recLabelHun;  repmat(i, nBins, 1)];             % which rec each row is from
+        animalLabelHun = [animalLabelHun; repmat(animal, nBins, 1)];
+    end
+end
+
+% Save everything needed for PCA
+save([analysisFolderWake filesep 'allSpectraHunter.mat'], 'PxxDataAllHun','nPxxDataAllHun','animalLabelHun', 'clustersHun' ...
+    ,'freqHzAllHun', 'timesAllHun', 'recLabelsHun', 'hunterSubsetAll');
+
+
+
+
+
