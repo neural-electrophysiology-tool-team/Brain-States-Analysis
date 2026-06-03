@@ -4,10 +4,17 @@ WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 % wakeSubsetAll = readtable([analysisFolderWake filesep 'wakeSubsetAll.xlsx']);
 
+%% get wake subset - all firat trial   
+wakeTrials = contains(WA.recTable.recNames,'Wake') & ~contains(WA.recTable.Animal,'PV8') & isnan(WA.recTable.Exclude);
+wakeTable = WA.recTable(wakeTrials,:);
+wakeAnimals= unique(wakeTable.Animal);
+trialsNames = ["Wake1","Wake2","Wake3","Wake4"];
+wakeSubsetAll = wakeTable(ismember(wakeTable.recNames,trialsNames),:);
+
 %% get hunter subset
 hunTrials = contains(WA.recTable.recNames,'Hunter') & ~contains(WA.recTable.Animal,'PV8') & isnan(WA.recTable.Exclude);
 hunterTable = WA.recTable(hunTrials,:);
-animals= unique(hunterTable.Animal);
+hunAnimals= unique(hunterTable.Animal);
 trialsNames = ["Hunter1","Hunter2","Hunter3","Hunter4","Hunter5"];
 hunterSubsetAll = hunterTable(ismember(hunterTable.recNames,trialsNames),:);
 
@@ -33,7 +40,7 @@ for i = 1:height(hunterSubsetAll)
         'binDuration',   4000, ...
         'WelchOL',       0.75, ...
         'overwrite',     1,...
-        'dftPoints',     2^12 ...
+        'dftPoints',     2^10 ...
     );
     
     pxxData = curfreqData.sPxx'; % [nBins x nFreqs]
@@ -52,7 +59,7 @@ for i = 1:height(hunterSubsetAll)
     nPxxDataAllHun = [nPxxDataAllHun; nPxx];
     clustersHun = [clustersHun; curfreqData.clusters];
     timesAllHun   = [timesAllHun,   curfreqData.times];               % [1 x totalBins]
-    recLabelsHun  = [recLabelsHun;  repmat(i, nBins, 1)];             % which rec each row is from
+    recLabelsHun  = [recLabelsHun;  repmat(hunterSubsetAll.recNames{i}, nBins, 1)];             % which rec each row is from
     animalLabelHun = [animalLabelHun; repmat(animal, nBins, 1)];
 end
 
@@ -81,7 +88,7 @@ for i = 1:height(wakeSubsetAll)
         'segmentLength', 2000, ...
         'binDuration',   4000, ...
         'WelchOL',       0.75, ...
-        'dftPoints',     2^12, ...
+        'dftPoints',     2^10, ...
         'overwrite',      1 ...
     );
     
@@ -101,7 +108,7 @@ for i = 1:height(wakeSubsetAll)
     nPxxDataAllWake = [nPxxDataAllWake; npxxData]; % [totalBins x nFreqs]
     clustersWake = [clustersWake; curfreqData.clusters];
     timesAllWake   = [timesAllWake,   curfreqData.times]; % [1 x totalBins]
-    recLabelsWake  = [recLabelsWake;  repmat(i, nBins, 1)];             % which rec each row is from
+    recLabelsWake  = [recLabelsWake;  repmat(wakeSubsetAll.recNames{i}, nBins, 1)];             % which rec each row is from
     animalLabelWake = [animalLabelWake; repmat(animal, nBins, 1)];
 end
 
@@ -139,13 +146,13 @@ for i = 1:height(hunterSubsetAll)
     
         % get the data point for before and after each trial 
         
-        segmentLength =2000;
+        segmentLength = 2000;
         binDuration = 4000;
         ch = WA.recTable.defaulLFPCh(WA.currentPRec);
         tStart = 0;
-        fMax= 80;
+        fMax = 80;
         WelchOL=  0.75;
-        dftPoints=2^12;
+        dftPoints=2^10;
 
         WA.getFilters;
         win=WA.currentDataObj.recordingDuration_ms;
@@ -204,7 +211,7 @@ for i = 1:height(hunterSubsetAll)
         % clustersHun = [clustersHun; curfreqData.clusters];
         % timesAlldots   = [timesAlldots,   curfreqData.times];               % [1 x totalBins]
         recLabelBefore  = [recLabelBefore;  repmat(i, nDotsbef, 1)];             % which rec each row is from
-        recLabelAfter = [recLabelAfter ;  repmat(i, nDotaft, 1)];             % which rec each row is from
+        recLabelAfter = [recLabelAfter ;  repmat(hunterSubsetAll.recNames{i}, nDotaft, 1)];             % which rec each row is from
         animalLabelBefore = [animalLabelBefore; repmat(animal, nDotsbef, 1)];
         animalLabelAfter = [animalLabelAfter; repmat(animal, nDotaft, 1)];
 
@@ -1177,7 +1184,7 @@ end
 %%  Project all animals onto one reference animal's Wake PCA - With Pre+Post!!
 %% Project all animals onto one reference animal's Wake PCA
 
-refAnimal = 'PV162'; % the animal whose Wake PCA is the reference
+refAnimal = {'PV143','PV162'}; % the animal whose Wake PCA is the reference
 
 % Parameters for each PCA type: [dx1, dx2, xlim, ylim]
 dx1_raw = 500;  dx2_raw = 500;
@@ -1197,7 +1204,7 @@ if all(freqHzAllWake == freqHzAllHun)
 end
 
 %% Step 1: Compute reference PCA from refAnimal Wake only
-maskRef = strcmp(animalLabelWake, refAnimal);
+maskRef = ismember(animalLabelWake, refAnimal);
 
 pxxWake_ref   = PxxDataAllWake(maskRef,:);
 nPxxWake_ref  = nPxxDataAllWake(maskRef,:);
@@ -1274,9 +1281,9 @@ for a = 1:numel(animals)
     };
     nRows = size(pcaData,1);
 
-    figure('Name', ['Animal: ' thisAnimal ' (ref: ' refAnimal ') PP'], ...
+    figure('Name', ['Animal: ' thisAnimal ' (ref: ' strjoin(refAnimal) ') PP'], ...
            'Units','normalized', 'Position',[0 0 1 1]);
-    sgtitle(['Animal: ' thisAnimal ' -- projected onto ' refAnimal ' Wake PCA, with Pre-Post']);
+    sgtitle(['Animal: ' thisAnimal ' -- projected onto ' strjoin(refAnimal) ' Wake PCA, with Pre-Post']);
 
     for r = 1:nRows
         coeff_r        = pcaData{r,1};
@@ -1414,4 +1421,70 @@ for f = 1:numel(figHandles)
     % Save as both .fig and .png
     % savefig(fig, fullfile(saveDir, [figName '.fig']));
     exportgraphics(fig, fullfile(saveDir, [figName '.png']), 'Resolution', 300);
+end
+
+
+%% plot PC3 and 4 
+%% Plot Before/After only -- PC3 vs PC4, all animals in one figure
+
+useNormSeg = true;   % true = Norm. to segment PCA, false = Raw PCA
+
+if useNormSeg
+    coeff_use = coeffAns_ref;
+    mean_use  = meanAns_ref;
+    spaceLbl  = 'Norm. to segment';
+else
+    coeff_use = coeffA_ref;
+    mean_use  = meanA_ref;
+    spaceLbl  = 'Raw';
+end
+
+animals = unique(animalLabelWake);
+nA = numel(animals);
+nCols = ceil(sqrt(nA));
+nRows = ceil(nA / nCols);
+
+figure('Name', ['Before/After PC2 vs PC3 (' spaceLbl ', ref: ' refAnimal ')'], ...
+       'Units','normalized', 'Position',[0 0 1 1]);
+sgtitle(['Before/After projected onto ' refAnimal ' Wake PCA (' spaceLbl ') -- PC2 vs PC3']);
+
+for a = 1:nA
+    thisAnimal = animals{a};
+    maskBefore = strcmp(animalLabelBefore, thisAnimal);
+    maskAfter  = strcmp(animalLabelAfter,  thisAnimal);
+
+    pxxBefore = PxxDataAllBefore(maskBefore,:);
+    pxxAfter  = PxxDataAllAfter (maskAfter, :);
+
+    if useNormSeg
+        if ~isempty(pxxBefore), pxxBefore = normalize(pxxBefore, 2); end
+        if ~isempty(pxxAfter),  pxxAfter  = normalize(pxxAfter,  2); end
+    end
+
+    if ~isempty(pxxBefore)
+        scoresBefore = (pxxBefore - mean_use) * coeff_use;
+    else
+        scoresBefore = [];
+    end
+    if ~isempty(pxxAfter)
+        scoresAfter = (pxxAfter - mean_use) * coeff_use;
+    else
+        scoresAfter = [];
+    end
+
+    subplot(nRows, nCols, a);
+    hold on;
+    if ~isempty(scoresBefore)
+        scatter(scoresBefore(:,2), scoresBefore(:,3), 20, ...
+            colorBefore, 'filled', 'MarkerFaceAlpha',0.7, 'DisplayName','Before');
+    end
+    if ~isempty(scoresAfter)
+        scatter(scoresAfter(:,2), scoresAfter(:,3), 20, ...
+            colorAfter, 'filled', 'MarkerFaceAlpha',0.7, 'DisplayName','After');
+    end
+    xlabel('PC2'); ylabel('PC3');
+    title(thisAnimal);
+    legend('Location','best','FontSize',6);
+    grid on;
+    hold off;
 end

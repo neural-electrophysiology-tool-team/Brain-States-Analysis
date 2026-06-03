@@ -22,7 +22,7 @@ end
 wakeSubset = wakeTable(rowsToKeep, :);
 %%
 
-% wakeSubset = readtable([analysisFolderWake filesep 'wakeSubset.csv']);
+wakeSubset = readtable([analysisFolderWake filesep 'wakeSubset.csv']);
 wakeSubsetAll = readtable([analysisFolderWake filesep 'wakeSubsetAll.xlsx']);
 wakeData = wakeSubsetAll(:,["spikes","videoSync","Animal","recNames","Headstage"]);
 %% checking correlogram and freq bands:
@@ -147,7 +147,7 @@ i = 1;
     LM = WA.getLizardMovements(sensitivity=curSens,zeroGBias=curZeroG);
     DB = WA.getDelta2BetaRatio;
 
-   %%
+   %% old version:
    % % DB=WA.getDelta2BetaRatio;
     % bin = 1000;
     bin = DB.parDBRatio.movWin - DB.parDBRatio.movOLWin;

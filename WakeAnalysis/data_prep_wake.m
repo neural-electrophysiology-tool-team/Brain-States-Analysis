@@ -10,7 +10,7 @@ wakeTable = WA.recTable(wakeTrials,:);
 %% run get lizard movement on all
 cali_result = load(['/media/sil3/Data/accelerometer_calibrations/' ...
     'headtagse_cali_recs/calibration_results.mat']).cali_result;    
-for i = 56:height(wakeTable)
+for i = 248:height(wakeTable)
     recName = ['Animal=' wakeTable.Animal{i} ',recNames=' wakeTable.recNames{i}];
     WA.setCurrentRecording(recName);
     if isnan(WA.recTable.Exclude(WA.currentPRec))
