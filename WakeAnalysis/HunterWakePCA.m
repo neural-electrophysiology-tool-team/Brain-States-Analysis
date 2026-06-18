@@ -4,21 +4,46 @@ WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 % wakeSubsetAll = readtable([analysisFolderWake filesep 'wakeSubsetAll.xlsx']);
 
-%% get wake subset - all firat trial   
-wakeTrials = contains(WA.recTable.recNames,'Wake') & ~contains(WA.recTable.Animal,'PV8') & isnan(WA.recTable.Exclude);
+%% get wake subset - all first trial   
+wakeTrials = contains(WA.recTable.recNames,'Wake') & ...
+            ~contains(WA.recTable.Animal,'PV8') & ...
+             isnan(WA.recTable.Exclude) & ...
+             cellfun(@isempty,WA.recTable.Remarks);
 wakeTable = WA.recTable(wakeTrials,:);
-wakeAnimals= unique(wakeTable.Animal);
-trialsNames = ["Wake1","Wake2","Wake3","Wake4"];
-wakeSubsetAll = wakeTable(ismember(wakeTable.recNames,trialsNames),:);
+[G, AnimalsWake] = findgroups(wakeTable.Animal);
+idx = splitapply(@(x){x(1:min(4,numel(x)))}, ...
+                 (1:height(wakeTable))', G);
+
+idx = vertcat(idx{:});
+% trialsNames = ["Wake1","Wake2","Wake3","Wake4"];
+% trialsid  = ismember(wakeTable.recNames,trialsNames);
+wakeSubsetAll = wakeTable(idx ,:);
 
 %% get hunter subset
-hunTrials = contains(WA.recTable.recNames,'Hunter') & ~contains(WA.recTable.Animal,'PV8') & isnan(WA.recTable.Exclude);
+hunTrials = contains(WA.recTable.recNames,'Hunter') & ...
+            ~contains(WA.recTable.Animal,'PV8') &...
+            isnan(WA.recTable.Exclude);
 hunterTable = WA.recTable(hunTrials,:);
-hunAnimals= unique(hunterTable.Animal);
-trialsNames = ["Hunter1","Hunter2","Hunter3","Hunter4","Hunter5"];
-hunterSubsetAll = hunterTable(ismember(hunterTable.recNames,trialsNames),:);
 
+[G, AnimalsHun] = findgroups(hunterTable.Animal);
+idx = splitapply(@(x){x(1:min(7,numel(x)))}, ...
+                 (1:height(hunterTable))', G);
+idx = vertcat(idx{:});
+hunterSubsetAll = hunterTable(idx ,:);
+% hunterSubsetAll = hunterTable(ismember(hunterTable.recNames,trialsNames),:);
 
+%% get sleep subset
+sleepTrials = contains(WA.recTable.recNames,'Night') & ...
+            ~contains(WA.recTable.Animal,'PV8') &...
+            isnan(WA.recTable.Exclude)& ...
+             cellfun(@isempty,WA.recTable.Remarks);
+sleepTable = WA.recTable(sleepTrials,:);
+
+[G, AnimalsSleep] = findgroups(sleepTable.Animal);
+idx = splitapply(@(x){x(1:min(3,numel(x)))}, ...
+                 (1:height(sleepTable))', G);
+idx = vertcat(idx{:});
+sleepSubsetAll = sleepTable(idx ,:);
 %% get the data for the pCA - hunter:
 % running on a single trial, power spec
 PxxDataAllHun = [];
@@ -28,7 +53,7 @@ freqHzAllHun  = [];
 recLabelsHun  = [];  % track which recording each row came from
 animalLabelHun =[];
 clustersHun = [];
-%
+
 for i = 1:height(hunterSubsetAll)
     recName = ['Animal=' hunterSubsetAll.Animal{i} ',recNames=' hunterSubsetAll.recNames{i}];
     animal = hunterSubsetAll.Animal(i);
@@ -59,7 +84,7 @@ for i = 1:height(hunterSubsetAll)
     nPxxDataAllHun = [nPxxDataAllHun; nPxx];
     clustersHun = [clustersHun; curfreqData.clusters];
     timesAllHun   = [timesAllHun,   curfreqData.times];               % [1 x totalBins]
-    recLabelsHun  = [recLabelsHun;  repmat(hunterSubsetAll.recNames{i}, nBins, 1)];             % which rec each row is from
+    recLabelsHun  = [recLabelsHun;  repmat(hunterSubsetAll.recNames(i), nBins, 1)];             % which rec each row is from
     animalLabelHun = [animalLabelHun; repmat(animal, nBins, 1)];
 end
 
@@ -108,7 +133,7 @@ for i = 1:height(wakeSubsetAll)
     nPxxDataAllWake = [nPxxDataAllWake; npxxData]; % [totalBins x nFreqs]
     clustersWake = [clustersWake; curfreqData.clusters];
     timesAllWake   = [timesAllWake,   curfreqData.times]; % [1 x totalBins]
-    recLabelsWake  = [recLabelsWake;  repmat(wakeSubsetAll.recNames{i}, nBins, 1)];             % which rec each row is from
+    recLabelsWake  = [recLabelsWake;  repmat(wakeSubsetAll.recNames(i), nBins, 1)];             % which rec each row is from
     animalLabelWake = [animalLabelWake; repmat(animal, nBins, 1)];
 end
 
@@ -117,12 +142,6 @@ save([analysisFolderWake filesep 'allSpectraWake.mat'], 'PxxDataAllWake','nPxxDa
     'recLabelsWake', 'animalLabelWake');
 
 %% get the pre and post data from the hunters
-
-hunTrials = contains(WA.recTable.recNames,'Hunter') & ~contains(WA.recTable.Animal,'PV8') & isnan(WA.recTable.Exclude);
-hunterTable = WA.recTable(hunTrials,:);
-animals= unique(hunterTable.Animal);
-trialsNames = ["Hunter1","Hunter2","Hunter3","Hunter4","Hunter5"];
-hunterSubsetAll = hunterTable(ismember(hunterTable.recNames,trialsNames),:);
 
 PxxDataAllBefore = [];
 PxxDataAllAfter = [];
@@ -222,11 +241,77 @@ end
 save([analysisFolderWake filesep 'allSpectraHunterBugs.mat'], 'PxxDataAllBefore','PxxDataAllAfter','animalLabelBefore' ...
     ,'freqHz', 'animalLabelAfter','recLabelBefore','recLabelAfter');
 
+%% get the data for the PCA - SLEEP:
+% running on a single trial, power spec
+PxxDataAllSlepp = [];
+nPxxDataAllSlepp = [];
+timesAllSleep   = [];
+freqHzAllSleep  = [];
+clustersSleep =[];
+recLabelsSleep  = [];  % track which recording each row came from
+animalLabelSleep = [];
+%
+for i = 1:height(sleepSubsetAll)
+    recName = ['Animal=' sleepSubsetAll.Animal{i} ',recNames=' sleepSubsetAll.recNames{i}];
+    WA.setCurrentRecording(recName);
+    animal = sleepSubsetAll.Animal(i);
+    % get the sleep timings: 
+    curAC = WA.getDelta2BetaAC;
+    % tStartSleep = curAC.l
+    
+    curfreqData = WA.getFreqBandDetection(...
+        'fMax',          80, ...
+        'segmentLength', 2000, ...
+        'binDuration',   4000, ...
+        'WelchOL',       0.75, ...
+        'dftPoints',     2^10, ...
+        'overwrite',      1 ...
+    );
+    
+    pxxData = curfreqData.sPxx';        % [nBins x nFreqs]
+    npxxData = curfreqData.normsPxx';
+    nBins   = size(pxxData, 1);
+
+    % Verify frequency axis is consistent across recordings
+    if isempty(freqHzAllWake)
+        freqHzAllWake = curfreqData.freqHz; % save once from first recording
+    else
+        assert(numel(curfreqData.freqHz) == numel(freqHzAllWake), ...
+            'Frequency axis mismatch in rec %s!', recName);
+    end
+
+    PxxDataAllWake = [PxxDataAllWake; pxxData];
+    nPxxDataAllWake = [nPxxDataAllWake; npxxData]; % [totalBins x nFreqs]
+    clustersWake = [clustersWake; curfreqData.clusters];
+    timesAllWake   = [timesAllWake,   curfreqData.times]; % [1 x totalBins]
+    recLabelsWake  = [recLabelsWake;  repmat(wakeSubsetAll.recNames(i), nBins, 1)];             % which rec each row is from
+    animalLabelWake = [animalLabelWake; repmat(animal, nBins, 1)];
+end
+
+% Save everything needed for PCA
+save([analysisFolderWake filesep 'allSpectraWake.mat'], 'PxxDataAllWake','nPxxDataAllWake', 'freqHzAllWake','clustersWake', 'timesAllWake', ...
+    'recLabelsWake', 'animalLabelWake');
+
+
+
 
 %% load data
 load([analysisFolderWake filesep 'allSpectraWake.mat'])
 load([analysisFolderWake filesep 'allSpectraHunter.mat'])
 load([analysisFolderWake filesep 'allSpectraHunterBugs.mat'])
+freqHzAll = freqHzAllHun;
+% remove 0 freq
+f_ind=freqHzAll>0.5;
+freqHzAll = freqHzAll(f_ind);
+freqHzAllHun = freqHzAllHun(f_ind);
+freqHzAllWake= freqHzAllWake(f_ind);
+nPxxDataAllWake=nPxxDataAllWake(:,f_ind);
+nPxxDataAllHun=nPxxDataAllHun(:,f_ind);
+PxxDataAllAfter=PxxDataAllAfter(:,f_ind);
+PxxDataAllBefore=PxxDataAllBefore(:,f_ind);
+PxxDataAllWake=PxxDataAllWake(:,f_ind);
+PxxDataAllHun=PxxDataAllHun(:,f_ind);
+
 %% run the PCA:
 PxxDataAll = [PxxDataAllHun ;PxxDataAllWake];
 [coeff, scores, ~, ~, explained] = pca(PxxDataAll);
