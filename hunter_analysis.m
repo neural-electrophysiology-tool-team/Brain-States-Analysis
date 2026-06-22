@@ -16,12 +16,12 @@
 
 %% getting the data for this sepecific experimeent:
 % notice - now everything should be changes manualy.
-SA = sleepAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
-SA.setCurrentRecording(['Animal=PV157,recNames=Hunter5']);
+SA = sleepAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+% SA.setCurrentRecording(['Animal=PV157,recNames=Hunter5']);
 % get the arena timings, and translte to oe triger times:
-ArenaCSVs = SA.getArenaCSVs(1);
+% ArenaCSVs = SA.getArenaCSVs(1);
 
-analysisFolder = '/media/sil3/Data/Pogona_Vitticeps/NitzanAnalysisFiles/hunterAnalysis';
+analysisFolder = '/media/sil1/Data/Nitzan/WakeStatesPaper/hunterAnalysis';
 %% changing the triggers according to the new time shift:
 % for PV159, Hunter5:
 % startFrameSh = ArenaCSVs.startFrame - ArenaCSVs.IRFrames(1);
@@ -103,6 +103,10 @@ b=1;
 %% plot stikes with imagesc:
 %getting the data from 4 seconds around the event:
 %samples per sec
+% SA.setCurrentRecording('Animal=PV153,recNames=Hunter5');
+% arenaCSV = SA.getArenaCSVs('overwrite',1);
+
+
 defCh = SA.recTable.defaulLFPCh(SA.currentPRec);
 strikeTs = ArenaCSV.strikeTrigSh;
 strikeData = squeeze(SA.currentDataObj.getData(defCh,[strikeTs-2000],4000));
@@ -1156,6 +1160,268 @@ legend({'before','After'})
 title('Max Values for each trial')
 ylabel('voltage')
 hold off
+
+
+
+%% For Ofir - All data from 1 animal -June 26
+SA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+% SA.setCurrentRecording(['Animal=PV157,recNames=Hunter5']);
+% get the arena timings, and translte to oe triger times:
+% ArenaCSVs = SA.getArenaCSVs(1);
+
+analysisFolder = '/media/sil1/Data/Nitzan/WakeStatesPaper/hunterAnalysis';
+Animal = "PV153";
+%%
+SA.setCurrentRecording('Animal=PV153,recNames=Hunter5');
+ArenaCSVs=SA.getArenaCSVs('overwrite',1);
+
+
+%% some other options for the Welch parameters:
+movWin = 1600;
+movOLWin = 1200;
+segWel = 1000;
+% BG = SA.getMultiBandSpectralAnalysis('band1Low', 60,'band1High',80,'band2Low', ...
+%     10,'band2High',30, ...
+%     'maxVoltage',1000, 'tStart',0,'win',0, ...
+%     'movLongWin',1000*60*30,'movWin',movWin,'movOLWin',movOLWin,'segmentWelch' ...
+%     ,segWel,'overwrite',1);
+% BG = SA.getMultiBandSpectralAnalysis('overwrite',0);
+BG = SA.getBeta2GammaRatio('maxVoltage',1000, 'tStart',0,'win',0, ...
+    'movLongWin',1000*60*30,'movWin',movWin,'movOLWin',movOLWin,'segmentWelch' ...
+    ,segWel,'overwrite',1);
+%% plot:
+
+fullwin = 25000; 
+bug_t = 6000;
+zeroTimes = ArenaCSVs.startTrigSh-bug_t; %6 seconds before trial started
+endTrialT = ArenaCSVs.endTrigSh - zeroTimes;
+if isfield(ArenaCSVs, 'strikesTrialNum') && ~isempty(ArenaCSVs.strikesTrialNum)
+    strikeT = ArenaCSVs.strikeTrigSh -zeroTimes(strikeTrialNum);
+    strikeTrialNum =ArenaCSVs.strikesTrialNum; 
+else
+    strikeTrialNum=[];
+    strikeT=[];
+end
+
+matLen = length(find((BG.t_ms>zeroTimes(1))&(BG.t_ms<(zeroTimes(1)+fullwin))));
+BG_mat = zeros([length(zeroTimes),matLen]);
+% BG_mat = [];
+for i=1:length(zeroTimes)
+    BG_ind = find((BG.t_ms>zeroTimes(i))&(BG.t_ms<(zeroTimes(i)+fullwin)));
+    BG_mc = BG.beta2gammaRatio(BG_ind);
+   
+%     BG_mat= [BG_mat;BG_mc'];
+    BG_mat(i,1:length(BG_mc)) = BG_mc';
+end
+
+figure;
+
+% add subplot for the B/G ratio
+ax1 = subplot('Position', [0.1, 0.3, 0.7, 0.6]);
+numColumns = size(BG_mat, 2);
+tdiff = (movWin-movOLWin);
+timeAxis = ((0:numColumns-1) * tdiff)/1000; %in s
+
+imagesc(timeAxis,1:size(BG_mat,1),BG_mat);
+hold on
+% Plot start time horizontal line:
+xline(bug_t/1000,'r' ,'LineWidth', 1.5, 'Label', 'Bug Apperance', 'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'Left');
+h1=[];
+h2=[];
+% Plot end times and strike times
+for i = 1:size(BG_mat, 1)
+    h1 = plot(endTrialT(i)/1000, i, '.', 'Color', 'k', 'MarkerSize', 20);
+    if ismember(i, strikeTrialNum)
+        strikeIdx = find(strikeTrialNum == i); % <-- get position in strikeTrialNum
+        h2 = plot(strikeT(strikeIdx)/1000, i, 'pentagram', 'Color', 'g', ...
+                  'MarkerFaceColor', 'g', 'MarkerSize', 8);
+    end
+end
+hold off
+xlabel("Time (s)")
+ylabel('Trial #')
+
+%add legend and title:
+% 1. Start with h1 since it always exists
+legendHandles = h1(1);
+legendLabels = {'End Trial'};
+
+% 2. Check if h2 exists and contains a valid graphic handle
+if exist('h2', 'var') && ~isempty(h2) && isgraphics(h2(1))
+    % Prepend h2 to match your original order: [h2(1), h1(1)]
+    legendHandles = [h2(1), h1(1)];
+    legendLabels = {'Strike', 'End Trial'};
+end
+
+% 3. Create the legend using the dynamic arrays
+legend(legendHandles, legendLabels, 'Position', [0.85 0.15 0.04 0.08], 'Box', 'off');
+
+
+titlestr = sprintf('movWin: %d, movOLwin: %d, segWelch: %d',movWin,movOLWin,segWel);
+title(titlestr)
+
+%add colorbar
+c = colorbar;
+c.Position = [0.82 0.3 0.02 0.6];
+% Set vertical label for colorbar
+c.Label.String = 'G/B ratio'; % Set label text
+c.Label.Position = [4, 80, 0]; % Adjust label position (relative to colorbar)
+c.Label.Rotation = 90; % Set label rotation to 0 degrees for vertical alignment
+
+% Plot Average 
+ax2 = subplot('Position', [0.1, 0.1, 0.7, 0.15]);
+plot(timeAxis, mean(BG_mat,1),'LineWidth', 1.5)
+xlabel('Time [s]'); ylabel('avg. B2G')
+% ylim([10 85])
+xline(bug_t/1000,'r' ,'LineWidth', 1.5)
+linkaxes([ax1,ax2],'x');
+
+% Save plot:
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat(SA.currentPlotFolder, ['/' titlestr '.pdf']));
+
+%% plot for all trial from 1 animal - get data:
+
+SA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+analysisFolder = '/media/sil1/Data/Nitzan/WakeStatesPaper/hunterAnalysis';
+Animal = "PV153";
+movWin = 1600;
+movOLWin = 1200;
+segWel = 1000;
+fullwin = 50000;
+bug_t = 6000;
+
+curHunTrials = contains(SA.recTable.recNames,'Hunter') & contains(SA.recTable.Animal,Animal) & isnan(SA.recTable.Exclude);
+hunterTable = SA.recTable(curHunTrials,:);
+
+% Pre-allocate struct array to collect data across recordings
+allData = struct('recName', {}, 'BG_mat', {}, 'endTrialT', {}, ...
+                 'strikeTrialNum', {}, 'strikeT', {});
+%
+for i = 1:height(hunterTable)
+    SA.setCurrentRecording(['Animal=' hunterTable.Animal{i} ',recNames=' hunterTable.recNames{i}]);
+    ArenaCSVs = SA.getArenaCSVs('overwrite', 1);
+
+    % Check for not-sync Hunters:
+    frameDiff = length(ArenaCSVs.videoFrames) - length(ArenaCSVs.oeCamTrig);
+    if frameDiff > 10 || frameDiff < -10
+        continue
+    end
+
+    % Get BG:
+    BG = SA.getBeta2GammaRatio('maxVoltage', 1000, 'tStart', 0, 'win', 0, ...
+        'movLongWin', 1000*60*30, 'movWin', movWin, 'movOLWin', movOLWin, ...
+        'segmentWelch', segWel); %, 'overwrite', 1
+
+    zeroTimes = ArenaCSVs.startTrigSh - bug_t;
+    endTrialT = ArenaCSVs.endTrigSh - zeroTimes;
+
+    % Fix order: get strikeTrialNum before using it
+    if isfield(ArenaCSVs, 'strikeTrialNum') && ~isempty(ArenaCSVs.strikeTrialNum)
+        strikeTrialNum = ArenaCSVs.strikeTrialNum;
+        strikeT = ArenaCSVs.strikeTrigSh - zeroTimes(strikeTrialNum);
+    else
+        strikeTrialNum = [];
+        strikeT = [];
+    end
+
+    % Build BG_mat for this recording
+    matLen = length(find((BG.t_ms > zeroTimes(1)) & (BG.t_ms < (zeroTimes(1) + fullwin))));
+    BG_mat = zeros(length(zeroTimes), matLen);
+    for j = 1:length(zeroTimes)
+        BG_ind = find((BG.t_ms > zeroTimes(j)) & (BG.t_ms < (zeroTimes(j) + fullwin)));
+        BG_mc = BG.beta2gammaRatio(BG_ind);
+        BG_mat(j, 1:length(BG_mc)) = BG_mc';
+    end
+
+    % Append to allData struct array
+    newEntry.recName       = hunterTable.recNames{i};
+    newEntry.BG_mat        = BG_mat;
+    newEntry.endTrialT     = endTrialT;       % vector, one per trial
+    newEntry.strikeTrialNum = strikeTrialNum; % indices of strike trials (local to this rec)
+    newEntry.strikeT       = strikeT;         % times, same length as strikeTrialNum
+    allData(end+1) = newEntry;
+end
+
+% Save for later plotting
+save(fullfile(analysisFolder, ['allData_' char(Animal) '.mat']), 'allData', 'movWin', 'movOLWin', 'segWel', 'bug_t', 'fullwin');
+%% plot all trials
+% Load and concatenate all recordings into one big matrix
+load(fullfile(analysisFolder, ['allData_' char(Animal) '.mat']));
+
+tdiff = (movWin - movOLWin);
+timeAxis = ((0:size(allData(1).BG_mat, 2)-1) * tdiff) / 1000;
+
+% Concatenate BG_mat and adjust trial indices per recording
+big_BG_mat    = [];
+big_endTrialT = [];
+big_strikeT   = [];
+big_strikeTrial = [];
+trialOffset   = 0;
+
+for i = 1:length(allData)
+    big_BG_mat    = [big_BG_mat;    allData(i).BG_mat];
+    big_endTrialT = [big_endTrialT; allData(i).endTrialT(:)];
+
+    % Offset strike trial indices to match position in big matrix
+    if ~isempty(allData(i).strikeTrialNum)
+        big_strikeTrial = [big_strikeTrial; allData(i).strikeTrialNum(:) + trialOffset];
+        big_strikeT     = [big_strikeT;     allData(i).strikeT(:)];
+    end
+
+    trialOffset = trialOffset + size(allData(i).BG_mat, 1);
+end
+
+% Plot (same structure as before)
+
+figure;
+
+
+ax1 = subplot('Position', [0.1, 0.3, 0.7, 0.6]);
+imagesc(timeAxis, 1:size(big_BG_mat,1), big_BG_mat);
+hold on
+xline(bug_t/1000, 'r', 'LineWidth', 1.5, 'Label', 'Bug Appearance', ...
+      'LabelVerticalAlignment', 'top', 'LabelHorizontalAlignment', 'Left');
+
+h1 = []; h2 = [];
+for i = 1:size(big_BG_mat, 1)
+    h1 = plot(big_endTrialT(i)/1000, i, '.', 'Color', 'k', 'MarkerSize', 5);
+    if ismember(i, big_strikeTrial)
+        strikeIdx = find(big_strikeTrial == i);
+        h2 = plot(big_strikeT(strikeIdx)/1000, i, 'pentagram', 'Color', 'g', ...
+                  'MarkerFaceColor', 'g', 'MarkerSize', 5);
+    end
+end
+hold off
+
+% Legend
+legendHandles = h1(1);
+legendLabels  = {'End Trial'};
+if ~isempty(h2) && isgraphics(h2(1))
+    legendHandles = [h2(1), h1(1)];
+    legendLabels  = {'Strike', 'End Trial'};
+end
+legend(legendHandles, legendLabels, 'Position', [0.85 0.15 0.04 0.08], 'Box', 'off');
+titlestr ='Mean BG for all trials - PV153'; 
+title(titlestr)
+
+%add colorbar
+c = colorbar;
+c.Position = [0.82 0.3 0.02 0.6];
+% Set vertical label for colorbar
+c.Label.String = 'G/B ratio'; % Set label text
+c.Label.Position = [4, 80, 0]; % Adjust label position (relative to colorbar)
+c.Label.Rotation = 90; % Set label rotation to 0 degrees for vertical alignment
+
+
+ax2 = subplot('Position', [0.1, 0.1, 0.7, 0.15]);
+plot(timeAxis, mean(big_BG_mat, 1,'omitnan'), 'LineWidth', 1.5);
+xlabel('Time [s]'); ylabel('avg. B2G');
+xline(bug_t/1000, 'r', 'LineWidth', 1.5);
+linkaxes([ax1, ax2], 'x');
+
+set(gcf,'PaperPosition',[.25 3 8 6])
+saveas(gcf,strcat([analysisFolder, filesep 'MeanBGallTrialsPV153.pdf']));
 
 
 %% functions de

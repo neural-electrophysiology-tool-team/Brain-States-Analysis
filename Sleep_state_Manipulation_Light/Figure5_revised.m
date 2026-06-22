@@ -447,9 +447,9 @@ for type = 1:numType
     N = length(unique(stimTable.Animal(curTrials)));
     ns = [ns; n];
     Ns = [Ns; N];
-    LMpre = LMData.LMpre(curTrials);
-    LMwake = LMData.LMwake(curTrials);
-    LMstimbinM = cell2mat(LMData.LMstimbin); % takes out the nan val
+    LMpre = LMData.LMpre(curTrials)/(1000)*100;
+    LMwake = LMData.LMwake(curTrials)/(1000)*100;
+    LMstimbinM = cell2mat(LMData.LMstimbin)/(1000)*100; % takes out the nan val
     LMstimbintrialM = mean(LMstimbinM(curTrials,:),2); % mean for each night
     
     curDiffStimPre = LMstimbintrialM-LMpre;
