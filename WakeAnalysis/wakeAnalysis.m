@@ -519,8 +519,485 @@ classdef wakeAnalysis < sleepAnalysis
         
         end
 
+%% get DBtoACC
+function data = plotDBtoACC(obj,varargin)
 
+          % parameter and settings
+            obj.checkFileRecording;
+            
+            parseObj = inputParser;
+            parseObj.FunctionName='wakeAnalysis\plotDBtoACC';
+            addParameter(parseObj,'saveFigures',1,@isnumeric);
+            addParameter(parseObj,'hs',obj.recTable.Headstage{obj.currentPRec}); 
+            addParameter(parseObj,'convWin',60,@isnumeric);
+            addParameter(parseObj,'threshold',0,@isnumeric); % before and after start trial, ms
+            addParameter(parseObj,'inputParams',false,@isnumeric);
+            addParameter(parseObj,'plotFigure',true,@isnumeric);
+            addParameter(parseObj,'overwrite',false,@isnumeric);
+            parseObj.parse(varargin{:});
+            if parseObj.Results.inputParams
+                disp(parseObj.Results);
+                return;
+            end
+            
+            %evaluate all input parameters in workspace
+            for i=1:numel(parseObj.Parameters)
+                eval([parseObj.Parameters{i} '=' 'parseObj.Results.(parseObj.Parameters{i});']);
+            end
         
+%   FIX THIS
+            obj.files.db2Acc=[obj.currentAnalysisFolder filesep 'bgRatio_ch' num2str(ch) '.mat'];
+                   
+            if exist(obj.files.db2Acc,'file') & ~overwrite & ~plotFigure
+                if nargout==1
+                    data=load(obj.files.db2Acc);
+                else
+                    disp('analysis already exists for this recording');
+                end
+            end
+
+            if plotFigure
+                   load(obj.files.db2Acc)
+            end
+            
+            %load Delta2Beta and Lizard movement
+            dbRatioFile=[obj.currentAnalysisFolder filesep 'dbRatio_ch' num2str(ch) '.mat'];
+            obj.checkFileRecording(dbRatioFile,'Delta2BetaRation file missing, please first run getDelta2BetaRatio');
+            load(dbRatioFile); %load data
+
+            LMFile=[obj.currentAnalysisFolder filesep 'lizMov.mat'];
+            obj.checkFileRecording(LMFile,'Lizard movement file missing, please first run getLizardMovement');
+            load(LMFile); %load data
+
+
+
+            %plot ACC to DB
+            nonNanDBt = t_ms(~isnan(bufferedBetaRatio));
+            edges = [nonNanDBt-bin/2, nonNanDBt(end)+bin/2];
+            [counts, edges] =  histcounts(t_mov_ms,edges);
+            % h_thresh= counts>th;
+
+            h_thresh=zeros(size(counts));
+            h_thresh(counts>threshold)= counts(counts>threshold);
+
+            % h_times = h.BinEdges;
+            y = ones(1,convWin);
+            conv = convn(h_thresh,y,'same');
+            
+            movdata=conv;
+            dbdata=rmmissing(DB.bufferedDelta2BetaRatio);
+
+            % save the dataL
+            save(obj.files.db2Acc,'movdata','dbdata');
+            if nargout==1
+                data=load(obj.files.db2Acc);
+            end
+            
+            % plot
+            f=figure;
+            
+            [d,h] = hist2(movdata,dbdata,'dX1',50,'dX2',10);
+            colorbar
+            colormap(parula)
+            xlabel('Mov Count')
+            ylabel('D/B')
+
+            if saveFigure
+                set(f,'PaperPosition',[.25 3 8 6])
+                saveas(f,strcat(obj.currentPlotFolder, '/DBtoAcc.pdf'));
+            end
+
+    end
+    
+
+
+    %% getSlowStates
+    function data=getSlowStates(obj,varargin)
+        obj.checkFileRecording;
+
+        parseObj = inputParser;
+        addParameter(parseObj,'ch',obj.recTable.defaulLFPCh(obj.currentPRec),@isnumeric);
+        addParameter(parseObj,'medianFiltWin',1000*20,@isnumeric);
+        addParameter(parseObj,'longOrdFiltWin',1000*1000,@isnumeric);
+        addParameter(parseObj,'longOrdFiltOrd',0.6,@isnumeric);
+        addParameter(parseObj,'minStateDur',1000*5,@isnumeric); %merge state segments shorter than this into the neighboring state
+        addParameter(parseObj,'overwrite',0,@isnumeric);
+
+        addParameter(parseObj,'inputParams',false,@isnumeric);
+        parseObj.parse(varargin{:});
+        if parseObj.Results.inputParams
+            disp(parseObj.Results);
+            return;
+        end
+
+        %evaluate all input parameters in workspace
+        for i=1:numel(parseObj.Parameters)
+            eval([parseObj.Parameters{i} '=' 'parseObj.Results.(parseObj.Parameters{i});']);
+        end
+
+        %make parameter structure
+        parSlowStates=parseObj.Results;
+
+        %check if analysis was already done
+        obj.files.slowStates=[obj.currentAnalysisFolder filesep 'slowStates_ch' num2str(ch) '.mat'];
+        if exist(obj.files.slowStates,'file') & ~overwrite
+            if nargout==1
+                data=load(obj.files.slowStates);
+            else
+                disp('Slow state analysis already exists for this recording');
+            end
+            return;
+        end
+
+        dbRatioFile=[obj.currentAnalysisFolder filesep 'dbRatio_ch' num2str(ch) '.mat'];
+        dbAutocorrFile=[obj.currentAnalysisFolder filesep 'dbAutocorr_ch' num2str(ch) '.mat'];
+
+        obj.checkFileRecording(dbRatioFile,'Delta to beta analysis missing, please first run getDBRatio');
+        load(dbRatioFile,'t_ms','bufferedDelta2BetaRatio','parDBRatio');
+
+        obj.checkFileRecording(dbAutocorrFile,'Delta to beta autocorr analysis missing, please first run getDBRatioAC');
+        load(dbAutocorrFile,'pSleepDBRatio');
+
+        timeBin=(parDBRatio.movWin-parDBRatio.movOLWin);
+
+        %smooth with median filter
+        medianFiltSamples=medianFiltWin/timeBin;
+        DBRatioMedFilt = fastmedfilt1d(bufferedDelta2BetaRatio, medianFiltSamples);
+
+        %long order filter to determine edges of DB fluctuation
+        longOrdFiltSamples=longOrdFiltWin/timeBin;
+        longOrdFiltOrdSamples=longOrdFiltOrd*longOrdFiltSamples;
+        DBLongOrdFilt = ordfilt2(DBRatioMedFilt, longOrdFiltOrdSamples, ones(longOrdFiltSamples,1));
+
+        edgeSamples=100;
+        sortDBLongOrdFilt=sort(DBLongOrdFilt);
+        sortDBLongOrdFilt(isnan(sortDBLongOrdFilt))=[];
+        Th=mean(sortDBLongOrdFilt(1:edgeSamples))+(mean(sortDBLongOrdFilt((end-edgeSamples):end))-mean(sortDBLongOrdFilt(1:edgeSamples)))/2;
+
+        % direct classification instead of cycle detection
+        % state==1 -> 'onset-mid' (above Th), state==2 -> 'mid-offset' (below Th)
+        state=ones(size(DBRatioMedFilt));
+        state(DBRatioMedFilt<Th)=2;
+        stateLabels={'High D/B','Low D/B'};
+
+        %merge state segments shorter than minStateDur into the preceding state (analogous to old minCycle merging)
+        minStateSamples=minStateDur/timeBin;
+        changePts=find(diff(state)~=0);
+        segStart=[1;changePts+1];
+        segEnd=[changePts;numel(state)];
+        segDur=segEnd-segStart+1;
+        shortSeg=find(segDur<minStateSamples);
+        for i=1:numel(shortSeg)
+            idx=shortSeg(i);
+            if idx>1
+                state(segStart(idx):segEnd(idx))=state(segStart(idx)-1);
+            end
+        end
+
+        save(obj.files.slowStates,'parSlowStates','t_ms','state','stateLabels','Th','pSleepDBRatio','DBRatioMedFilt');
+        if nargout==1
+            data=load(obj.files.slowStates);
+        end
+    end
+
+    %% get slow states - with AC
+
+    %% getSlowStates
+    function data=getStatesAC(obj,varargin)
+        obj.checkFileRecording;
+
+        parseObj = inputParser;
+        addParameter(parseObj,'ch',obj.recTable.defaulLFPCh(obj.currentPRec),@isnumeric);
+        addParameter(parseObj,'medianFiltWin',1000*5,@isnumeric);
+        addParameter(parseObj,'longOrdFiltWin',1000*200,@isnumeric);
+        addParameter(parseObj,'longOrdFiltOrd',0.4,@isnumeric);
+        addParameter(parseObj,'minStateDur',1000*7,@isnumeric); %merge state segments shorter than this into the preceding state
+        addParameter(parseObj,'overwrite',0,@isnumeric);
+
+        addParameter(parseObj,'inputParams',false,@isnumeric);
+        parseObj.parse(varargin{:});
+        if parseObj.Results.inputParams
+            disp(parseObj.Results);
+            return;
+        end
+
+        %evaluate all input parameters in workspace
+        for i=1:numel(parseObj.Parameters)
+            eval([parseObj.Parameters{i} '=' 'parseObj.Results.(parseObj.Parameters{i});']);
+        end
+
+        %make parameter structure
+        parSlowStates=parseObj.Results;
+
+        %check if analysis was already done
+        obj.files.slowStates=[obj.currentAnalysisFolder filesep 'slowStates_ch' num2str(ch) '.mat'];
+        if exist(obj.files.slowStates,'file') & ~overwrite
+            if nargout==1
+                data=load(obj.files.slowStates);
+            else
+                disp('Slow state analysis already exists for this recording');
+            end
+            return;
+        end
+
+        dbRatioFile=[obj.currentAnalysisFolder filesep 'dbRatio_ch' num2str(ch) '.mat'];
+        dbAutocorrFile=[obj.currentAnalysisFolder filesep 'dbAutocorr_ch' num2str(ch) '.mat'];
+
+        obj.checkFileRecording(dbRatioFile,'Delta to beta analysis missing, please first run getDBRatio');
+        load(dbRatioFile,'t_ms','bufferedDelta2BetaRatio','parDBRatio');
+
+        obj.checkFileRecording(dbAutocorrFile,'Delta to beta autocorr analysis missing, please first run getDBRatioAC');
+        load(dbAutocorrFile,'pSleepDBRatio');
+
+        timeBin=(parDBRatio.movWin-parDBRatio.movOLWin);
+
+        %smooth with median filter
+        medianFiltSamples=medianFiltWin/timeBin;
+        DBRatioMedFilt = fastmedfilt1d(bufferedDelta2BetaRatio, medianFiltSamples);
+
+        %long order filter to determine edges of DB fluctuation
+        longOrdFiltSamples=longOrdFiltWin/timeBin;
+        longOrdFiltOrdSamples=longOrdFiltOrd*longOrdFiltSamples;
+        DBLongOrdFilt = ordfilt2(DBRatioMedFilt, longOrdFiltOrdSamples, ones(longOrdFiltSamples,1));
+
+        edgeSamples=100;
+        sortDBLongOrdFilt=sort(DBLongOrdFilt);
+        sortDBLongOrdFilt(isnan(sortDBLongOrdFilt))=[];
+        Th=mean(sortDBLongOrdFilt(1:edgeSamples))+(mean(sortDBLongOrdFilt((end-edgeSamples):end))-mean(sortDBLongOrdFilt(1:edgeSamples)))/2;
+
+        % classification: Th crossing x pSleepDBRatio
+        % pSleepDBRatio==1 & above Th -> 1 (sws)
+        % pSleepDBRatio==1 & below Th -> 2 (REM)
+        % pSleepDBRatio==0 & above Th -> 3 (quiet)
+        % pSleepDBRatio==0 & below Th -> 4 (active)
+        pSleepDBRatio=pSleepDBRatio(:); %ensure column, matching DBRatioMedFilt orientation as needed
+        aboveTh=DBRatioMedFilt>=Th;
+
+        state=zeros(size(DBRatioMedFilt));
+        state(aboveTh & pSleepDBRatio==1)=1;
+        state(~aboveTh & pSleepDBRatio==1)=2;
+        state(aboveTh & pSleepDBRatio==0)=3;
+        state(~aboveTh & pSleepDBRatio==0)=4;
+        stateLabels={'SWS','REM','QuietW','ActiveW'};
+
+        %merge state segments shorter than minStateDur into the preceding state
+        minStateSamples=minStateDur/timeBin;
+        changePts=find(diff(state)~=0);
+        segStart=[1;changePts+1];
+        segEnd=[changePts;numel(state)];
+        segDur=segEnd-segStart+1;
+        shortSeg=find(segDur<minStateSamples);
+        for i=1:numel(shortSeg)
+            idx=shortSeg(i);
+            if idx>1
+                state(segStart(idx):segEnd(idx))=state(segStart(idx)-1);
+            end
+        end
+
+        save(obj.files.slowStates,'parSlowStates','t_ms','state','stateLabels','Th','pSleepDBRatio','DBRatioMedFilt');
+        if nargout==1
+            data=load(obj.files.slowStates);
+        end
+    end
+
+    %% plotSlowStatesAC
+
+    function plotStatesAC(obj,varargin)
+        obj.checkFileRecording;
+
+        parseObj = inputParser;
+        addParameter(parseObj,'ch',obj.recTable.defaulLFPCh(obj.currentPRec),@isnumeric);
+        parseObj.parse(varargin{:});
+
+
+        %evaluate all input parameters in workspace
+        for i=1:numel(parseObj.Parameters)
+            eval([parseObj.Parameters{i} '=' 'parseObj.Results.(parseObj.Parameters{i});']);
+        end
+
+
+        %load delta/beta ratio data
+        dbRatioFile=[obj.currentAnalysisFolder filesep 'dbRatio_ch' num2str(ch) '.mat'];
+        obj.checkFileRecording(dbRatioFile,'Delta to beta analysis missing, please first run getDBRatio');
+        load(dbRatioFile,'bufferedDelta2BetaRatio');
+
+        %load state data (runs getSlowStates if not already saved)
+        slowStatesFile=[obj.currentAnalysisFolder filesep 'slowStates_ch' num2str(ch) '.mat'];
+        obj.checkFileRecording(slowStatesFile,'states analysis missing, please first run getStatesAC');
+        load(slowStatesFile);
+
+
+        % plot
+        t_ms = t_ms(:)';           % ensure row vector
+        dbRatio = bufferedDelta2BetaRatio(:)';
+        % Trim trailing NaNs (from both dbRatio and the corresponding time/state vectors)
+        lastValid = find(~isnan(dbRatio), 1, 'last');
+        t_ms      = t_ms(1:lastValid);
+        dbRatio   = dbRatio(1:lastValid);
+        % State codes: 1 = SWS, 2 = REM, 3 = Quiet, 4 = Active
+        stateVec=state(1:lastValid)';
+
+        % Plot
+        figure('Color', 'w');
+        left  = 0.13;
+        width = 0.75;
+        % --- manual vertical layout (bottom, height) ---
+        ax2_bottom = 0.18; ax2_h = 0.18;   % smaller height to leave room for colorbar below
+        gap        = 0.12;                 % reserved space for colorbar between plots
+        ax1_bottom = ax2_bottom + ax2_h + gap; ax1_h = 0.35;
+
+        % --- Subplot 1: delta/beta ratio ---
+        ax1 = subplot('Position',[left ax1_bottom width ax1_h]);
+        plot(t_ms/1000, dbRatio, 'k', 'LineWidth', 1);
+        ylabel('\delta/\beta ratio');
+        title('Delta/Beta Ratio');
+        box off;
+
+        % --- Subplot 2: state imagesc ---
+        ax2 = subplot('Position',[left ax2_bottom width ax2_h]);
+        imagesc(t_ms/1000, 1, stateVec);
+        axis tight;
+        yticks([]);
+        xlabel('Time (s)');
+        title('State');
+
+        % Custom colormap
+        stateColors = [ ...
+            0.85 0.33 0.10;   % 1 = SWS   - orange/red
+            0.20 0.55 0.85;   % 2 = REM   - blue
+            0.95 0.65 0.55;   % 3 = Quiet - light red
+            0.65 0.80 0.95 ]; % 4 = Active - light blue
+        colormap(ax2, stateColors);
+        clim(ax2, [0.5 4.5]);
+
+        % Colorbar with labels, placed below ax2 (horizontal, doesn't shrink ax2 sideways)
+        cb = colorbar(ax2, 'southoutside', 'Ticks', [1 2 3 4], 'TickLabels', stateLabels);
+        drawnow;
+        cbWidth = width * 0.6;
+        cb.Position = [left + (width - cbWidth)/2, ...   % centered horizontally
+            ax2_bottom - 0.09, ...              % sits below ax2
+            cbWidth, ...
+            0.02];
+        % restore ax2 position in case colorbar() shrank/moved it
+        ax2.Position = [left ax2_bottom width ax2_h];
+
+        % Link x-axes so zoom/pan stay synced
+        linkaxes([ax1, ax2], 'x');
+        xlim(ax1, [t_ms(1)/1000 t_ms(end)/1000])
+
+    
+        % Save plot:
+        % set(gcf,'PaperPosition',[.25 3 8 6])
+        saveas(gcf,strcat(obj.currentPlotFolder, '/StateTransitions.pdf'));
+
+    
+    end
+
+
+    
+    
+    %% getSlowCyclesOLD
+        function data=getSlowCyclesOld(obj,varargin)
+            obj.checkFileRecording;
+            
+            parseObj = inputParser;
+            addParameter(parseObj,'ch',obj.recTable.defaulLFPCh(obj.currentPRec),@isnumeric);
+            addParameter(parseObj,'medianFiltWin',1000*20,@isnumeric);
+            addParameter(parseObj,'longOrdFiltWin',1000*1000,@isnumeric);
+            addParameter(parseObj,'longOrdFiltOrd',0.6,@isnumeric);
+            addParameter(parseObj,'maxCycle',1000*140,@isnumeric); %for excluding cycles which do not have a regular duration
+            addParameter(parseObj,'minCycle',1000*5,@isnumeric); %for merging cycles with gaps less than these
+            addParameter(parseObj,'overwrite',0,@isnumeric);
+            
+            addParameter(parseObj,'inputParams',false,@isnumeric);
+            parseObj.parse(varargin{:});
+            if parseObj.Results.inputParams
+                disp(parseObj.Results);
+                return;
+            end
+            
+            %evaluate all input parameters in workspace
+            for i=1:numel(parseObj.Parameters)
+                eval([parseObj.Parameters{i} '=' 'parseObj.Results.(parseObj.Parameters{i});']);
+            end
+            
+            %make parameter structure
+            parSlowCycles=parseObj.Results;
+            
+            %check if analysis was already done done
+            obj.files.slowCycles=[obj.currentAnalysisFolder filesep 'slowCycles_ch' num2str(ch) '.mat'];
+            if exist(obj.files.slowCycles,'file') & ~overwrite
+                if nargout==1
+                    data=load(obj.files.slowCycles);
+                else
+                    disp('Sharp wave analysis already exists for this recording');
+                end
+                return;
+            end
+            
+            dbRatioFile=[obj.currentAnalysisFolder filesep 'dbRatio_ch' num2str(ch) '.mat'];
+            dbAutocorrFile=[obj.currentAnalysisFolder filesep 'dbAutocorr_ch' num2str(ch) '.mat'];
+            
+            obj.checkFileRecording(dbRatioFile,'Delta to beta analysis missing, please first run getDBRatio');
+            load(dbRatioFile,'t_ms','bufferedDelta2BetaRatio','parDBRatio'); %load data  
+            
+            obj.checkFileRecording(dbAutocorrFile,'Delta to beta autocorr analysis missing, please first run getDBRatioAC');
+            load(dbAutocorrFile,'pSleepDBRatio'); %load data
+                
+            timeBin=(parDBRatio.movWin-parDBRatio.movOLWin);
+            
+            %smooth with median filter
+            medianFiltSamples=medianFiltWin/timeBin;
+            DBRatioMedFilt = fastmedfilt1d(bufferedDelta2BetaRatio, medianFiltSamples);
+            
+            %long order filter to determine edges of DB fluctuation 
+            longOrdFiltSamples=longOrdFiltWin/timeBin;
+            longOrdFiltOrdSamples=longOrdFiltOrd*longOrdFiltSamples;
+            DBLongOrdFilt = ordfilt2(DBRatioMedFilt, longOrdFiltOrdSamples, ones(longOrdFiltSamples,1));
+
+            %plot(t_ms/1000/60/60,DBRatioMedFilt);hold on;plot(t_ms/1000/60/60,DBLongOrdFilt);
+            
+            edgeSamples=100;
+            sortDBLongOrdFilt=sort(DBLongOrdFilt);
+            sortDBLongOrdFilt(isnan(sortDBLongOrdFilt))=[];
+            Th=mean(sortDBLongOrdFilt(1:edgeSamples))+(mean(sortDBLongOrdFilt((end-edgeSamples):end))-mean(sortDBLongOrdFilt(1:edgeSamples)))/2;
+            %Th=min(DBLongOrdFilt)+(max(DBLongOrdFilt)-min(DBLongOrdFilt))/2;
+
+            maxCycleSamples=maxCycle/timeBin;
+            minCycleSamples=minCycle/timeBin;
+            
+            % pTcycleOnset=find((DBRatioMedFilt(2:end)>=Th & DBRatioMedFilt(1:end-1)<Th) & pSleepDBRatio(1:end-1));
+            pTcycleOnset=find((DBRatioMedFilt(2:end)>=Th & DBRatioMedFilt(1:end-1)<Th)); % without taking the pSleepDBRatio into consideration
+            pTcycleOnset(1+diff(pTcycleOnset)<minCycleSamples)=[];
+            pTcycleOffset=pTcycleOnset(2:end);
+            pTcycleOnset=pTcycleOnset(1:end-1);
+            ppRemove=(pTcycleOffset-pTcycleOnset)>maxCycleSamples;
+            
+            pTcycleOffset(ppRemove)=[];
+            pTcycleOnset(ppRemove)=[];
+            
+            TcycleOnset=t_ms(pTcycleOnset);
+            TcycleOffset=t_ms(pTcycleOffset);
+            
+            edgesSamples=10;
+            pTcycleMid=zeros(numel(TcycleOnset),1);
+            for i=1:numel(TcycleOnset)
+                pTmp=find(DBRatioMedFilt((pTcycleOnset(i)+edgesSamples):(pTcycleOffset(i)-edgesSamples))<Th,1,'first');
+                if ~isempty(pTmp)
+                    pTcycleMid(i)=pTmp;
+                end
+            end
+            pTcycleMid=pTcycleMid+pTcycleOnset+edgesSamples+1;
+            TcycleMid=t_ms(pTcycleMid);
+            
+            save(obj.files.slowCycles,'parSlowCycles','TcycleOnset','TcycleOffset','TcycleMid','pSleepDBRatio','DBRatioMedFilt');
+            if nargout==1
+                data=load(obj.files.slowCycles);
+            end
+        end
+
+
+
 
     end
 
