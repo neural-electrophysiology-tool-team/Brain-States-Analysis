@@ -264,3 +264,165 @@ SS=WA.getStatesAC( ...
     );
 WA.plotStatesAC
 
+
+%% Sleep and wake comparison - only on recs where animals were awake
+
+trialsIdx=WA.recTable.ForPaper==1;
+recs = WA.recTable(trialsIdx,:);
+
+% parameters states:: 
+medianFiltWin= 1000*5; %default = 1000*5
+longOrdFiltWin = 1000*200; %defualt = 1000*200
+longOrdFiltOrd = 0.6; %default = 0.4
+minStateDur= 1000*7; % defualt = 7*1000
+tStart=1000*60*60*5; % tstart and win for night recording.
+win = 1000*60*60*3; 
+
+%parameters D/b
+movWin = 5000;
+movOLWin = 4500;
+
+load([analysisFolderWake filesep 'wakeSleepData.mat'])
+pDataOld = pData;
+
+pData = recs(:,["Animal","recNames","Remarks","isAWakwe","Date","Headstage","spikes"]);
+pData.type = categorical(repmat({''}, height(pData), 1));
+pData.type(contains(pData.recNames, 'Wake'))  = 'Wake';
+pData.type(contains(pData.recNames, 'Night')) = 'Sleep';
+pData.P2V = zeros(height(pData),1);
+pData.bouts = cell(height(pData),1);
+pData.HighDBdur = zeros(height(pData),1);
+pData.LowDBdur = zeros(height(pData),1);
+pData.totalDur = zeros(height(pData),1);
+
+% check for recordings allready calculated, assuming the parameters havent
+% changed:
+newparameters=1;
+if ~newparameters
+    [isOld, idx] = ismember(pData(:, {'Animal','recNames'}), ...
+                          pDataOld(:, {'Animal','recNames'}), 'rows');
+    % Copy over already-computed rows
+    pData(isOld, :) = pDataOld(idx(isOld), :);
+
+    rowsToProcess = find(~isOld);
+else
+    rowsToProcess = [1:height(pData)]';
+end
+
+%% get the AC, and states for each
+
+for i = rowsToProcess'
+    recName=['Animal=' recs.Animal{i} ',recNames=' recs.recNames{i}];
+    WA.setCurrentRecording(recName);
+    DB=WA.getDelta2BetaRatio;
+    if DB.parDBRatio.movOLWin ~=movOLWin | DB.parDBRatio.movWin ~=movWin
+        WA.getDelta2BetaRatio('overwrite',1, ...
+            'movWin',movWin, ...
+            'movOLWin',movOLWin);
+    end
+    
+    if pData.type(i)=='Sleep'
+        
+        SS = WA.getStatesAC( ... % get the states timings
+            'overwrite',    1,...
+            'medianFiltWin',medianFiltWin, ...
+            'longOrdFiltWin', longOrdFiltWin, ...
+            'longOrdFiltOrd', longOrdFiltOrd,...
+            'minStateDur',minStateDur, ...
+            'tStart', tStart, ... % three hrs into the rec
+            'win',win ... % Three hrs of sleep
+            );
+        
+        % WA.plotStatesAC
+        AC = WA.getDelta2BetaAC('overwrite',1); % get the AC
+        pData.P2V(i) = AC.peak2VallyDiff;
+       
+
+    elseif pData.type(i)=='Wake'
+        if pData.isAWakwe{i}==1
+            tStart = 0;
+            win = WA.currentDataObj.recordingDuration_ms;
+        else 
+            waketimes = pData.isAWakwe{i};
+            tstart = waketimes(1);
+            win = waketimes(2)*60*60*1000;
+        end
+
+        SS = WA.getStatesAC( ... % get the states timings
+            'overwrite',    1,...
+            'medianFiltWin',medianFiltWin, ...
+            'longOrdFiltWin', longOrdFiltWin, ...
+            'longOrdFiltOrd', longOrdFiltOrd,...
+            'minStateDur',minStateDur, ...
+            'tStart', tStart, ... % three hrs into the rec
+            'win',win ... % Three hrs of sleep
+            );
+        
+        % WA.plotStatesAC
+        try
+            AC = WA.getDelta2BetaAC('overwrite',1); % get the AC
+            pData.P2V(i) = AC.peak2VallyDiff;
+        catch
+            disp('getDelta2BetaAC was not be completed for this recording. moving forward. ')
+            pData.P2V(i) = 0;
+        end
+
+      
+    end
+    % calculate the duration of each states
+        %get bouts
+        BS = WA.getStateBouts('overwrite',1);
+        
+        pData.bouts{i}= BS.bouts(:,["state","label","duration_s"]);
+
+        %get sum of state and rec duration 
+        pData.HighDBdur(i) = sum(BS.bouts.duration_s(BS.bouts.state==1));
+        pData.LowDBdur(i) = sum(BS.bouts.duration_s(BS.bouts.state==2));
+        pData.totalDur(i) = sum(BS.bouts.duration_s);
+
+
+end
+
+save([analysisFolderWake filesep 'wakeSleepData.mat'], "pData");
+
+%% load pData
+load([analysisFolderWake filesep 'wakeSleepData.mat'])
+
+%% pData.animalC = categorical(pData.Animal);
+% plot AC
+figure;
+violinplot(pData,"type",'P2V');
+hold on;
+swarmchart(pData.type, pData.P2V, 15, 'k', 'filled', 'XJitterWidth', 0.3);
+hold off;
+
+%% plot duration
+
+% pool all inner tables into one long table, tagging each row with its Animal
+allBouts = table();
+for i = 1:height(pData)
+    curBouts = pData.bouts{i};              % nx4 table for this row
+    curBouts.Animal = repmat(pData.Animal(i), height(curBouts), 1);
+    curBouts.recNames = repmat(pData.recNames(i), height(curBouts), 1);
+    curBouts.type = repmat(pData.type(i), height(curBouts), 1);
+    allBouts = [allBouts; curBouts];
+end
+
+allBouts.label = categorical(allBouts.label); % fix category order if desired
+
+%%
+figure;
+durationClean=allBouts.duration_s
+violinplot(allBouts.type,allBouts.duration_s,GroupByColor=allBouts.Animal);
+legend(unique(allBouts.Animal),'Location','best');
+ylabel('Bout duration (s)');
+xlabel('State');
+title('Bout duration distribution, pooled across all tables per animal');
+
+%% plot percantage
+figure;
+violinplot(allBouts.label,allBouts.percentage,GroupByColor=allBouts.Animal);
+legend(unique(allBouts.Animal),'Location','best');
+ylabel('Bout duration (s)');
+xlabel('State');
+title('Bout duration distribution, pooled across all tables per animal');
