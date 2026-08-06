@@ -70,7 +70,8 @@ fileName=[analysisFolderWake filesep 'clusters_all'];
 print(fileName,'-dpdf',['-r300']);
 
 %% ACC to D/B
-
+cali_result = load(['/media/sil3/Data/accelerometer_calibrations/' ...
+    'headtagse_cali_recs/calibration_results.mat']).cali_result;
 
     hs = WA.recTable.Headstage{WA.currentPRec};
     curSens = cali_result.(hs).sensetivity';
@@ -859,4 +860,6 @@ ylabel('Exp num'); xticks(KList);xticklabels(KList)
 subplot(2,2,4)
 histogram(bestGapC+1,BinEdges=binedges); xlabel('K'); title('Optimal Gap clustering num');
 ylabel('Exp num'); xticks(KList);xticklabels(KList)
+
+
 

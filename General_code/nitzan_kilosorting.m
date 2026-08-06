@@ -4,11 +4,15 @@
    % this section is for the same thing but using the stimTable as ref
 WA=wakeAnalysis('/media/sil1/Data/Pogona Vitticeps/brainStatesWake.xlsx');
 WA.setCurrentRecording('Animal=PV126,recNames=Hunter54');
-
-
-WA.currentDataObj.generateChannelMapFile('40_16x2_FlexLin'); % 120_32x1_H4_CamNeuro for PV24. all layouts in TSV/electrode layouts 
 binaryileName = [WA.currentDataObj.recordingDir filesep 'spikeSorting' filesep 'ch1_32.bin'];
 WA.currentDataObj.convert2Binary(binaryileName);
+
+%%
+rec = OERecording('/media/sil1/Data/Pogona Vitticeps/PV228/3_Wakes/PV228_Trial13_Wake4_2026-06-04_15-40-30/Record Node 106/')
+
+% WA.currentDataObj.generateChannelMapFile('40_16x2_FlexLin'); % 120_32x1_H4_CamNeuro for PV24. all layouts in TSV/electrode layouts 
+binaryileName = [rec.recordingDir filesep 'spikeSorting' filesep 'ch1_32.bin'];
+rec.convert2Binary(binaryileName,'electrodeCh',1:32);
 %% loop of all the recoring to create binary files for them
 % look for only the ones in stim table + have above 0 in spikes. 
 
