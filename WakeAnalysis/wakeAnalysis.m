@@ -712,9 +712,10 @@ function data = plotDBtoACC(obj,varargin)
         addParameter(parseObj,'longOrdFiltOrd',0.4,@isnumeric);
         addParameter(parseObj,'minStateDur',1000*7,@isnumeric); %merge state segments shorter than this into the preceding state
         addParameter(parseObj,'overwrite',0,@isnumeric);
-        addParameter(parseObj, 'useAC',0) % use the pSleep from AC or not. 
-        addParameter(parseObj, 'tStart',0) 
-        addParameter(parseObj, 'win', obj.currentDataObj.recordingDuration_ms)
+        addParameter(parseObj, 'useAC',0); % use the pSleep from AC or not. 
+        addParameter(parseObj, 'tStart',0) ;
+        addParameter(parseObj, 'win', obj.currentDataObj.recordingDuration_ms);
+        addParameter(parseObj, 'stdTh',1);
         addParameter(parseObj,'inputParams',false,@isnumeric);
         parseObj.parse(varargin{:});
         if parseObj.Results.inputParams
@@ -773,11 +774,14 @@ function data = plotDBtoACC(obj,varargin)
         longOrdFiltOrdSamples=longOrdFiltOrd*longOrdFiltSamples;
         DBLongOrdFilt = ordfilt2(DBRatioMedFilt, longOrdFiltOrdSamples, ones(longOrdFiltSamples,1));
 
-        edgeSamples=100;
+        edgeSamples=500;
         sortDBLongOrdFilt=sort(DBLongOrdFilt);
         sortDBLongOrdFilt(isnan(sortDBLongOrdFilt))=[];
-        Th=mean(sortDBLongOrdFilt(1:edgeSamples))+(mean(sortDBLongOrdFilt((end-edgeSamples):end))-mean(sortDBLongOrdFilt(1:edgeSamples)))/2;
-
+        if stdTh
+            Th = mean(sortDBLongOrdFilt(1:edgeSamples)) + 10*std(sortDBLongOrdFilt(1:edgeSamples));
+        else
+            Th=mean(sortDBLongOrdFilt(1:edgeSamples))+(mean(sortDBLongOrdFilt((end-edgeSamples):end))-mean(sortDBLongOrdFilt(1:edgeSamples)))/2;
+        end
         aboveTh=DBRatioMedFilt>=Th;
 
         if useAC

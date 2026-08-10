@@ -1,5 +1,5 @@
 %% Sleep-Wake Analysis
-clearvars
+ clearvars
 WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 
@@ -267,16 +267,19 @@ WA.plotStatesAC
 
 %% Sleep and wake comparison - only on recs where animals were awake
 
+WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
+%
 trialsIdx=WA.recTable.ForPaper==1;
 recs = WA.recTable(trialsIdx,:);
 
 % parameters states:: 
 medianFiltWin= 1000*5; %default = 1000*5
 longOrdFiltWin = 1000*200; %defualt = 1000*200
-longOrdFiltOrd = 0.6; %default = 0.4
+longOrdFiltOrd = 0.5; %default = 0.4
 minStateDur= 1000*7; % defualt = 7*1000
-tStart=1000*60*60*5; % tstart and win for night recording.
-win = 1000*60*60*3; 
+tStartDef=1000*60*60*5; % tstart and win for night recording.
+winDef = 1000*60*60*3; 
 
 %parameters D/b
 movWin = 5000;
@@ -285,7 +288,7 @@ movOLWin = 4500;
 load([analysisFolderWake filesep 'wakeSleepData.mat'])
 pDataOld = pData;
 
-pData = recs(:,["Animal","recNames","Remarks","isAWakwe","Date","Headstage","spikes"]);
+pData = recs(:,["Animal","recNames","Remarks","isAwake","Date","Headstage","spikes"]);
 pData.type = categorical(repmat({''}, height(pData), 1));
 pData.type(contains(pData.recNames, 'Wake'))  = 'Wake';
 pData.type(contains(pData.recNames, 'Night')) = 'Sleep';
@@ -312,7 +315,7 @@ end
 %% get the AC, and states for each
 
 for i = rowsToProcess'
-    recName=['Animal=' recs.Animal{i} ',recNames=' recs.recNames{i}];
+    recName=['Animal=' pData.Animal{i} ',recNames=' pData.recNames{i}];
     WA.setCurrentRecording(recName);
     DB=WA.getDelta2BetaRatio;
     if DB.parDBRatio.movOLWin ~=movOLWin | DB.parDBRatio.movWin ~=movWin
@@ -322,7 +325,16 @@ for i = rowsToProcess'
     end
     
     if pData.type(i)=='Sleep'
-        
+        %add: if the isAwake is more than 1 number, take it as tstart and
+        %win in hrs.
+        if isscalar(str2num(pData.isAwake{i}))
+            tStart = tStartDef;
+            win = winDef;
+        else 
+            waketimes = str2num(pData.isAwake{i});
+            tStart = waketimes(1)*60*60*1000;
+            win = waketimes(2)*60*60*1000;
+        end 
         SS = WA.getStatesAC( ... % get the states timings
             'overwrite',    1,...
             'medianFiltWin',medianFiltWin, ...
@@ -339,13 +351,13 @@ for i = rowsToProcess'
        
 
     elseif pData.type(i)=='Wake'
-        if pData.isAWakwe{i}==1
+        if isscalar(pData.isAwake{i})
             tStart = 0;
             win = WA.currentDataObj.recordingDuration_ms;
         else 
-            waketimes = pData.isAWakwe{i};
-            tstart = waketimes(1);
-            win = waketimes(2)*60*60*1000;
+            waketimes = str2num(pData.isAwake{i});
+            tStart = waketimes(1)*60*60*1000;
+            win = waketimes(2)*60*60*1000-tStart;
         end
 
         SS = WA.getStatesAC( ... % get the states timings
@@ -410,19 +422,59 @@ end
 
 allBouts.label = categorical(allBouts.label); % fix category order if desired
 
-%%
+%% plot bouts - sleep vs wake
+% figure;
+% durationClean=allBouts.duration_s;
+% violinplot(allBouts.type,allBouts.duration_s,GroupByColor=allBouts.Animal);
+% legend(unique(allBouts.Animal),'Location','best');
+% ylabel('Bout duration (s)');
+% xlabel('State');
+% title('Bout duration distribution, pooled across all tables per animal');
+% %%
+allBouts.Animal = categorical(allBouts.Animal);
+allBouts.colorCode = double(allBouts.Animal);  % numeric code per animal
+allBouts.group = categorical(strcat(string(allBouts.type), "_", string(allBouts.label)));
+
 figure;
-durationClean=allBouts.duration_s
-violinplot(allBouts.type,allBouts.duration_s,GroupByColor=allBouts.Animal);
-legend(unique(allBouts.Animal),'Location','best');
+swarmchart(allBouts, "group","duration_s", 'filled','ColorVariable', "colorCode");
+legend(unique(allBouts.Animal), 'Location', 'best');
+ylabel('Bout duration (s)');
+xlabel('State');
+title('Bout duration distribution, pooled across all tables per animal');
+
+%% check recordings with long bouts
+figure;
+histogram(allBouts.duration_s)
+%(allBouts.duration_s))
+
+longBouts = allBouts(allBouts.duration_s>2000,:);
+[found, idx] = ismember(longBouts(:, {'Animal','recNames'}),pData(:, {'Animal','recNames'}), 'rows');
+
+%% plot bouts - different states in sleep or wake
+
+figure;
+violinplot(allBouts.type,allBouts.duration_s,GroupByColor=allBouts.label);
+legend(unique(allBouts.label),'Location','best');
+ylabel('Bout duration (s)');
+xlabel('State');
+title('Bout duration distribution, pooled across all tables per animal');
+
+figure;
+swarmchart(allBouts.type, allBouts.duration_s, 10, allBouts.label, 'filled');
+legend(unique(allBouts.label), 'Location', 'best');
 ylabel('Bout duration (s)');
 xlabel('State');
 title('Bout duration distribution, pooled across all tables per animal');
 
 %% plot percantage
 figure;
-violinplot(allBouts.label,allBouts.percentage,GroupByColor=allBouts.Animal);
-legend(unique(allBouts.Animal),'Location','best');
+pData.HighDBPer = pData.HighDBdur./pData.totalDur;
+pData.LowDBPer = pData.LowDBdur./pData.totalDur;
+% violinplot(pData.type,pData.,GroupByColor=allBouts.Animal);
+% legend(unique(allBouts.Animal),'Location','best');
+
+
+
 ylabel('Bout duration (s)');
 xlabel('State');
 title('Bout duration distribution, pooled across all tables per animal');
