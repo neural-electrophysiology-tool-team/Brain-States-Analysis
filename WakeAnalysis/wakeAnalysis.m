@@ -774,11 +774,11 @@ function data = plotDBtoACC(obj,varargin)
         longOrdFiltOrdSamples=longOrdFiltOrd*longOrdFiltSamples;
         DBLongOrdFilt = ordfilt2(DBRatioMedFilt, longOrdFiltOrdSamples, ones(longOrdFiltSamples,1));
 
-        edgeSamples=500;
+        edgeSamples=2000;
         sortDBLongOrdFilt=sort(DBLongOrdFilt);
         sortDBLongOrdFilt(isnan(sortDBLongOrdFilt))=[];
         if stdTh
-            Th = mean(sortDBLongOrdFilt(1:edgeSamples)) + 10*std(sortDBLongOrdFilt(1:edgeSamples));
+            Th = mean(sortDBLongOrdFilt(1:edgeSamples)) + 7*std(sortDBLongOrdFilt(1:edgeSamples));
         else
             Th=mean(sortDBLongOrdFilt(1:edgeSamples))+(mean(sortDBLongOrdFilt((end-edgeSamples):end))-mean(sortDBLongOrdFilt(1:edgeSamples)))/2;
         end
@@ -932,8 +932,7 @@ function data = plotDBtoACC(obj,varargin)
 
         parseObj = inputParser;
         addParameter(parseObj,'overwrite',0,@isnumeric);
-        % addParameter(parseObj,'ch',obj.recTable.defaulLFPCh(obj.currentPRec),@isnumeric);
-
+        addParameter(parseObj,'ch',obj.recTable.defaulLFPCh(obj.currentPRec),@isnumeric);
         addParameter(parseObj,'inputParams',false,@isnumeric);
         parseObj.parse(varargin{:});
         if parseObj.Results.inputParams
@@ -941,7 +940,7 @@ function data = plotDBtoACC(obj,varargin)
             return;
         end
 
-        % ch=parseObj.Results.ch;
+        ch=parseObj.Results.ch;
         overwrite=parseObj.Results.overwrite;
 
         %make parameter structure
@@ -962,9 +961,17 @@ function data = plotDBtoACC(obj,varargin)
         StateACFile=[obj.currentAnalysisFolder filesep 'slowStates.mat'];
         obj.checkFileRecording(StateACFile,'Slow state analysis missing, please first run getStatesAC');
         load(StateACFile);
+        state_ms=t_ms;
+        
+        % load DB for dbmean calculation:
+      
+        dbRatioFile=[obj.currentAnalysisFolder filesep 'dbRatio_ch' num2str(ch) '.mat'];
+        obj.checkFileRecording(dbRatioFile,'Delta to beta analysis missing, please first run getDBRatio');
+        load(dbRatioFile,'t_ms','bufferedDelta2BetaRatio','parDBRatio');
+
 
         stateVec = state(:)'; % ensure row vector
-        t_ms     = t_ms(:)';
+        state_ms = state_ms(:)';
 
         changePts = find(diff(stateVec) ~= 0);
         segStart  = [1, changePts+1];
@@ -973,14 +980,24 @@ function data = plotDBtoACC(obj,varargin)
         segState  = stateVec(segStart)';
 
         label         = stateLabels(segState)';  
-        startTime_ms  = t_ms(segStart)';
-        endTime_ms    = t_ms(segEnd)';
+        startTime_ms  = state_ms(segStart)';
+        endTime_ms    = state_ms(segEnd)';
         duration_ms   = startTime_ms; %placeholder, overwritten below
-        duration_ms   = t_ms(segEnd)' - t_ms(segStart)';
+        duration_ms   = state_ms(segEnd)' - state_ms(segStart)';
         duration_s    = duration_ms/1000;
         
-        bouts = table(segState, label,startTime_ms, endTime_ms, duration_ms,duration_s, ...
-                  'VariableNames', {'state','label','startTime_ms','endTime_ms','duration_ms','duration_s'});
+        % calc mean  for each bout
+        nSegments = numel(startTime_ms);
+        avgDB = nan(nSegments, 1);
+
+        for i = 1:nSegments
+            idx = t_ms >= startTime_ms(i) & t_ms <= endTime_ms(i);
+            avgDB(i) = mean(bufferedDelta2BetaRatio(idx), 'omitnan');
+        end
+
+
+        bouts = table(segState, label,startTime_ms, endTime_ms, duration_ms,duration_s, avgDB,...
+                  'VariableNames', {'state','label','startTime_ms','endTime_ms','duration_ms','duration_s','AvgDB'});
 
 
         save(obj.files.stateBouts,'parStateBouts','bouts');
