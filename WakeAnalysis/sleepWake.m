@@ -507,7 +507,7 @@ end
 STDgruopT = table(groupList,stdgroups,'VariableNames',["Group","STD"]);
 
 %% check long bouts
-l = allBouts.duration_s>500;
+l = allBouts.duration_s>1000;
 
 longBouts=allBouts(l,:);
 

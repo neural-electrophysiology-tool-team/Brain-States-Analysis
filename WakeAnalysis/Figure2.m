@@ -648,13 +648,11 @@ allBouts.Animal = categorical(allBouts.Animal);
 
 % ---------- per animal, per group ----------
 statsPerAnimal = groupsummary(allBouts, {'Animal', 'group'}, ...
-    {'mean', 'var', 'std', 'numel'}, 'duration_s');
+    {"mean","var","std"}, 'duration_s');
 
 statsPerAnimal.Properties.VariableNames{'mean_duration_s'} = 'meanDur';
 statsPerAnimal.Properties.VariableNames{'var_duration_s'}  = 'varDur';
-statsPerAnimal.Properties.VariableNames{'std_duration_s'}  = 'stdDur';
-statsPerAnimal.Properties.VariableNames{'numel_duration_s'} = 'nBouts';
-
+statsPerAnimal.Properties.VariableNames{'std_duration_s'} = 'stdDur';
 statsPerAnimal.fanoFactor = statsPerAnimal.varDur ./ statsPerAnimal.meanDur;
 statsPerAnimal.CV         = statsPerAnimal.stdDur ./ statsPerAnimal.meanDur;
 
@@ -663,13 +661,11 @@ disp(statsPerAnimal);
 
 % ---------- pooled across all animals, per group ----------
 statsAllAnimals = groupsummary(allBouts, {'group'}, ...
-    {'mean', 'var', 'std', 'numel'}, 'duration_s');
+    {"mean", "var", "std"}, 'duration_s');
 
 statsAllAnimals.Properties.VariableNames{'mean_duration_s'} = 'meanDur';
 statsAllAnimals.Properties.VariableNames{'var_duration_s'}  = 'varDur';
-statsAllAnimals.Properties.VariableNames{'std_duration_s'}  = 'stdDur';
-statsAllAnimals.Properties.VariableNames{'numel_duration_s'} = 'nBouts';
-
+statsAllAnimals.Properties.VariableNames{'std_duration_s'} = 'stdDur';
 statsAllAnimals.fanoFactor = statsAllAnimals.varDur ./ statsAllAnimals.meanDur;
 statsAllAnimals.CV         = statsAllAnimals.stdDur ./ statsAllAnimals.meanDur;
 
@@ -677,8 +673,10 @@ disp('--- Fano factor & CV, pooled across all animals, per group ---');
 disp(statsAllAnimals);
 
 % ---------- optional: save both tables ----------
- writetable(statsPerAnimal,  fullfile(analysisFolderWake, 'fanoCV_perAnimal.csv'));
- writetable(statsAllAnimals, fullfile(analysisFolderWake, 'fanoCV_allAnimals.csv'));
+writetable(statsPerAnimal,  fullfile(analysisFolderWake, 'fanoCV_perAnimal.csv'));
+writetable(statsAllAnimals, fullfile(analysisFolderWake, 'fanoCV_allAnimals.csv'));
+
+
 %% plot percantage
 pData.HighDBPer = pData.HighDBdur./pData.totalDur;
 pData.LowDBPer = pData.LowDBdur./pData.totalDur;
