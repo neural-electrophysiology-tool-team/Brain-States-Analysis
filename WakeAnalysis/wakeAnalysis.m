@@ -710,7 +710,7 @@ function data = plotDBtoACC(obj,varargin)
         addParameter(parseObj,'medianFiltWin',1000*5,@isnumeric);
         addParameter(parseObj,'longOrdFiltWin',1000*200,@isnumeric);
         addParameter(parseObj,'longOrdFiltOrd',0.4,@isnumeric);
-        addParameter(parseObj,'minStateDur',1000*7,@isnumeric); %merge state segments shorter than this into the preceding state
+        addParameter(parseObj,'minStateDur',1000*6,@isnumeric); %merge state segments shorter than this into the preceding state
         addParameter(parseObj,'overwrite',0,@isnumeric);
         addParameter(parseObj, 'useAC',0); % use the pSleep from AC or not. 
         addParameter(parseObj, 'tStart',0) ;
@@ -805,17 +805,29 @@ function data = plotDBtoACC(obj,varargin)
             stateLabels={'HighDB','LowDB'};
         end
 
-        %merge state segments shorter than minStateDur into the preceding state
-        minStateSamples=minStateDur/timeBin;
-        changePts=find(diff(state)~=0);
-        segStart=[1;changePts+1];
-        segEnd=[changePts;numel(state)];
-        segDur=segEnd-segStart+1;
-        shortSeg=find(segDur<minStateSamples);
-        for i=1:numel(shortSeg)
-            idx=shortSeg(i);
-            if idx>1
-                state(segStart(idx):segEnd(idx))=state(segStart(idx)-1);
+        % merge state segments shorter than minStateDur (script version, iterates to convergence)
+        minStateSamples = minStateDur/timeBin;
+
+        while true
+            changePts = find(diff(state)~=0);
+            segStart  = [1; changePts+1];
+            segEnd    = [changePts; numel(state)];
+            segDur    = segEnd - segStart + 1;
+            shortSeg  = find(segDur < minStateSamples);
+
+            if isempty(shortSeg)
+                break
+            end
+
+            for i = 1:numel(shortSeg)
+                idx = shortSeg(i);
+                if idx > 1
+                    state(segStart(idx):segEnd(idx)) = state(segStart(idx)-1);
+                elseif numel(segStart) > 1
+                    % no preceding segment (start of array) - merge forward instead
+                    state(segStart(idx):segEnd(idx)) = state(segEnd(idx)+1);
+                end
+                % else: entire array is one segment shorter than minStateDur - nothing to merge into
             end
         end
         save(obj.files.slowStates,'parSlowStates','t_ms','state','stateLabels','Th','DBRatioMedFilt');
