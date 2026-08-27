@@ -149,8 +149,8 @@ end
 
 
 %% panels  C, D, E, F
-%% Sleep and wake comparison - only on recs where animals were awake
-clearvars
+%% prepare pData parameters
+% clearvars
 WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWakeN.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 
@@ -185,6 +185,9 @@ pData.LowDBdur = zeros(height(pData),1);
 pData.totalDur = zeros(height(pData),1);
 pData.HighDBAvg = zeros(height(pData),1);
 pData.LowDBavg = zeros(height(pData),1);
+pData.transPoint = zeros(height(pData),1);
+pData.DBTh = zeros(height(pData),1);
+
 
 % check for recordings allready calculated, assuming the parameters havent
 % changed:
@@ -200,7 +203,7 @@ else
     rowsToProcess = [1:height(pData)]';
 end
 
-%% get the AC, and states for each
+%% run on all recs and calculate pData:
 
 for i = rowsToProcess'
     recName=['Animal=' pData.Animal{i} ',recNames=' pData.recNames{i}];
@@ -236,6 +239,7 @@ for i = rowsToProcess'
         % WA.plotStatesAC
         AC = WA.getDelta2BetaAC('overwrite',1); % get the AC
         pData.P2V(i) = AC.peak2VallyDiff;
+        
        
 
     elseif pData.type(i)=='Wake'
@@ -270,6 +274,17 @@ for i = rowsToProcess'
       
     end
     % calculate the duration of each states
+    % get the th:
+    pData.DBTh(i) = SS.Th;
+
+    % -------------------------------------------------------------------
+       % get the transition point - ONLY IF ALREADY RAN THE PCA DATAAAA!!!
+       curFreqBand = WA.getFreqBandDetection;
+       if ~isempty(curFreqBand.crossFreq)
+           pData.transPoint(i) = curFreqBand.crossFreq;
+       end
+    % -------------------------------------------------------------------
+
     %get bouts
     BS = WA.getStateBouts('overwrite',1);
 
@@ -320,7 +335,7 @@ end
 
 allBouts.label = categorical(allBouts.label); % fix category order if desired
 
-% %% plot bouts - sleep vs wake
+%% previous ver: plot bouts - sleep vs wake
 % allBouts.group = categorical(strcat(string(allBouts.type), "-", string(allBouts.label)));
 % 
 % groupList = categories(allBouts.group);  % should be: Sleep_HighDB, Sleep_LowDB, Wake_HighDB, Wake_LowDB
@@ -390,7 +405,7 @@ allBouts.label = categorical(allBouts.label); % fix category order if desired
 % Figure 2: horizontal, all 4 groups overlaid on the same row
 
 thisAnimal = "PV157";   % <-- set to the animal you want to plot
-
+allBouts.group = categorical(strcat(string(allBouts.type), "-", string(allBouts.label)));
 % --- filter to this animal ---
 isAnimal = allBouts.Animal == thisAnimal;
 subBouts = allBouts(isAnimal, :);
@@ -498,7 +513,7 @@ print(fileName,'-dpdf','-r300');
 %% ---------- Setup ----------
 % Assumes 'allBouts' (with .Animal, .type, .label, .group, .duration_s) and
 % 'thisAnimal' are already defined, as in the earlier scripts.
-thisAnimal = "PV157";
+% thisAnimal = "PV157";
 isAnimal = allBouts.Animal == thisAnimal;
 subBouts = allBouts(isAnimal, :);
 
@@ -702,45 +717,87 @@ title('Bout duration percentage');
 % save figure
 fileName2 = [analysisFolderWake filesep 'BoutsPercentagesAllAnimals'];
 print(fileName2, '-dpdf', '-r300');
+%%  old - plot mean DB for each state
+% groupOrder = {'Sleep','Wake'};
+% pData.type = categorical(pData.type, groupOrder);
+% 
+% % Reshape to long format
+% longType  = [pData.type; pData.type];
+% longValue = [pData.HighDBAvg; pData.LowDBavg];
+% longLabel = [repmat({'highDB'}, height(pData), 1); repmat({'lowDB'}, height(pData), 1)];
+% longLabel = categorical(longLabel, {'highDB','lowDB'});
+% 
+% % Base x position from type, with small offset per sub-group
+% baseX = double(longType);
+% offset = 0.30;
+% xPos = baseX - offset .* (longLabel == 'highDB') + offset .* (longLabel == 'lowDB');
+% 
+% colorMat = [
+%     0.85 0.33 0.10;   % Sleep_HighDB  - orange (dark)
+%     0.00 0.45 0.74;   % Sleep_LowDB   - blue (dark)
+%     0.93 0.60 0.40;   % Wake_HighDB   - orange (light)
+%     0.40 0.70 0.90    % Wake_LowDB    - blue (light)
+% ];
+% 
+% % Per-point color matrix
+% pointColors = zeros(numel(xPos), 3);
+% pointColors(longType=='Sleep' & longLabel=='highDB', :) = repmat(colorMat(1,:), sum(longType=='Sleep' & longLabel=='highDB'), 1);
+% pointColors(longType=='Sleep' & longLabel=='lowDB',  :) = repmat(colorMat(2,:), sum(longType=='Sleep' & longLabel=='lowDB'),  1);
+% pointColors(longType=='Wake'  & longLabel=='highDB', :) = repmat(colorMat(3,:), sum(longType=='Wake'  & longLabel=='highDB'), 1);
+% pointColors(longType=='Wake'  & longLabel=='lowDB',  :) = repmat(colorMat(4,:), sum(longType=='Wake'  & longLabel=='lowDB'),  1);
+% 
+% figure; hold on;
+% swarmchart(xPos, longValue, 25, pointColors, 'filled', 'o', 'XJitterWidth', 0.25);
+% % Xticks at each sub-group position, labeled directly
+% xticks([1-offset, 1+offset, 2-offset, 2+offset]);
+% xticklabels({'Sleep-HighDB','Sleep-LowDB','Wake-HighDB','Wake-LowDB'});
+% xtickangle(0);
+% 
+% xlim([0.5, numel(groupOrder)+0.5]);
+% % ylabel('Avg DB Ratio');
+% % save figure
+% fileName2 = [analysisFolderWake filesep 'bbAvgperState'];
+% print(fileName2, '-dpdf', '-r300');
 %%  plot mean DB for each state
-groupOrder = {'Sleep','Wake'};
-pData.type = categorical(pData.type, groupOrder);
+pData.avgDB = mean([pData.HighDBAvg,pData.LowDBavg],2);
 
-% Reshape to long format
-longType  = [pData.type; pData.type];
-longValue = [pData.HighDBAvg; pData.LowDBavg];
-longLabel = [repmat({'highDB'}, height(pData), 1); repmat({'lowDB'}, height(pData), 1)];
-longLabel = categorical(longLabel, {'highDB','lowDB'});
+figure
+swarmchart(categorical(pData.type), pData.avgDB, 25, 'filled')
+xlabel('Type')
+ylabel('avg dB')
+title('avgDB by State')
+box off
 
-% Base x position from type, with small offset per sub-group
-baseX = double(longType);
-offset = 0.30;
-xPos = baseX - offset .* (longLabel == 'highDB') + offset .* (longLabel == 'lowDB');
+% % save figure
+fileName2 = [analysisFolderWake filesep 'bbAvgbytype'];
+print(fileName2, '-dpdf', '-r300');
 
-colorMat = [
-    0.85 0.33 0.10;   % Sleep_HighDB  - orange (dark)
-    0.00 0.45 0.74;   % Sleep_LowDB   - blue (dark)
-    0.93 0.60 0.40;   % Wake_HighDB   - orange (light)
-    0.40 0.70 0.90    % Wake_LowDB    - blue (light)
-];
+%%  plot Threshold for each type - sleep or wake
+% pData.avgDB = mean([pData.HighDBAvg,pData.LowDBavg],2);
 
-% Per-point color matrix
-pointColors = zeros(numel(xPos), 3);
-pointColors(longType=='Sleep' & longLabel=='highDB', :) = repmat(colorMat(1,:), sum(longType=='Sleep' & longLabel=='highDB'), 1);
-pointColors(longType=='Sleep' & longLabel=='lowDB',  :) = repmat(colorMat(2,:), sum(longType=='Sleep' & longLabel=='lowDB'),  1);
-pointColors(longType=='Wake'  & longLabel=='highDB', :) = repmat(colorMat(3,:), sum(longType=='Wake'  & longLabel=='highDB'), 1);
-pointColors(longType=='Wake'  & longLabel=='lowDB',  :) = repmat(colorMat(4,:), sum(longType=='Wake'  & longLabel=='lowDB'),  1);
+figure
+swarmchart(categorical(pData.type), pData.DBTh, 25, 'filled')
+xlabel('Type')
+ylabel('D/B')
+title('DB threshold betweh high and low DB by State')
+box off
 
-figure; hold on;
-swarmchart(xPos, longValue, 25, pointColors, 'filled', 'o', 'XJitterWidth', 0.25);
-% Xticks at each sub-group position, labeled directly
-xticks([1-offset, 1+offset, 2-offset, 2+offset]);
-xticklabels({'Sleep-HighDB','Sleep-LowDB','Wake-HighDB','Wake-LowDB'});
-xtickangle(0);
+% % save figure
+fileName2 = [analysisFolderWake filesep 'dbThperType'];
+print(fileName2, '-dpdf', '-r300');
+%%  plot Cross Frequency for each type - sleep or wake
+% pData.avgDB = mean([pData.HighDBAvg,pData.LowDBavg],2);
 
-xlim([0.5, numel(groupOrder)+0.5]);
-ylabel('Avg DB Ratio');
+figure
+swarmchart(categorical(pData.type), pData.transPoint, 25, 'filled')
+xlabel('Type')
+ylabel('Frequency')
+title('Cross Frequency between normsPXX')
+box off
 
+% % save figure
+fileName2 = [analysisFolderWake filesep 'CrossFreq'];
+print(fileName2, '-dpdf', '-r300');
 
 %% Panels ??? - PCA 
 clearvars
@@ -766,7 +823,7 @@ wakeTable = WA.recTable(wakeTrials,:);
 % % trialsNames = ["Wake1","Wake2","Wake3","Wake4"];
 % % trialsid  = ismember(wakeTable.recNames,trialsNames);
 % wakeSubsetAll = wakeTable(idx ,:);
-% running on a single trial, power spec
+%% running on a single trial, power spec
 PxxDataAllWake = [];
 nPxxDataAllWake = [];
 timesAllWake   = [];
@@ -931,7 +988,66 @@ nPxxDataAllSleep = nPxxDataAllSleep(:,f_ind);
 PxxDataAllSleep=PxxDataAllSleep(:,f_ind);
 PxxDataAllWake=PxxDataAllWake(:,f_ind);
 % PxxDataAllHun=PxxDataAllHun(:,f_ind);
+pxxWakeNormSegm = normalize(PxxDataAllWake, 2);
+pxxSleepNormSegm = normalize(PxxDataAllSleep, 2);
+%% PCA Table crreations:
+SpcaT = table(animalLabelSleep,recLabelsSleep,PxxDataAllSleep,pxxSleepNormSegm,nPxxDataAllSleep,clustersSleep, ...
+    timesAllSleep', ...
+    'VariableNames',{'animal','recs', 'Pxx', 'pxxNormSegm','nPxx','clusters','times' });
+WpcaT = table(animalLabelWake,recLabelsWake,PxxDataAllWake,pxxWakeNormSegm,nPxxDataAllWake,clustersWake, ...
+    timesAllWake', ...
+    'VariableNames',{ 'animal','recs', 'Pxx', 'pxxNormSegm','nPxx','clusters','times' });
+%% plot spectrograms:
+Wsum = groupsummary(WpcaT, {'animal', 'recs', 'clusters'}, "mean", {'Pxx','pxxNormSegm'});
+Ssum = groupsummary(SpcaT, {'animal', 'recs', 'clusters'}, "mean", {'Pxx','pxxNormSegm'});
 
+colorMat = [
+    0.85 0.33 0.10;   % Sleep_HighDB - orange (dark)
+    0.00 0.45 0.74;   % Sleep_LowDB  - blue (dark)
+    0.93 0.60 0.40;   % Wake_HighDB  - orange (light)
+    0.40 0.70 0.90    % Wake_LowDB   - blue (light)
+];
+
+labels = {'Sleep\_HighDB','Sleep\_LowDB','Wake\_HighDB','Wake\_LowDB'};
+
+% --- Figure 1: pxxNormSegm ---
+plotGroupedSpectra(freqHzAll, Ssum, Wsum, 'mean_pxxNormSegm', colorMat, labels, ...
+    'Normalized Power', 'Wake/Sleep spectra (normalized)');
+
+% --- Figure 2: raw Pxx ---
+plotGroupedSpectra(freqHzAll, Ssum, Wsum, 'mean_Pxx', colorMat, labels, ...
+    'Power', 'Wake/Sleep spectra (raw Pxx)');
+
+function plotGroupedSpectra(freqHzAll, Ssum, Wsum, varName, colorMat, labels, yLbl, ttl)
+    figure; hold on;
+    h = gobjects(4,1);
+
+    % Sleep clusters 1-2, Wake clusters 1-2 -> colorMat rows 1-4
+    tables  = {Ssum, Ssum, Wsum, Wsum};
+    clusters = [1, 2, 1, 2];
+
+    for i = 1:4
+        T = tables{i};
+        c = clusters(i);
+        data = T.(varName)(T.clusters==c, :)'; % freq x nLines
+
+        % individual lines at 50% opacity
+        for k = 1:size(data,2)
+            p = plot(freqHzAll, data(:,k), 'LineWidth', 0.75);
+            p.Color = [colorMat(i,:), 0.2]; % 4th value = alpha
+        end
+
+        % mean line, full opacity, on top
+        h(i) = plot(freqHzAll, mean(data,2), ...
+            'Color', colorMat(i,:), 'LineWidth', 2.5);
+    end
+
+    legend(h, labels, 'Location', 'best');
+    xlabel('Frequency (Hz)');
+    ylabel(yLbl);
+    title(ttl);
+    hold off;
+end
 
 %% PCA with sleep; no pre-post:
 %% 1) Each animal's own Wake PCA  2) All-animals Wake PCA
