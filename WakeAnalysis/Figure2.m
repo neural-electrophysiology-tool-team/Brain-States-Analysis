@@ -137,6 +137,7 @@ end
 hold(ax3, 'off');
 
 % save figure:
+% set(f,'PaperPosition',[1 5 4 4]);
 fileName = [analysisFolderWake filesep 'SleepWakeCorrelogram'];
 print(fileName,'-dpdf','-r300');
 
@@ -305,19 +306,20 @@ end
 save([analysisFolderWake filesep 'wakeSleepData.mat'], "pData");
 
 %% load pData
-
+clearvars
 WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWakeN.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 load([analysisFolderWake filesep 'wakeSleepData.mat'])
 
 %% plot AC
-figure;
+f = figure;
 violinplot(pData,"type",'P2V');
 hold on;
 swarmchart(pData.type, pData.P2V, 15, 'k', 'filled', 'XJitterWidth', 0.3);
 hold off;
 
 % save figure:
+set(f,'PaperPosition',[1 5 2 2]);
 fileName = [analysisFolderWake filesep 'sleepWakeAC'];
 print(fileName,'-dpdf','-r300');
 
@@ -424,7 +426,7 @@ colorMat = [
 violinHalfWidth = 0.4;    % max half-width of the density outline
 jitterHalfWidth = 0.35;   % max half-width for scattered points
 
-figure; hold on;
+fi = figure; hold on;
 
 for i = 1:nGroups
     grpData = subBouts.duration_s(subBouts.group == groupList{i});
@@ -441,10 +443,10 @@ for i = 1:nGroups
         'FaceAlpha', 0.20, 'EdgeColor', colorMat(i,:), 'LineWidth', 1.3);
 
     % --- individual points, jittered in x, width scaled by local density ---
-    fPoint = interp1(xi, f, grpData, 'linear', 0);
-    jitterWidth = min(fPoint, jitterHalfWidth);
-    xJitter = i + (rand(size(grpData)) - 0.5) .* 2 .* jitterWidth;
-    scatter(xJitter, grpData, 10, colorMat(i,:), 'filled', 'MarkerFaceAlpha', 0.6);
+    % fPoint = interp1(xi, f, grpData, 'linear', 0);
+    % jitterWidth = min(fPoint, jitterHalfWidth);
+    % xJitter = i + (rand(size(grpData)) - 0.5) .* 2 .* jitterWidth;
+    % scatter(xJitter, grpData, 10, colorMat(i,:), 'filled', 'MarkerFaceAlpha', 0.6);
 end
 
 xticks(1:nGroups);
@@ -456,6 +458,7 @@ title(sprintf('Bout duration distribution -- %s', thisAnimal));
 hold off;
 
 % save figure:
+ set(fi,'PaperPosition',[1 5 3 3]);
 fileName = [analysisFolderWake filesep 'BoutDurationoneAnimalExample'];
 print(fileName,'-dpdf','-r300');
 
@@ -475,7 +478,7 @@ densityHeight = 0.4;    % how tall the density hump rises above baseline
 jitterHeight  = 0.4;   % how far points scatter below baseline
 baseline = 1;            % single shared row
 
-figure; hold on;
+fi = figure; hold on;
 h = gobjects(nTypes, 1);
 
 for i = 1:nTypes
@@ -506,6 +509,7 @@ legend(h, strrep(typeList, '_', ' '), 'Location', 'best');
 hold off;
 
 % save figure:
+set(fi,'PaperPosition',[1 5 4 4]);
 fileName = [analysisFolderWake filesep 'BoutDurationoneAnimalExampleHorizontalSW'];
 print(fileName,'-dpdf','-r300');
 
@@ -534,9 +538,9 @@ highGroups = groupList(contains(groupList, 'High', 'IgnoreCase', true));
 lowGroups  = groupList(contains(groupList, 'Low',  'IgnoreCase', true));
 
 %% ---------- Figure 1: raincloud plot, split into High / Low subplots ----------
-figure;
+fi = figure;
 
-subplot(2,1,1); hold on;
+ax1 =subplot(2,1,1); hold on;
 hHigh = gobjects(numel(highGroups),1);
 for i = 1:numel(highGroups)
     g = highGroups{i};
@@ -550,7 +554,7 @@ xlabel('Bout duration (s)');
 title('High DB');
 legend(hHigh, strrep(highGroups, '_', ' '), 'Location', 'best');
 
-subplot(2,1,2); hold on;
+ax2 =subplot(2,1,2); hold on;
 hLow = gobjects(numel(lowGroups),1);
 for i = 1:numel(lowGroups)
     g = lowGroups{i};
@@ -562,12 +566,15 @@ end
 yticks([]); ylim([baseline - 0.01, baseline + densityHeight + 0.01]);
 xlabel('Bout duration (s)');
 title('Low DB');
+linkaxes([ax1,ax2],'x');
+xlim([-20 500])
 legend(hLow, strrep(lowGroups, '_', ' '), 'Location', 'best');
 
 sgtitle(sprintf('Bout duration distribution -- %s', thisAnimal));
 
 % save figure
-fileName = [analysisFolderWake filesep 'BoutDurationoneAnimalExampleHorizontalSW_HighLow'];
+ set(fi,'PaperPosition',[1 5 3 3]);
+fileName = [analysisFolderWake filesep 'BoutDurationOneAnimalSW_HighLow'];
 print(fileName, '-dpdf', '-r300');
 
 %% ---------- Figure 2: per-animal Sleep-minus-Wake density difference, High / Low subplots ----------
@@ -580,7 +587,7 @@ wakeHighName  = groupList{find(contains(groupList,'Wake', 'IgnoreCase',true) & c
 sleepLowName  = groupList{find(contains(groupList,'Sleep','IgnoreCase',true) & contains(groupList,'Low', 'IgnoreCase',true), 1)};
 wakeLowName   = groupList{find(contains(groupList,'Wake', 'IgnoreCase',true) & contains(groupList,'Low', 'IgnoreCase',true), 1)};
 
-figure;
+fi = figure;
 
 % --- High DB: Sleep_HighDB minus Wake_HighDB, per animal ---
 ax1 = subplot(2,1,1); hold on;
@@ -630,6 +637,8 @@ xlim([0 150])
 sgtitle('Per-animal Sleep - Wake bout-duration density difference');
 
 % save figure
+% save figure
+ set(fi,'PaperPosition',[1 5 3 3]);
 fileName2 = [analysisFolderWake filesep 'BoutDurationDiffSleepWake_HighLow_allAnimals'];
 print(fileName2, '-dpdf', '-r300');
 
@@ -643,10 +652,10 @@ function h = drawRaincloudHalf(data, color, baseline, densityHeight, jitterHeigh
     h = fill([xi, fliplr(xi)], [yTop, baseline*ones(size(xi))], color, ...
         'FaceAlpha', 0.25, 'EdgeColor', color, 'LineWidth', 1.3);
 
-    fPoint = interp1(xi, f, data, 'linear', 0);
-    jitterWidth = min(fPoint, jitterHeight);
-    yJitter = baseline + abs((rand(size(data)) - 0.5)) .* 2 .* jitterWidth;
-    scatter(data, yJitter, 5, color, 'filled', 'MarkerFaceAlpha', 0.5);
+    % fPoint = interp1(xi, f, data, 'linear', 0);
+    % jitterWidth = min(fPoint, jitterHeight);
+    % yJitter = baseline + abs((rand(size(data)) - 0.5)) .* 2 .* jitterWidth;
+    % scatter(data, yJitter, 5, color, 'filled', 'MarkerFaceAlpha', 0.5);
 end
 
 
@@ -697,8 +706,7 @@ pData.HighDBPer = pData.HighDBdur./pData.totalDur;
 pData.LowDBPer = pData.LowDBdur./pData.totalDur;
 % sum = pData.HighDBPer+pData.LowDBPer;
 
-
-figure;
+fi = figure;
 hold on;
 
 sleepType = pData.type == 'Sleep';
@@ -715,6 +723,7 @@ ylabel('High DB percentage of the rec time');
 title('Bout duration percentage');
 
 % save figure
+set(fi,'PaperPosition',[1 5 2 2]);
 fileName2 = [analysisFolderWake filesep 'BoutsPercentagesAllAnimals'];
 print(fileName2, '-dpdf', '-r300');
 %%  old - plot mean DB for each state
@@ -761,7 +770,7 @@ print(fileName2, '-dpdf', '-r300');
 %%  plot mean DB for each state
 pData.avgDB = mean([pData.HighDBAvg,pData.LowDBavg],2);
 
-figure
+fi = figure;
 swarmchart(categorical(pData.type), pData.avgDB, 25, 'filled')
 xlabel('Type')
 ylabel('avg dB')
@@ -769,13 +778,14 @@ title('avgDB by State')
 box off
 
 % % save figure
+set(fi,'PaperPosition',[1 5 2 2]);
 fileName2 = [analysisFolderWake filesep 'bbAvgbytype'];
 print(fileName2, '-dpdf', '-r300');
 
 %%  plot Threshold for each type - sleep or wake
 % pData.avgDB = mean([pData.HighDBAvg,pData.LowDBavg],2);
 
-figure
+fi = figure;
 swarmchart(categorical(pData.type), pData.DBTh, 25, 'filled')
 xlabel('Type')
 ylabel('D/B')
@@ -783,12 +793,13 @@ title('DB threshold betweh high and low DB by State')
 box off
 
 % % save figure
+set(fi,'PaperPosition',[1 5 2 2]);
 fileName2 = [analysisFolderWake filesep 'dbThperType'];
 print(fileName2, '-dpdf', '-r300');
 %%  plot Cross Frequency for each type - sleep or wake
 % pData.avgDB = mean([pData.HighDBAvg,pData.LowDBavg],2);
 
-figure
+fi = figure;
 swarmchart(categorical(pData.type), pData.transPoint, 25, 'filled')
 xlabel('Type')
 ylabel('Frequency')
@@ -796,6 +807,7 @@ title('Cross Frequency between normsPXX')
 box off
 
 % % save figure
+set(fi,'PaperPosition',[1 5 2 2]);
 fileName2 = [analysisFolderWake filesep 'CrossFreq'];
 print(fileName2, '-dpdf', '-r300');
 
@@ -803,34 +815,25 @@ print(fileName2, '-dpdf', '-r300');
 clearvars
 WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWakeN.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
-%% parameters for freqbands
-% data parameters:
+
+% parameters for freqbands
+overwrite = 1;  % set to 1 to force recomputation of freq-band data / bouts
+
 fMax = 80;
 segmentLength = 1000;
 binDuration = 5000;
 WelchOL = 0.75;
 dftPoints = 2^10;
-% win = 0.5*60*60*1000;
+winDuration = 1*60*60*1000;  % target window length: 1 hour, in ms
+tStartDef=1000*60*60*5; % tstart for night recording.
 
-%% get wake subset - all trials 
+%% get wake subset - all trials
 wakeTrials = WA.recTable.ForPaper==1 & cellfun(@(x) contains(x, 'Wake'), WA.recTable.recNames);
 wakeTable = WA.recTable(wakeTrials,:);
-% [G, AnimalsWake] = findgroups(wakeTable.Animal);
-% idx = splitapply(@(x){x(1:min(4,numel(x)))}, ...
-%                  (1:height(wakeTable))', G);
-% 
-% idx = vertcat(idx{:});
-% % trialsNames = ["Wake1","Wake2","Wake3","Wake4"];
-% % trialsid  = ismember(wakeTable.recNames,trialsNames);
-% wakeSubsetAll = wakeTable(idx ,:);
-%% running on a single trial, power spec
-PxxDataAllWake = [];
-nPxxDataAllWake = [];
-timesAllWake   = [];
-freqHzAllWake  = [];
-clustersWake =[];
-recLabelsWake  = [];  % track which recording each row came from
-animalLabelWake = [];
+
+% running on a single trial, power spec - WAKE
+wakeRows = cell(height(wakeTable), 1);
+freqHzAllWake = [];
 
 for i = 1:height(wakeTable)
     recName = ['Animal=' wakeTable.Animal{i} ',recNames=' wakeTable.recNames{i}];
@@ -842,162 +845,148 @@ for i = 1:height(wakeTable)
         waketimes = str2num(wakeTable.isAwake{i});
         tStart = waketimes(1)*60*60*1000;
         win = waketimes(2)*60*60*1000;
+        if win < winDuration
+            win = winDuration;
+        end
     end
 
     animal = wakeTable.Animal(i);
-    
+
     curfreqData = WA.getFreqBandDetection(...
         'fMax',          fMax, ...
         'segmentLength', segmentLength, ...
         'binDuration',   binDuration, ...
         'WelchOL',       WelchOL, ...
         'dftPoints',     dftPoints, ...
-        'tStart',   tStart, ...
-        'win',          win,...
-        'overwrite',      1 ...
+        'tStart',        tStart, ...
+        'win',           win, ...
+        'overwrite',     overwrite ...
     );
-    
-    pxxData = curfreqData.sPxx';        % [nBins x nFreqs]
-    npxxData = curfreqData.normsPxx';
-    nBins   = size(pxxData, 1);
 
-    % Verify frequency axis is consistent across recordings
+    pxxData  = curfreqData.sPxx';      % [nBins x nFreqs]
+    npxxData = curfreqData.normsPxx';
+    nBins    = size(pxxData, 1);
+
     if isempty(freqHzAllWake)
-        freqHzAllWake = curfreqData.freqHz; % save once from first recording
+        freqHzAllWake = curfreqData.freqHz;
     else
         assert(numel(curfreqData.freqHz) == numel(freqHzAllWake), ...
             'Frequency axis mismatch in rec %s!', recName);
     end
 
-    PxxDataAllWake = [PxxDataAllWake; pxxData];
-    nPxxDataAllWake = [nPxxDataAllWake; npxxData]; % [totalBins x nFreqs]
-    clustersWake = [clustersWake; curfreqData.clusters];
-    timesAllWake   = [timesAllWake,   curfreqData.times]; % [1 x totalBins]
-    recLabelsWake  = [recLabelsWake;  repmat(wakeTable.recNames(i), nBins, 1)];             % which rec each row is from
-    animalLabelWake = [animalLabelWake; repmat(animal, nBins, 1)];
+    % --- state labels from bouts (external source), matched by segment START time ---
+    statesStruct = WA.getStateBouts;
+    segLabels = assignStateLabels(curfreqData.times, statesStruct.bouts);
+
+    wakeRows{i} = table(repmat(animal, nBins,1), repmat(wakeTable.recNames(i), nBins,1), ...
+        pxxData, npxxData, curfreqData.clusters, curfreqData.times', segLabels, ...
+        'VariableNames', {'animal','recs','Pxx','nPxx','clusters','times','label'});
 end
 
-% Save everything needed for PCA
-save([analysisFolderWake filesep 'WakePCAdata.mat'], 'PxxDataAllWake','nPxxDataAllWake', 'freqHzAllWake','clustersWake', 'timesAllWake', ...
-    'recLabelsWake', 'animalLabelWake');
-
+WpcaT = vertcat(wakeRows{:});
+save([analysisFolderWake filesep 'WakePCAdata.mat'], 'WpcaT', 'freqHzAllWake');
 
 %% get sleep subset
-sleepTrials = WA.recTable.ForPaper==1& contains(WA.recTable.recNames,'Night');
+sleepTrials = WA.recTable.ForPaper==1 & contains(WA.recTable.recNames,'Night');
 sleepTable = WA.recTable(sleepTrials,:);
 
-%% get the data for the PCA - SLEEP:
-% running on a single trial, power spec
-PxxDataAllSleep = [];
-nPxxDataAllSleep = [];
-timesAllSleep   = [];
-freqHzAllSleep  = [];
-clustersSleep =[];
-clustersSleepAno=[];
-recLabelsSleep  = [];  % track which recording each row came from
-animalLabelSleep = [];
+% get the data for the PCA - SLEEP
+sleepRows = cell(height(sleepTable), 1);
+freqHzAllSleep = [];
 
-%
 for i = 1:height(sleepTable)
     recName = ['Animal=' sleepTable.Animal{i} ',recNames=' sleepTable.recNames{i}];
     WA.setCurrentRecording(recName);
     animal = sleepTable.Animal(i);
-    % get the sleep timings: 
-    WA.getDelta2BetaRatio;
-    % WA.plotDelta2BetaRatio;
-    curAC = WA.getDelta2BetaAC;
-    tStartSleep = curAC.tStartSleep+0.5*60*60*1000;
-    % tEndSleep = curAC.tEndSleep;
-    win= 1*60*60*1000;
-    
+
+    % curAC = WA.getDelta2BetaAC;
+    % tStartSleep = curAC.tStartSleep + 0.5*60*60*1000;
+    if isscalar(str2num(sleepTable.isAwake{i}))
+        tStartSleep = tStartDef;
+    else
+        waketimes = str2num(sleepTable.isAwake{i});
+        tStartSleep = waketimes(1)*60*60*1000;
+    end
+    win = winDuration;
+
     curfreqData = WA.getFreqBandDetection(...
         'fMax',          fMax, ...
         'segmentLength', segmentLength, ...
         'binDuration',   binDuration, ...
         'WelchOL',       WelchOL, ...
         'dftPoints',     dftPoints, ...
-        'tStart',       tStartSleep,...
-        'win',          win, ...
-        'overwrite', 1 ...
-            );
-        
-    pxxData = curfreqData.sPxx';        % [nBins x nFreqs]
+        'tStart',        tStartSleep, ...
+        'win',           win, ...
+        'overwrite',     overwrite ...
+    );
+
+    pxxData  = curfreqData.sPxx';
     npxxData = curfreqData.normsPxx';
-    nBins   = size(pxxData, 1);
-    
-    % find the SWS and REM according to the freqs.
-    meanclus1 = mean(curfreqData.normsPxx(:,curfreqData.clusters==1),2);
-    meanclus2 = mean(curfreqData.normsPxx(:,curfreqData.clusters==2),2);
-    mainfreq1= mean(curfreqData.freqHz(meanclus1>1));
-    mainfreq2= mean(curfreqData.freqHz(meanclus2>1));
-    curclustAno = cell(length(curfreqData.clusters),1);
-    if mainfreq2>curfreqData.crossFreq && mainfreq1<curfreqData.crossFreq
-        %put in clusters that clust1 is SWS and clust2 is REM
-        curclustAno(curfreqData.clusters==1) ={"SWS"}; %SWS is 3
-        curclustAno(curfreqData.clusters==2) ={"REM"}; %REM is 4
-    elseif mainfreq1>curfreqData.crossFreq && mainfreq2<curfreqData.crossFreq
-        %put in clusters that clust2 is SWS and clust1 is REM
-        curclustAno(curfreqData.clusters==2) ={"SWS"}; %SWS is 3
-        curclustAno(curfreqData.clusters==1) ={"REM"}; %REM is 4
+    nBins    = size(pxxData, 1);
 
-    end
-
-
-    % Verify frequency axis is consistent across recordings
     if isempty(freqHzAllSleep)
-        freqHzAllSleep = curfreqData.freqHz; % save once from first recording
+        freqHzAllSleep = curfreqData.freqHz;
     else
         assert(numel(curfreqData.freqHz) == numel(freqHzAllSleep), ...
             'Frequency axis mismatch in rec %s!', recName);
     end
 
-    PxxDataAllSleep = [PxxDataAllSleep; pxxData];
-    nPxxDataAllSleep = [nPxxDataAllSleep; npxxData]; % [totalBins x nFreqs]
-    clustersSleep = [clustersSleep; curfreqData.clusters];
-    clustersSleepAno = [clustersSleepAno;curclustAno];
-    timesAllSleep  = [timesAllSleep,   curfreqData.times]; % [1 x totalBins]
-    recLabelsSleep  = [recLabelsSleep;  repmat(sleepTable.recNames(i), nBins, 1)];             % which rec each row is from
-    animalLabelSleep = [animalLabelSleep; repmat(animal, nBins, 1)];
+    % --- state labels from bouts (external source), matched by segment START time ---
+    statesStruct = WA.getStateBouts;
+    segLabels = assignStateLabels(curfreqData.times, statesStruct.bouts);
+
+    sleepRows{i} = table(repmat(animal, nBins,1), repmat(sleepTable.recNames(i), nBins,1), ...
+        pxxData, npxxData, curfreqData.clusters, curfreqData.times', segLabels, ...
+        'VariableNames', {'animal','recs','Pxx','nPxx','clusters','times','label'});
 end
 
-% Save everything needed for PCA
-save([analysisFolderWake filesep 'SleepPCAdata.mat'], 'PxxDataAllSleep','nPxxDataAllSleep', 'freqHzAllSleep','clustersSleep', ...
-    'clustersSleepAno','timesAllSleep', 'recLabelsSleep', 'animalLabelSleep');
+SpcaT = vertcat(sleepRows{:});
+save([analysisFolderWake filesep 'SleepPCAdata.mat'], 'SpcaT', 'freqHzAllSleep');
 
-%% load data and remove freq 0
-% WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWakeN.xlsx');
-% analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
-
+%% load data, remove freq 0, add normalized-segment Pxx
 load([analysisFolderWake filesep 'SleepPCAdata.mat'])
-% load([analysisFolderWake filesep 'allSpectraHunter.mat'])
-% load([analysisFolderWake filesep 'allSpectraHunterBugs.mat'])
 load([analysisFolderWake filesep 'WakePCAdata.mat'])
 
 freqHzAll = freqHzAllSleep;
-% remove 0 freq
-f_ind=freqHzAll>0.5;
-freqHzAll = freqHzAll(f_ind);
-% freqHzAllHun = freqHzAllHun(f_ind);
-freqHzAllWake= freqHzAllWake(f_ind);
-nPxxDataAllWake=nPxxDataAllWake(:,f_ind);
-% nPxxDataAllHun=nPxxDataAllHun(:,f_ind);
-nPxxDataAllSleep = nPxxDataAllSleep(:,f_ind);
+f_ind = freqHzAll > 0.5;
+freqHzAll     = freqHzAll(f_ind);
+freqHzAllWake = freqHzAllWake(f_ind);
 
-% PxxDataAllAfter=PxxDataAllAfter(:,f_ind);
-% PxxDataAllBefore=PxxDataAllBefore(:,f_ind);
-PxxDataAllSleep=PxxDataAllSleep(:,f_ind);
-PxxDataAllWake=PxxDataAllWake(:,f_ind);
-% PxxDataAllHun=PxxDataAllHun(:,f_ind);
-pxxWakeNormSegm = normalize(PxxDataAllWake, 2);
-pxxSleepNormSegm = normalize(PxxDataAllSleep, 2);
-%% PCA Table crreations:
-SpcaT = table(animalLabelSleep,recLabelsSleep,PxxDataAllSleep,pxxSleepNormSegm,nPxxDataAllSleep,clustersSleep, ...
-    timesAllSleep', ...
-    'VariableNames',{'animal','recs', 'Pxx', 'pxxNormSegm','nPxx','clusters','times' });
-WpcaT = table(animalLabelWake,recLabelsWake,PxxDataAllWake,pxxWakeNormSegm,nPxxDataAllWake,clustersWake, ...
-    timesAllWake', ...
-    'VariableNames',{ 'animal','recs', 'Pxx', 'pxxNormSegm','nPxx','clusters','times' });
-%% plot spectrograms:
+SpcaT.Pxx  = SpcaT.Pxx(:, f_ind);
+SpcaT.nPxx = SpcaT.nPxx(:, f_ind);
+WpcaT.Pxx  = WpcaT.Pxx(:, f_ind);
+WpcaT.nPxx = WpcaT.nPxx(:, f_ind);
+
+SpcaT.pxxNormSegm = normalize(SpcaT.Pxx, 2);
+WpcaT.pxxNormSegm = normalize(WpcaT.Pxx, 2);
+
+SpcaT = SpcaT(:, {'animal','recs','Pxx','pxxNormSegm','nPxx','clusters','times','label'});
+WpcaT = WpcaT(:, {'animal','recs','Pxx','pxxNormSegm','nPxx','clusters','times','label'});
+
+%% 
+function labels = assignStateLabels(segStartTimes, bouts)
+% Assigns a behavioral-state label to each analysis segment based on
+% which bout (from WA.getStatesBouts) contains the segment's START time.
+%
+%   segStartTimes : 1xN (or Nx1) segment start times [ms]
+%   bouts         : table with startTime_ms, endTime_ms, label
+%
+% Segments whose start time falls outside every bout get 'unlabeled'.
+
+    N = numel(segStartTimes);
+    labels = repmat({'unlabeled'}, N, 1);
+    segStart = segStartTimes(:);
+
+    boutLabels = string(bouts.label); % normalizes char/cellstr/categorical/string
+
+    for b = 1:height(bouts)
+        inBout = segStart >= bouts.startTime_ms(b) & segStart < bouts.endTime_ms(b);
+        labels(inBout) = {char(boutLabels(b))};
+    end
+end
+
+
+%% plot spectrograms by clusters:
 Wsum = groupsummary(WpcaT, {'animal', 'recs', 'clusters'}, "mean", {'Pxx','pxxNormSegm'});
 Ssum = groupsummary(SpcaT, {'animal', 'recs', 'clusters'}, "mean", {'Pxx','pxxNormSegm'});
 
@@ -1014,9 +1003,14 @@ labels = {'Sleep\_HighDB','Sleep\_LowDB','Wake\_HighDB','Wake\_LowDB'};
 plotGroupedSpectra(freqHzAll, Ssum, Wsum, 'mean_pxxNormSegm', colorMat, labels, ...
     'Normalized Power', 'Wake/Sleep spectra (normalized)');
 
+fileName2 = [analysisFolderWake filesep 'spectrogramByClustersNorm'];
+print(fileName2, '-dpdf', '-r300');
+
 % --- Figure 2: raw Pxx ---
 plotGroupedSpectra(freqHzAll, Ssum, Wsum, 'mean_Pxx', colorMat, labels, ...
     'Power', 'Wake/Sleep spectra (raw Pxx)');
+fileName2 = [analysisFolderWake filesep 'spectrogramByClustersRaw'];
+print(fileName2, '-dpdf', '-r300');
 
 function plotGroupedSpectra(freqHzAll, Ssum, Wsum, varName, colorMat, labels, yLbl, ttl)
     figure; hold on;
@@ -1045,6 +1039,84 @@ function plotGroupedSpectra(freqHzAll, Ssum, Wsum, varName, colorMat, labels, yL
     legend(h, labels, 'Location', 'best');
     xlabel('Frequency (Hz)');
     ylabel(yLbl);
+    title(ttl);
+    hold off;
+end
+
+%% plot spectra grouped by state LABEL (HighDB / LowDB) instead of clusters
+
+useUnlabeled = false;   % set true to also plot the 'unlabeled' segments
+
+if useUnlabeled
+    Wlab = WpcaT;
+    Slab = SpcaT;
+else
+    Wlab = WpcaT(string(WpcaT.label) ~= "unlabeled", :);
+    Slab = SpcaT(string(SpcaT.label) ~= "unlabeled", :);
+end
+
+Wsum = groupsummary(Wlab, {'animal','recs','label'}, "mean", {'Pxx','pxxNormSegm'});
+Ssum = groupsummary(Slab, {'animal','recs','label'}, "mean", {'Pxx','pxxNormSegm'});
+
+% optional: drop animal/rec/label groups built from very few segments
+minSegs = 1;                       % raise this (e.g. 10) if you want
+Wsum = Wsum(Wsum.GroupCount >= minSegs, :);
+Ssum = Ssum(Ssum.GroupCount >= minSegs, :);
+
+% each row: {summary table, label to select, color, legend entry}
+groupSpec = { ...
+    Ssum, "HighDB", [0.85 0.33 0.10], 'Sleep\_HighDB'; ...
+    Ssum, "LowDB",  [0.00 0.45 0.74], 'Sleep\_LowDB' ; ...
+    Wsum, "HighDB", [0.93 0.60 0.40], 'Wake\_HighDB' ; ...
+    Wsum, "LowDB",  [0.40 0.70 0.90], 'Wake\_LowDB'  };
+
+if useUnlabeled
+    groupSpec = [groupSpec; ...
+        {Ssum, "unlabeled", [0.35 0.35 0.35], 'Sleep\_unlabeled'; ...
+         Wsum, "unlabeled", [0.70 0.70 0.70], 'Wake\_unlabeled' }];
+end
+
+plotLabeledSpectra(freqHzAll, groupSpec, 'mean_pxxNormSegm', ...
+    'Normalized Power', 'Wake/Sleep spectra by state label (normalized)');
+fileName2 = [analysisFolderWake filesep 'spectrogramByLabelNorm'];
+print(fileName2, '-dpdf', '-r300');
+
+plotLabeledSpectra(freqHzAll, groupSpec, 'mean_Pxx', ...
+    'Power', 'Wake/Sleep spectra by state label (raw Pxx)');
+fileName2 = [analysisFolderWake filesep 'spectrogramByLabelRaw'];
+print(fileName2, '-dpdf', '-r300');
+
+function plotLabeledSpectra(freqHzAll, groupSpec, varName, yLbl, ttl)
+    nG = size(groupSpec, 1);
+    figure; hold on;
+    h = gobjects(nG, 1);
+
+    for i = 1:nG
+        T   = groupSpec{i,1};
+        lbl = groupSpec{i,2};
+        col = groupSpec{i,3};
+
+        sel = string(T.label) == lbl;
+        if ~any(sel), continue; end
+
+        data = T.(varName)(sel, :)';        % freq x nLines
+
+        % individual animal/rec lines, faded
+        for k = 1:size(data,2)
+            p = plot(freqHzAll, data(:,k), 'LineWidth', 0.65);
+            p.Color = [col, 0.2];
+        end
+
+        % group mean on top
+        h(i) = plot(freqHzAll, mean(data, 2, 'omitnan'), ...
+            'Color', col, 'LineWidth', 2.5);
+    end
+
+    valid = isgraphics(h);
+    legend(h(valid), groupSpec(valid,4), 'Location', 'best');
+    xlabel('Frequency (Hz)');
+    ylabel(yLbl);
+    % yscale log
     title(ttl);
     hold off;
 end
