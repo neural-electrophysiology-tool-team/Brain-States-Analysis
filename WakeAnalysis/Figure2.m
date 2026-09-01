@@ -944,6 +944,10 @@ SpcaT = vertcat(sleepRows{:});
 save([analysisFolderWake filesep 'SleepPCAdata.mat'], 'SpcaT', 'freqHzAllSleep');
 
 %% load data, remove freq 0, add normalized-segment Pxx
+
+WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWakeN.xlsx');
+analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
+
 load([analysisFolderWake filesep 'SleepPCAdata.mat'])
 load([analysisFolderWake filesep 'WakePCAdata.mat'])
 
