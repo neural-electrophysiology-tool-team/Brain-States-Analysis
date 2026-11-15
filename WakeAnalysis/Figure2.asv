@@ -6,148 +6,7 @@ analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 %% Panel A - examples of sleep and wake
 
 
-%% Panel B - correlogram both sleep and wake
-% good example:
-% wake - PV157,Wake3,tstart 0.5
-% sleep - PV157, Night1, tstart 7 (or 5.5)
-% second example: 
-% Wake - PV159,Wake4, tstart 0, 
-% sleep  - PV159, Night2, tStart 5.5
-
-% data parameters:
-fMax = 80;
-segmentLength = 1000;
-binDuration = 5000;
-WelchOL = 0.75;
-dftPoints = 2^10;
-win = 0.5*60*60*1000;
-
-% get data from Wake
-WA.setCurrentRecording('Animal=PV157,recNames=Wake3');
-wakeFreqData = WA.getFreqBandDetection(...
-    'fMax',          fMax, ...
-    'segmentLength', segmentLength, ...
-    'binDuration',   binDuration, ...
-    'WelchOL',       WelchOL, ...
-    'dftPoints',     dftPoints, ...
-    'overwrite',     1,...
-    'tStart',        0.5*60*60*1000, ...
-    'win', win ...
-    );
-WA.plotFreqBandDetection;
-
-% get the data from sleep
-
-WA.setCurrentRecording('Animal=PV157,recNames=Night1');
-sleepFreqData = WA.getFreqBandDetection(...
-    'fMax',          fMax, ...
-    'segmentLength', segmentLength, ...
-    'binDuration',   binDuration, ...
-    'WelchOL',       WelchOL, ...
-    'dftPoints',     dftPoints, ...
-    'overwrite',     1, ...
-    'tStart',        5.5*60*60*1000, ...
-    'win', win ...
-    );
-    WA.plotFreqBandDetection;
-
-% plot them together with the dendro tree:
-f = figure('Position',[100 100 798 601]);
-margin = 0.05;
-leftWidth  = 0.18;
-cbarWidth  = 0.025;
-cbarGap    = 0.015;
-usableWidth  = 1 - 2*margin;
-usableHeight = 1 - 2*margin;
-ax3Width = usableWidth - leftWidth - cbarWidth - cbarGap;
-ax1 = axes('Parent', f, 'Position', [margin, margin + usableHeight/2, leftWidth, usableHeight/2]);
-ax2 = axes('Parent', f, 'Position', [margin, margin,                 leftWidth, usableHeight/2]);
-ax3 = axes('Parent', f, 'Position', [margin + leftWidth, margin, ax3Width, usableHeight]);
-set(ax1, 'PositionConstraint', 'innerposition');
-set(ax2, 'PositionConstraint', 'innerposition');
-set(ax3, 'PositionConstraint', 'innerposition');
-
-maxDendroClusters = 2;
-cMap = lines(64);   % shared colormap so tree colors == box colors, wake and sleep alike
-
-% wake tree into ax1
-wakeC = corrcoef(wakeFreqData.normsPxx);
-[~, orderW, clustersW] = DendrogramMatrix(wakeC,'linkMetric','euclidean','linkMethod','ward', ...
-                        'maxClusters',maxDendroClusters, 'figureHandle',f, ...
-                        'toPlotBinaryTree',1,'hDendro',[ax1,ax3],'plotOrderLabels',0,'cMap',cMap);
-ylabel('Wake')
-
-% sleep tree into ax2
-sleepC = corrcoef(sleepFreqData.normsPxx);
-[~, orderS, clusterS] = DendrogramMatrix(sleepC,'linkMetric','euclidean','linkMethod','ward', ...
-                        'maxClusters',maxDendroClusters, 'figureHandle',f, ...
-                        'toPlotBinaryTree',1,'hDendro',[ax2,ax3],'plotOrderLabels',0,'cMap',cMap);
-ylabel('Sleep')
-
-% Combined ordered matrix into ax3
-normsPXXboth = [wakeFreqData.normsPxx, sleepFreqData.normsPxx];
-corrMatboth = corrcoef(normsPXXboth);
-nWake = length(orderW);
-nSleep = length(orderS);
-orderBoth = [orderW, orderS + nWake];
-reordered_corr = corrMatboth(orderBoth, orderBoth);
-
-delete(ax3)
-ax3 = axes('Parent', f, 'Position', [margin + leftWidth, margin, ax3Width, usableHeight]);
-set(ax3, 'PositionConstraint', 'innerposition');
-axes(ax3)
-imagesc(reordered_corr);
-axis square;
-colormap(parula);
-clim([-1 1]);
-
-cb = colorbar(ax3);
-cb.Position = [margin + leftWidth + ax3Width + cbarGap*0.3, margin + 0.15*usableHeight, cbarWidth, 0.7*usableHeight];
-
-hold(ax3, 'on');
-
-% --- 1) black divider lines between wake and sleep blocks ---
-xline(ax3, nWake+0.5, 'k-', 'LineWidth', 1);
-yline(ax3, nWake+0.5, 'k-', 'LineWidth', 1);
-
-% --- 2) "Wake" / "Sleep" titles above ax3, split proportionally ---
-nTotal = nWake + nSleep;
-wakeFrac  = nWake  / nTotal;
-sleepFrac = nSleep / nTotal;
-text(ax3, wakeFrac/2, 1.03, 'Wake', 'Units','normalized', ...
-    'HorizontalAlignment','center', 'FontWeight','bold', 'FontSize',12);
-text(ax3, wakeFrac + sleepFrac/2, 1.03, 'Sleep', 'Units','normalized', ...
-    'HorizontalAlignment','center', 'FontWeight','bold', 'FontSize',12);
-
-% --- 3) redraw cluster-state boxes from wake/sleep trees onto ax3 ---
-[pStartW, pEndW] = getClusterBoundaries(clustersW, orderW);
-[pStartS, pEndS] = getClusterBoundaries(clusterS, orderS);
-pStartS = pStartS + nWake;   % shift sleep block into combined coordinates
-pEndS   = pEndS + nWake;
-
-for i = 1:numel(pStartW)
-    rectangle(ax3, 'Position',[pStartW(i) pStartW(i) pEndW(i)-pStartW(i) pEndW(i)-pStartW(i)], ...
-        'EdgeColor', cMap(i,:), 'LineWidth', 3);
-end
-for i = 1:numel(pStartS)
-    rectangle(ax3, 'Position',[pStartS(i) pStartS(i) pEndS(i)-pStartS(i) pEndS(i)-pStartS(i)], ...
-        'EdgeColor', cMap(i,:), 'LineWidth', 3);
-end
-
-hold(ax3, 'off');
-
-% save figure:
-% set(f,'PaperPosition',[1 5 4 4]);
-fileName = [analysisFolderWake filesep 'SleepWakeCorrelogram'];
-print(fileName,'-dpdf','-r300');
-
-% --- helper: replicates DendrogramMatrix's internal boundary logic ---
-function [pStart, pEnd] = getClusterBoundaries(clusters, order)
-    ordClu = clusters(order);
-    pStart = [1, find(diff(ordClu)==1)'+1];
-    pEnd   = [pStart(2:end)-1, numel(clusters)];
-end
-
+%% plot the normPxx for all 4 groups. 
 
 %% panels  C, D, E, F
 %% prepare pData parameters
@@ -317,6 +176,7 @@ violinplot(pData,"type",'P2V');
 hold on;
 swarmchart(pData.type, pData.P2V, 15, 'k', 'filled', 'XJitterWidth', 0.3);
 hold off;
+ylabel('Periodicity (P2V)')
 
 % save figure:
 set(f,'PaperPosition',[1 5 2 2]);
@@ -337,7 +197,7 @@ end
 
 allBouts.label = categorical(allBouts.label); % fix category order if desired
 
-%% previous ver: plot bouts - sleep vs wake
+%% previous ver: plot bouts DOTS- sleep vs wake
 % allBouts.group = categorical(strcat(string(allBouts.type), "-", string(allBouts.label)));
 % 
 % groupList = categories(allBouts.group);  % should be: Sleep_HighDB, Sleep_LowDB, Wake_HighDB, Wake_LowDB
@@ -358,6 +218,7 @@ allBouts.label = categorical(allBouts.label); % fix category order if desired
 % ylabel('Bout duration (s)');
 % xlabel('State');
 % title('Bout duration distribution');
+% yscale("log")
 % 
 % % save figure:
 % fileName = [analysisFolderWake filesep 'BoutDurationAll'];
@@ -423,97 +284,187 @@ colorMat = [
 ];
 
 %% ---------- Figure 1: vertical, one column per group ----------
-violinHalfWidth = 0.4;    % max half-width of the density outline
-jitterHalfWidth = 0.35;   % max half-width for scattered points
+% violinHalfWidth = 0.4;    % max half-width of the density outline
+% jitterHalfWidth = 0.35;   % max half-width for scattered points
+% 
+% fi = figure; hold on;
+% 
+% for i = 1:nGroups
+%     grpData = subBouts.duration_s(subBouts.group == groupList{i});
+%     if isempty(grpData)
+%         continue
+%     end
+% 
+%     % --- violin-style outline: KDE of duration, mirrored around baseline x = i ---
+%     [f, xi] = ksdensity(grpData);
+%     f = f / max(f) * violinHalfWidth;
+%     xLeft  = i - f;
+%     xRight = i + f;
+%     fill([xRight, fliplr(xLeft)], [xi, fliplr(xi)], colorMat(i,:), ...
+%         'FaceAlpha', 0.20, 'EdgeColor', colorMat(i,:), 'LineWidth', 1.3);
+% 
+%     % --- individual points, jittered in x, width scaled by local density ---
+%     % fPoint = interp1(xi, f, grpData, 'linear', 0);
+%     % jitterWidth = min(fPoint, jitterHalfWidth);
+%     % xJitter = i + (rand(size(grpData)) - 0.5) .* 2 .* jitterWidth;
+%     % scatter(xJitter, grpData, 10, colorMat(i,:), 'filled', 'MarkerFaceAlpha', 0.6);
+% end
+% 
+% xticks(1:nGroups);
+% xticklabels(strrep(groupList, '_', ' '));
+% xlim([0.5, nGroups + 0.5]);
+% ylabel('Bout duration (s)');
+% xlabel('State');
+% title(sprintf('Bout duration distribution -- %s', thisAnimal));
+% hold off;
+% % yscale("log")
+% % ylim([-100 200])
+% % save figure:
+%  set(fi,'PaperPosition',[1 5 3 3]);
+% fileName = [analysisFolderWake filesep 'BoutDurationoneAnimalExamplecut'];
+% print(fileName,'-dpdf','-r300');
+% 
+% 
+% %% ---------- Figure 2: horizontal half-violin (raincloud-style), by TYPE, overlaid ----------
+% allBouts.type = categorical(allBouts.type);   % ensure categorical (Sleep / Wake)
+% subBouts.type = categorical(subBouts.type);
+% typeList = categories(allBouts.type);
+% nTypes   = numel(typeList);
+% 
+% typeColorMat = [
+%     0.20 0.20 0.60;   % Sleep - dark indigo
+%     0.90 0.55 0.10    % Wake  - orange
+% ];   % edit/reorder if categories(allBouts.type) comes out in a different order
+% 
+% densityHeight = 0.4;    % how tall the density hump rises above baseline
+% jitterHeight  = 0.4;   % how far points scatter below baseline
+% baseline = 1;            % single shared row
+% 
+% fi = figure; hold on;
+% h = gobjects(nTypes, 1);
+% 
+% for i = 1:nTypes
+%     tData = subBouts.duration_s(subBouts.type == typeList{i});
+%     if isempty(tData)
+%         continue
+%     end
+% 
+%     % --- upper half only: density hump rising from baseline (histogram-like) ---
+%     [f, xi] = ksdensity(tData);
+%     f = f / max(f) * densityHeight;
+%     yTop = baseline + f;
+%     h(i) = fill([xi, fliplr(xi)], [yTop, baseline*ones(size(xi))], typeColorMat(i,:), ...
+%         'FaceAlpha', 0.25, 'EdgeColor', typeColorMat(i,:), 'LineWidth', 1.3);
+% 
+%     % --- points scattered below baseline only (raincloud strip) ---
+%     fPoint = interp1(xi, f, tData, 'linear', 0);
+%     jitterWidth = min(fPoint, jitterHeight);
+%     yJitter =  baseline + abs((rand(size(tData)) - 0.5)) .* 2 .* jitterWidth;
+%     scatter(tData, yJitter, 5, typeColorMat(i,:), 'filled', 'MarkerFaceAlpha', 0.5);
+% end
+% 
+% yticks([]);
+% ylim([baseline - 0.01, baseline + densityHeight + 0.01]);
+% xlabel('Bout duration (s)');
+% title(sprintf('Bout duration distribution (overlaid, by type) -- %s', thisAnimal));
+% legend(h, strrep(typeList, '_', ' '), 'Location', 'best');
+% hold off;
+% 
+% % save figure:
+% set(fi,'PaperPosition',[1 5 4 4]);
+% fileName = [analysisFolderWake filesep 'BoutDurationoneAnimalExampleHorizontalSW'];
+% print(fileName,'-dpdf','-r300');
 
-fi = figure; hold on;
+%% ---------- Figure 3: vertical split violins, log scale ----------
+% Two violins (HighDB, LowDB). Each one is split down the middle:
+%   left half = Wake, right half = Sleep.
+% No dots, same fill/outline style as the previous violin figures.
+% The density is estimated on log10(duration), so the shape is correct on a log axis.
+%
+% Runs after the sections above (needs subBouts / allBouts, thisAnimal, analysisFolderWake).
 
-for i = 1:nGroups
-    grpData = subBouts.duration_s(subBouts.group == groupList{i});
-    if isempty(grpData)
-        continue
+plotData = subBouts;  titleTag = thisAnimal;        % single animal
+% plotData = allBouts; titleTag = "all animals";    % pooled across animals
+
+violinHalfWidth = 0.4;     % max half-width of each half-violin
+commonScale     = false;   % false: every half is scaled to the same max width (as in the previous figures)
+                           % true : all halves share one scale, so widths are comparable between halves
+
+labelNames = ["HighDB", "LowDB"];   % one violin per label
+typeNames  = ["Wake", "Sleep"];     % left half, right half
+sideSign   = [-1, 1];               % -1 = left of the centre line, +1 = right
+
+% same palette as colorMat above; rows = label, columns = type (Wake, Sleep)
+halfColors = { [0.93 0.60 0.40], [0.85 0.33 0.10];     % HighDB: Wake light orange, Sleep dark orange
+               [0.40 0.70 0.90], [0.00 0.45 0.74] };   % LowDB : Wake light blue,   Sleep dark blue
+
+labelStr = string(plotData.label);
+typeStr  = string(plotData.type);
+nLabels  = numel(labelNames);
+nTypes   = numel(typeNames);
+
+% --- density of every half, estimated in log10 space ---
+dens = cell(nLabels, nTypes);   % density values
+yy   = cell(nLabels, nTypes);   % matching durations (s)
+for i = 1:nLabels
+    for j = 1:nTypes
+        sel = contains(labelStr, labelNames(i), 'IgnoreCase', true) & ...
+              contains(typeStr,  typeNames(j),  'IgnoreCase', true);
+        d = plotData.duration_s(sel);
+        d = d(d > 0 & isfinite(d));              % log scale: positive values only
+        if numel(d) < 2
+            warning('Not enough bouts for %s - %s, half-violin skipped.', labelNames(i), typeNames(j));
+            continue
+        end
+        [f, xi]   = ksdensity(log10(d));
+        dens{i,j} = f;
+        yy{i,j}   = 10.^xi;
     end
-
-    % --- violin-style outline: KDE of duration, mirrored around baseline x = i ---
-    [f, xi] = ksdensity(grpData);
-    f = f / max(f) * violinHalfWidth;
-    xLeft  = i - f;
-    xRight = i + f;
-    fill([xRight, fliplr(xLeft)], [xi, fliplr(xi)], colorMat(i,:), ...
-        'FaceAlpha', 0.20, 'EdgeColor', colorMat(i,:), 'LineWidth', 1.3);
-
-    % --- individual points, jittered in x, width scaled by local density ---
-    % fPoint = interp1(xi, f, grpData, 'linear', 0);
-    % jitterWidth = min(fPoint, jitterHalfWidth);
-    % xJitter = i + (rand(size(grpData)) - 0.5) .* 2 .* jitterWidth;
-    % scatter(xJitter, grpData, 10, colorMat(i,:), 'filled', 'MarkerFaceAlpha', 0.6);
 end
 
-xticks(1:nGroups);
-xticklabels(strrep(groupList, '_', ' '));
-xlim([0.5, nGroups + 0.5]);
+if commonScale
+    globalMax = max(cellfun(@(f) max([f, 0]), dens(:)));
+end
+
+% --- plot ---
+fi = figure; hold on;
+h = gobjects(nLabels, nTypes);
+
+for i = 1:nLabels
+    for j = 1:nTypes
+        f = dens{i,j};
+        if isempty(f)
+            continue
+        end
+        if commonScale
+            w = f / globalMax * violinHalfWidth;
+        else
+            w = f / max(f) * violinHalfWidth;
+        end
+
+        xOuter = i + sideSign(j) * w;            % curved outer edge
+        xInner = i * ones(size(w));              % straight edge on the centre line
+        h(i,j) = fill([xOuter, xInner], [yy{i,j}, fliplr(yy{i,j})], halfColors{i,j}, ...
+            'FaceAlpha', 0.20, 'EdgeColor', halfColors{i,j}, 'LineWidth', 1.3, ...
+            'DisplayName', sprintf('%s - %s', labelNames(i), typeNames(j)));
+    end
+end
+
+set(gca, 'YScale', 'log');
+xticks(1:nLabels);
+xticklabels(labelNames);
+xlim([0.5, nLabels + 0.5]);
 ylabel('Bout duration (s)');
 xlabel('State');
-title(sprintf('Bout duration distribution -- %s', thisAnimal));
+title(sprintf('Bout duration distribution -- %s', titleTag));
+valid = isgraphics(h);
+legend(h(valid), 'Location', 'best');
 hold off;
 
 % save figure:
- set(fi,'PaperPosition',[1 5 3 3]);
-fileName = [analysisFolderWake filesep 'BoutDurationoneAnimalExample'];
-print(fileName,'-dpdf','-r300');
-
-
-%% ---------- Figure 2: horizontal half-violin (raincloud-style), by TYPE, overlaid ----------
-allBouts.type = categorical(allBouts.type);   % ensure categorical (Sleep / Wake)
-subBouts.type = categorical(subBouts.type);
-typeList = categories(allBouts.type);
-nTypes   = numel(typeList);
-
-typeColorMat = [
-    0.20 0.20 0.60;   % Sleep - dark indigo
-    0.90 0.55 0.10    % Wake  - orange
-];   % edit/reorder if categories(allBouts.type) comes out in a different order
-
-densityHeight = 0.4;    % how tall the density hump rises above baseline
-jitterHeight  = 0.4;   % how far points scatter below baseline
-baseline = 1;            % single shared row
-
-fi = figure; hold on;
-h = gobjects(nTypes, 1);
-
-for i = 1:nTypes
-    tData = subBouts.duration_s(subBouts.type == typeList{i});
-    if isempty(tData)
-        continue
-    end
-
-    % --- upper half only: density hump rising from baseline (histogram-like) ---
-    [f, xi] = ksdensity(tData);
-    f = f / max(f) * densityHeight;
-    yTop = baseline + f;
-    h(i) = fill([xi, fliplr(xi)], [yTop, baseline*ones(size(xi))], typeColorMat(i,:), ...
-        'FaceAlpha', 0.25, 'EdgeColor', typeColorMat(i,:), 'LineWidth', 1.3);
-
-    % --- points scattered below baseline only (raincloud strip) ---
-    fPoint = interp1(xi, f, tData, 'linear', 0);
-    jitterWidth = min(fPoint, jitterHeight);
-    yJitter =  baseline + abs((rand(size(tData)) - 0.5)) .* 2 .* jitterWidth;
-    scatter(tData, yJitter, 5, typeColorMat(i,:), 'filled', 'MarkerFaceAlpha', 0.5);
-end
-
-yticks([]);
-ylim([baseline - 0.01, baseline + densityHeight + 0.01]);
-xlabel('Bout duration (s)');
-title(sprintf('Bout duration distribution (overlaid, by type) -- %s', thisAnimal));
-legend(h, strrep(typeList, '_', ' '), 'Location', 'best');
-hold off;
-
-% save figure:
-set(fi,'PaperPosition',[1 5 4 4]);
-fileName = [analysisFolderWake filesep 'BoutDurationoneAnimalExampleHorizontalSW'];
-print(fileName,'-dpdf','-r300');
-
-
+set(fi, 'PaperPosition', [1 5 3 3]);
+fileName = [analysisFolderWake filesep 'BoutDurationSplitViolinLog'];
+print(fileName, '-dpdf', '-r300');
 %% ---------- Setup ----------
 % Assumes 'allBouts' (with .Animal, .type, .label, .group, .duration_s) and
 % 'thisAnimal' are already defined, as in the earlier scripts.
@@ -1120,10 +1071,13 @@ function plotLabeledSpectra(freqHzAll, groupSpec, varName, yLbl, ttl)
     legend(h(valid), groupSpec(valid,4), 'Location', 'best');
     xlabel('Frequency (Hz)');
     ylabel(yLbl);
-    % yscale log
+    yscale log
     title(ttl);
     hold off;
 end
 
 
 %% PCA Part - 
+
+out = plotPCAwakeBased(WpcaT, SpcaT, freqHzAll, 'panelSize',[300 220], ...
+    dataField='pxxNormSegm');   % bigger maps
