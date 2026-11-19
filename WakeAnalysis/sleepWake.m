@@ -1,6 +1,6 @@
 %% Sleep-Wake Analysis
-clearvars
-WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWake.xlsx');
+ clearvars
+WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWakeN.xlsx');
 analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
 
 %% transition points of states - WAKE
@@ -267,16 +267,21 @@ WA.plotStatesAC
 
 %% Sleep and wake comparison - only on recs where animals were awake
 
+WA = wakeAnalysis('/media/sil1/Data/Nitzan/Experiments/brainStatesWakeN.xlsx');
+analysisFolderWake = '/media/sil1/Data/Nitzan/WakeStatesPaper/plots';
+
+%
 trialsIdx=WA.recTable.ForPaper==1;
 recs = WA.recTable(trialsIdx,:);
 
 % parameters states:: 
 medianFiltWin= 1000*5; %default = 1000*5
 longOrdFiltWin = 1000*200; %defualt = 1000*200
-longOrdFiltOrd = 0.6; %default = 0.4
+longOrdFiltOrd = 0.5; %default = 0.4
 minStateDur= 1000*7; % defualt = 7*1000
-tStart=1000*60*60*5; % tstart and win for night recording.
-win = 1000*60*60*3; 
+tStartDef=1000*60*60*5; % tstart and win for night recording.
+winDef = 1000*60*60*3; 
+
 
 %parameters D/b
 movWin = 5000;
@@ -285,7 +290,7 @@ movOLWin = 4500;
 load([analysisFolderWake filesep 'wakeSleepData.mat'])
 pDataOld = pData;
 
-pData = recs(:,["Animal","recNames","Remarks","isAWakwe","Date","Headstage","spikes"]);
+pData = recs(:,["Animal","recNames","Remarks","isAwake","Date","Headstage","spikes"]);
 pData.type = categorical(repmat({''}, height(pData), 1));
 pData.type(contains(pData.recNames, 'Wake'))  = 'Wake';
 pData.type(contains(pData.recNames, 'Night')) = 'Sleep';
@@ -294,10 +299,12 @@ pData.bouts = cell(height(pData),1);
 pData.HighDBdur = zeros(height(pData),1);
 pData.LowDBdur = zeros(height(pData),1);
 pData.totalDur = zeros(height(pData),1);
+pData.HighDBAvg = zeros(height(pData),1);
+pData.LowDBavg = zeros(height(pData),1);
 
 % check for recordings allready calculated, assuming the parameters havent
 % changed:
-newparameters=1;
+newparameters=0;
 if ~newparameters
     [isOld, idx] = ismember(pData(:, {'Animal','recNames'}), ...
                           pDataOld(:, {'Animal','recNames'}), 'rows');
@@ -312,7 +319,7 @@ end
 %% get the AC, and states for each
 
 for i = rowsToProcess'
-    recName=['Animal=' recs.Animal{i} ',recNames=' recs.recNames{i}];
+    recName=['Animal=' pData.Animal{i} ',recNames=' pData.recNames{i}];
     WA.setCurrentRecording(recName);
     DB=WA.getDelta2BetaRatio;
     if DB.parDBRatio.movOLWin ~=movOLWin | DB.parDBRatio.movWin ~=movWin
@@ -322,7 +329,16 @@ for i = rowsToProcess'
     end
     
     if pData.type(i)=='Sleep'
-        
+        %add: if the isAwake is more than 1 number, take it as tstart and
+        %win in hrs.
+        if isscalar(str2num(pData.isAwake{i}))
+            tStart = tStartDef;
+            win = winDef;
+        else 
+            waketimes = str2num(pData.isAwake{i});
+            tStart = waketimes(1)*60*60*1000;
+            win = waketimes(2)*60*60*1000;
+        end 
         SS = WA.getStatesAC( ... % get the states timings
             'overwrite',    1,...
             'medianFiltWin',medianFiltWin, ...
@@ -339,12 +355,12 @@ for i = rowsToProcess'
        
 
     elseif pData.type(i)=='Wake'
-        if pData.isAWakwe{i}==1
+        if isscalar(pData.isAwake{i})
             tStart = 0;
             win = WA.currentDataObj.recordingDuration_ms;
         else 
-            waketimes = pData.isAWakwe{i};
-            tstart = waketimes(1);
+            waketimes = str2num(pData.isAwake{i});
+            tStart = waketimes(1)*60*60*1000;
             win = waketimes(2)*60*60*1000;
         end
 
@@ -370,16 +386,21 @@ for i = rowsToProcess'
       
     end
     % calculate the duration of each states
-        %get bouts
-        BS = WA.getStateBouts('overwrite',1);
+    %get bouts
+    BS = WA.getStateBouts('overwrite',1);
+
+    pData.bouts{i}= BS.bouts(:,["state","label","duration_s","AvgDB"]);
+
+    % get sum of state and rec duration
+    pData.HighDBdur(i) = sum(BS.bouts.duration_s(BS.bouts.state==1));
+    pData.LowDBdur(i) = sum(BS.bouts.duration_s(BS.bouts.state==2));
+    pData.totalDur(i) = sum(BS.bouts.duration_s);
+    
+    % get the mean DB for each state:
+    pData.HighDBAvg(i) = mean(BS.bouts.AvgDB(BS.bouts.state==1),'omitnan');
+    pData.LowDBavg(i) = mean(BS.bouts.AvgDB(BS.bouts.state==2),'omitnan');
+
         
-        pData.bouts{i}= BS.bouts(:,["state","label","duration_s"]);
-
-        %get sum of state and rec duration 
-        pData.HighDBdur(i) = sum(BS.bouts.duration_s(BS.bouts.state==1));
-        pData.LowDBdur(i) = sum(BS.bouts.duration_s(BS.bouts.state==2));
-        pData.totalDur(i) = sum(BS.bouts.duration_s);
-
 
 end
 
@@ -410,19 +431,146 @@ end
 
 allBouts.label = categorical(allBouts.label); % fix category order if desired
 
-%%
-figure;
-durationClean=allBouts.duration_s
-violinplot(allBouts.type,allBouts.duration_s,GroupByColor=allBouts.Animal);
-legend(unique(allBouts.Animal),'Location','best');
-ylabel('Bout duration (s)');
-xlabel('State');
-title('Bout duration distribution, pooled across all tables per animal');
+%% plot bouts - sleep vs wake
 
-%% plot percantage
+
+allBouts.group = categorical(strcat(string(allBouts.type), "-", string(allBouts.label)));
+
+% figure;
+% violinplot(allBouts.group,allBouts.duration_s);
+% % legend(unique(allBouts.Animal),'Location','best');
+% ylabel('Bout duration (s)');
+% xlabel('State');
+% title('Bout duration distribution');
+% %%
+groupList = categories(allBouts.group);  % should be: Sleep_HighDB, Sleep_LowDB, Wake_HighDB, Wake_LowDB
+
+% base colors: blue-family for HighDB (1,3), orange-family for LowDB (2,4)
+colorMat = [
+    0.85 0.33 0.10;   % 1: Sleep_HighDB  - orange (dark)
+    0.00 0.45 0.74;   % 2: Sleep_LowDB   - blue (dark)
+    0.93 0.60 0.40;   % 3: Wake_HighDB   - orange (light)
+    0.40 0.70 0.90    % 4: Wake_LowDB    - blue (light)
+];
+
+[~, idx] = ismember(allBouts.group, groupList);
+pointColors = colorMat(idx, :);
+
 figure;
-violinplot(allBouts.label,allBouts.percentage,GroupByColor=allBouts.Animal);
-legend(unique(allBouts.Animal),'Location','best');
+swarmchart(allBouts.group, allBouts.duration_s, 5, pointColors, 'filled');
 ylabel('Bout duration (s)');
 xlabel('State');
-title('Bout duration distribution, pooled across all tables per animal');
+title('Bout duration distribution');
+
+% per animals
+allBouts.Animal = categorical(allBouts.Animal);
+animalList = categories(allBouts.Animal);
+groupList = categories(allBouts.group);
+cmap = lines(numel(animalList));
+
+nAnimals = numel(animalList);
+offsets = linspace(-0.3, 0.3, nAnimals);  % spread animals within each group's x-slot
+
+figure;
+hold on;
+h = gobjects(nAnimals,1);
+for i = 1:nAnimals
+    idx = allBouts.Animal == animalList{i};
+    
+    % numeric x position = group code + this animal's offset
+    xNum = double(allBouts.group(idx)) + offsets(i);
+    
+    h(i) = swarmchart(xNum, allBouts.duration_s(idx), 10, cmap(i,:), 'filled', ...
+        'XJitterWidth', 0.15);
+end
+
+% set x-ticks to group names at the center of each cluster
+xticks(1:numel(groupList));
+xticklabels(groupList);
+xlim([0.5, numel(groupList)+0.5]);
+
+legend(h, animalList, 'Location', 'best');
+ylabel('Bout duration (s)');
+xlabel('State');
+title('Bout duration distribution, per animal');allBouts.Animal = categorical(allBouts.Animal);
+animalList = categories(allBouts.Animal);
+groupList = categories(allBouts.group);
+cmap = lines(numel(animalList));
+
+%% check Standart deviation for each state
+stdgroups= [];
+for i = 1:length(groupList)
+    group = groupList{i};
+    curstd = std(allBouts.duration_s(allBouts.group==group));
+    stdgroups= [stdgroups;curstd];
+end
+STDgruopT = table(groupList,stdgroups,'VariableNames',["Group","STD"]);
+
+%% check long bouts
+l = allBouts.duration_s>1000;
+
+longBouts=allBouts(l,:);
+
+[found, o] = ismember(longBouts(:, {'Animal','recNames'}), ...
+                         pData(:, {'Animal','recNames'}), 'rows');
+%% plot percantage
+pData.HighDBPer = pData.HighDBdur./pData.totalDur;
+pData.LowDBPer = pData.LowDBdur./pData.totalDur;
+% sum = pData.HighDBPer+pData.LowDBPer;
+
+
+figure;
+hold on;
+
+sleepType = pData.type == 'Sleep';
+
+swarmchart(ones(nnz(sleepType),1), pData.HighDBPer(sleepType)*100, 20, 'filled','XJitter','density');
+swarmchart(2*ones(nnz(~sleepType),1), pData.HighDBPer(~sleepType)*100, 20, 'filled');
+
+xticks([1 2]);
+xticklabels(["Sleep", "Wake"]);
+xlim([0.5 2.5]);
+yline(50, '--','Color',[0.4 0.4 0.4]);
+
+ylabel('High DB percentage of the rec time');
+title('Bout duration percentage');
+
+%%  plot mean DB for each state
+groupOrder = {'Sleep','Wake'};
+pData.type = categorical(pData.type, groupOrder);
+
+% Reshape to long format
+longType  = [pData.type; pData.type];
+longValue = [pData.HighDBAvg; pData.LowDBavg];
+longLabel = [repmat({'highDB'}, height(pData), 1); repmat({'lowDB'}, height(pData), 1)];
+longLabel = categorical(longLabel, {'highDB','lowDB'});
+
+% Base x position from type, with small offset per sub-group
+baseX = double(longType);
+offset = 0.30;
+xPos = baseX - offset .* (longLabel == 'highDB') + offset .* (longLabel == 'lowDB');
+
+colorMat = [
+    0.85 0.33 0.10;   % Sleep_HighDB  - orange (dark)
+    0.00 0.45 0.74;   % Sleep_LowDB   - blue (dark)
+    0.93 0.60 0.40;   % Wake_HighDB   - orange (light)
+    0.40 0.70 0.90    % Wake_LowDB    - blue (light)
+];
+
+% Per-point color matrix
+pointColors = zeros(numel(xPos), 3);
+pointColors(longType=='Sleep' & longLabel=='highDB', :) = repmat(colorMat(1,:), sum(longType=='Sleep' & longLabel=='highDB'), 1);
+pointColors(longType=='Sleep' & longLabel=='lowDB',  :) = repmat(colorMat(2,:), sum(longType=='Sleep' & longLabel=='lowDB'),  1);
+pointColors(longType=='Wake'  & longLabel=='highDB', :) = repmat(colorMat(3,:), sum(longType=='Wake'  & longLabel=='highDB'), 1);
+pointColors(longType=='Wake'  & longLabel=='lowDB',  :) = repmat(colorMat(4,:), sum(longType=='Wake'  & longLabel=='lowDB'),  1);
+
+figure; hold on;
+swarmchart(xPos, longValue, 25, pointColors, 'filled', 'o', 'XJitterWidth', 0.25);
+% Xticks at each sub-group position, labeled directly
+xticks([1-offset, 1+offset, 2-offset, 2+offset]);
+xticklabels({'Sleep-HighDB','Sleep-LowDB','Wake-HighDB','Wake-LowDB'});
+xtickangle(0);
+
+xlim([0.5, numel(groupOrder)+0.5]);
+ylabel('Avg DB Ratio');
+
